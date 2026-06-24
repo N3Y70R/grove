@@ -1,0 +1,48 @@
+name: python
+
+on:
+  push:
+    paths:
+      - "python/**"
+      - ".github/workflows/python.yml"
+  pull_request:
+    paths:
+      - "python/**"
+      - ".github/workflows/python.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: pip install ./python
+
+      - name: Smoke test (--version / --help)
+        run: |
+          gwt --version
+          gwt --help
+
+      - name: Functional smoke (setup + list)
+        run: |
+          set -e
+          git config --global user.email ci@example.com
+          git config --global user.name ci
+          tmp="$(mktemp -d)"; cd "$tmp"
+          git init -q --bare origin.git
+          git clone -q origin.git seed && cd seed
+          git checkout -q -b production && echo v > app.txt && git add . && git commit -qm init
+          git push -q origin production && cd ..
+          gwt setup "file://$tmp/origin.git" --name repo
+          cd repo
+          gwt list --json
+          gwt create DROP-1 feature "ci smoke" --json

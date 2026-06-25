@@ -24,8 +24,7 @@ jobs:
       - name: Build sdist + wheel
         run: |
           python -m pip install --upgrade build
-          cd python && python -m build
-          # quick sanity: the built files exist
+          python -m build --outdir python/dist ./python
           ls -l python/dist
 
       - name: Publish to PyPI (Trusted Publishing)

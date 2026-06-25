@@ -1,10 +1,9 @@
-# grove.mcp — MCP facade (🚧 placeholder, not implemented)
+# grove.mcp — MCP facade
 
-This folder will hold the **MCP server** (Model Context Protocol) of the Python implementation: grove's operations exposed as *tools* for an agent (Claude/Cowork) to invoke. Today it's just a placeholder; the full design is in [`../../../../spec/specification.md`](../../../../spec/specification.md) (§13).
-
-## Idea
-
-The MCP is **another thin facade over `grove.core`**, just like `grove.cli`:
+The **MCP server** (Model Context Protocol) of the Python implementation:
+grove's worktree operations exposed as *tools* for an agent (Claude/Cowork)
+to invoke. It is a thin facade over `grove.core`, exactly like `grove.cli`.
+Full design in [`../../../../spec/specification.md`](../../../../spec/specification.md) (§13).
 
 ```
 grove.core
@@ -12,29 +11,66 @@ grove.core
  └── grove.mcp   → MCP server (this package)
 ```
 
-It reuses what already exists:
-
-- The structured `result` of `--json` is what each tool will return.
-- Destructive operations already confirm by parameter (not by prompt), so they fit an agent without changes.
-
-## Planned tools
-
-≈1:1 mapping with the commands: `grove_setup`, `grove_list`, `grove_create`, `grove_track`, `grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_config`, `grove_ssh_check` — with typed inputs, confirmation by parameter and structured output. Later, enrichment tools (e.g. `grove_create_from_issue`).
-
-## Planned layout
+## Layout
 
 ```
 mcp/
 ├── __init__.py
-└── server.py        # registers the tools over grove.core and starts the server (stdio)
+├── __main__.py     # python -m grove.mcp
+├── _ops.py         # pure operation layer: returns the structured result (no SDK import)
+└── server.py       # FastMCP tools over _ops; starts the server (stdio)
 ```
 
-## Planned packaging
+`_ops.py` has **no MCP SDK dependency**, so the operation logic is importable
+and unit-testable on its own; `server.py` only wraps each function as a tool.
 
-- MCP SDK as an **optional dependency**: `pip install "grove[mcp]"` (the base CLI stays dependency-free).
-- A `grove-mcp` entry point in `pyproject.toml`, in addition to `gwt`.
-- Versioned with the Python implementation (`python/vX.Y.Z`).
+## Tools
 
-## Status
+≈1:1 with the commands, with typed inputs and structured output:
 
-Nothing implemented yet. When developed, it must behave the same as the CLI per the spec (and, in the future, pass the [`conformance/`](../../../../conformance/) suite).
+| Tool | Notes |
+|------|-------|
+| `grove_setup` | initialize a repo (profile, optional `ssh_alias`) |
+| `grove_list` | filters: `type`, `dirty`, `orphans` |
+| `grove_create` | `kind` = `ticket` (default) \| `release` \| `temp` |
+| `grove_track` | `as_` for an explicit destination |
+| `grove_remove` | **destructive** → `confirm=true` (or `merged` sweep) |
+| `grove_sync` | **destructive** (reset --hard) → `confirm=true` |
+| `grove_publish` | additive; `regenerate` force-push → `confirm=true` |
+| `grove_doctor` | `fix=true` applies auto-fixable issues |
+| `grove_compare` | read-only ahead/behind (`a`/`b` or `vs`) |
+| `grove_config` | show, or set the SSH alias (`set_ssh_alias`) |
+| `grove_ssh_check` | SSH diagnostics for the remote |
+
+Differences from the CLI: typed inputs (JSON schema) instead of text flags;
+no interaction (destructive actions confirm via a boolean parameter); output
+is always the structured `result`, never human text.
+
+Every tool takes an optional `cwd` to locate the managed repo (defaults to the
+process working directory).
+
+## No network / no ticket clients
+
+Per the design principle, the MCP facade does **not** go out to the network and
+has no Jira/Linear/GitHub-issue clients. Ticket keys and slugs arrive **by
+parameter**. Enrichment (e.g. fetching an issue title, then calling
+`grove_create` with the resolved data) is the agent's job, composing its own
+connectors with these tools.
+
+## Install & run
+
+```
+pip install "grove[mcp]"   # base CLI stays dependency-free; SDK is an extra
+grove-mcp                  # starts the server over stdio
+# or
+python -m grove.mcp
+```
+
+Register it with an MCP-capable client (stdio transport) by pointing the
+command at `grove-mcp`.
+
+## Versioning & parity
+
+Versioned with the Python implementation (`python/vX.Y.Z`). It must behave the
+same as the CLI per the spec; in the future the
+[`conformance/`](../../../../conformance/) suite can also validate this layer.

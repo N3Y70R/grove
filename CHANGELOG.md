@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ### Added
 
+- **`publish --regenerate` creates the integration branch when missing**: it now
+  locates the branch (worktree → origin → local) and, if it exists nowhere,
+  **creates it from `--base`** with a normal push (no force/confirmation). Targets
+  are optional with `--regenerate`, so `gwt publish --regenerate --base <branch>`
+  seeds an empty integration branch. Rebuilding an existing branch still
+  force-pushes with confirmation. One command now both creates and rebuilds the
+  integration branch (exposed in the `grove_publish` MCP tool; result carries
+  `created` and `mode`).
 - **`create temp --base <branch>`**: temporary worktrees can now branch off a
   specific base (previously they always used the repo default). Exposed in the
   `grove_create` MCP tool via `base` for `kind="temp"`.

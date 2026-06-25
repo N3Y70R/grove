@@ -276,23 +276,36 @@ def op_publish(
     integration = into or core_config.INTEGRATION_BRANCH
     if not integration:
         raise UsageError("No integration branch configured; pass 'into'.")
-    if regenerate and not confirm:
+    if not targets and not regenerate:
         raise UsageError(
-            f"regenerate force-pushes origin/{integration}; set confirm=true to proceed."
+            "Specify at least one target, or set regenerate=true with 'base' to "
+            "create the integration branch."
         )
 
+    base = base or core_config.DEFAULT_BASE
     branches = [core_publish.resolve_branch(git, repo, t) for t in targets]
-    int_path = core_publish.ensure_integration(git, repo, integration)
+    int_path, created = core_publish.ensure_integration(
+        git, repo, integration, create_base=(base if regenerate else None)
+    )
 
-    if regenerate:
-        base = base or core_config.DEFAULT_BASE
+    if regenerate and not created:
+        # Rebuilding an existing branch force-pushes → require confirm.
+        if not confirm:
+            raise UsageError(
+                f"regenerate force-pushes origin/{integration}; set confirm=true to proceed."
+            )
         core_publish.publish_regenerate(git, repo, integration, int_path, branches, base=base)
         mode = "regenerate"
+    elif regenerate and created:
+        # Freshly created from base → merge targets and normal push (no force/confirm).
+        core_publish.publish_additive(git, repo, integration, int_path, branches, no_sync=True)
+        mode = "created"
     else:
         core_publish.publish_additive(git, repo, integration, int_path, branches,
                                       no_sync=no_sync)
         mode = "additive"
-    return {"integration": integration, "mode": mode, "branches": branches}
+    return {"integration": integration, "mode": mode, "created": created,
+            "branches": branches, "base": base}
 
 
 def op_doctor(

@@ -240,15 +240,39 @@ Continue? [y/N] y
 ✓ Published to temporary-unified-test: ...
 ```
 
-The two paths, side by side:
+### First time: create the integration branch from a base
+
+If `temporary-unified-test` doesn't exist yet, the **same** `--regenerate` command **creates** it from `--base`. Because there's nothing to overwrite, it's a normal push — no force, no confirmation. Targets are optional, so you can seed it empty:
+
+```
+gwt publish --regenerate --base production
+```
+```
+→ Integration branch 'temporary-unified-test' does not exist; creating it from production
+→ Push to origin/temporary-unified-test
+✓ Created temporary-unified-test: (no targets)
+```
+
+…or create it already including some tickets:
+
+```
+gwt publish PROJ-101 --regenerate --base production
+```
+
+After that first time, the regeneration example above (force-push, with confirmation) applies, since the branch now exists.
+
+The paths, side by side:
 
 ```mermaid
 flowchart TD
   subgraph Additive
     A1[sync integration branch] --> A2[merge your branches] --> A3[push]
   end
-  subgraph Regeneration
+  subgraph "Regeneration (exists)"
     B1[reset to production] --> B2[merge branches in order] --> B3[force-push]
+  end
+  subgraph "Regeneration (first time)"
+    C1[create from base] --> C2[merge optional targets] --> C3[normal push]
   end
 ```
 

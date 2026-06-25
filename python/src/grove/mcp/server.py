@@ -146,8 +146,11 @@ def grove_publish(
 ) -> dict:
     """Merge branches into the shared integration branch and push.
 
-    Additive by default. regenerate=true rebuilds the integration branch from
-    the base and force-pushes (DESTRUCTIVE — requires confirm=true).
+    Additive by default (requires the integration branch to exist). regenerate=true
+    rebuilds it from 'base'; if the branch already exists this force-pushes
+    (DESTRUCTIVE — requires confirm=true), and if it does NOT exist grove creates
+    it from 'base' with a normal push (no confirm needed). With regenerate=true,
+    'targets' may be empty to seed an empty integration branch from 'base'.
     """
     return _ops.op_publish(targets=targets, into=into, regenerate=regenerate,
                            base=base, no_sync=no_sync, confirm=confirm, cwd=cwd)

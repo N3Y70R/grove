@@ -191,7 +191,24 @@ same `base` works for `kind="ticket"` and `kind="release"`.
 > → `grove_publish(targets=["PROJ-123"], cwd=…)`
 > "Rebuild integration from `production` with PROJ-1 and PROJ-2."
 > → `grove_publish(targets=["PROJ-1","PROJ-2"], regenerate=true, base="production", confirm=true, cwd=…)`
-> (regeneration force-pushes → the agent must pass `confirm=true`).
+> (rebuilding an **existing** branch force-pushes → the agent must pass `confirm=true`).
+
+### Create or recreate the integration branch from a base
+
+The same tool both **creates** the branch (if missing) and **rebuilds** it (if it
+exists). Say "from `<branch>`" → `base`, and name the branch with `into`.
+
+> "Create the `temporary-unified-test` integration branch from `production` in
+> `/Users/me/code/app`." (first time, empty) →
+> `grove_publish(targets=[], into="temporary-unified-test", regenerate=true, base="production", cwd=…)`
+> — created fresh → normal push, **no confirm needed**.
+
+> "Recreate `temporary-unified-test` from `production` including PROJ-1." →
+> `grove_publish(targets=["PROJ-1"], into="temporary-unified-test", regenerate=true, base="production", confirm=true, cwd=…)`
+> — if it already exists this force-pushes, so pass `confirm=true`.
+
+The result includes `created: true/false` and `mode` (`created` | `regenerate` |
+`additive`) so the agent can tell which happened.
 
 ### Re-sync / clean up (destructive → need confirmation)
 

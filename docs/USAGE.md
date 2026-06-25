@@ -273,30 +273,33 @@ gwt remove --merged --dry-run            # preview of the cleanup
 
 ## `gwt publish`
 
-Brings one or more ticket branches to the **shared integration branch** (to publish to a test environment). If that branch is not local, grove brings it from the origin automatically.
+Brings ticket branches to the **shared integration branch** (to publish to a test environment). grove first locates that branch: existing worktree → origin → local branch; if it's not present it brings/creates it as described below.
 
 ```
-gwt publish <ticket|branch>... [--into <branch>] [--regenerate] [--base <branch>] [--no-sync] [--yes] [--dry-run]
+gwt publish [<ticket|branch>...] [--into <branch>] [--regenerate] [--base <branch>] [--no-sync] [--yes] [--dry-run]
 ```
 
 | Arg/Flag | Description |
 |---|---|
-| `<ticket\|branch>...` | One or more branches/tickets to publish |
+| `[<ticket\|branch>...]` | Branches/tickets to publish (optional with `--regenerate`) |
 | `--into <branch>` | Integration branch (default: config `integration_branch`) |
-| `--regenerate` | Regenerates the branch from the base and force-pushes (instead of additive) |
+| `--regenerate` | Rebuild from the base (or **create** it from the base if it doesn't exist) |
 | `--base <branch>` | Base for `--regenerate` (default: repo base branch) |
 | `--no-sync` | Additive: do not sync the integration branch before merging |
-| `--yes` | Do not ask for confirmation (force-push of `--regenerate`) |
+| `--yes` | Do not ask for confirmation (force-push of `--regenerate` on an existing branch) |
 | `--dry-run` | Shows what it would do without executing |
 
-- **Additive (default):** syncs the integration branch → merges your branches → pushes.
-- **Regeneration:** resets to the base → merges the branches in order → force-pushes.
+- **Additive (default):** syncs the integration branch → merges your branches → pushes. Requires the branch to already exist and **at least one target**; if it's missing, grove tells you to create it with `--regenerate --base`.
+- **Regeneration (existing branch):** resets to the base → merges the branches in order → **force-pushes** (asks to confirm, unless `--yes`).
+- **Regeneration (first time / branch missing):** **creates** the integration branch from `--base`, merges any targets and does a **normal push** (nothing to overwrite → no confirmation). Targets are optional, so you can seed an empty branch.
 
-A merge conflict aborts the operation and leaves the worktree clean for you to resolve by hand.
+So `gwt publish --regenerate --base <branch>` is the single way to **create or rebuild** the integration branch. A merge conflict aborts the operation and leaves the worktree clean for you to resolve by hand.
 
 ```
-gwt publish DROP-123                          # pushes your ticket to the shared environment
-gwt publish DROP-1 DROP-2 --regenerate        # rebuilds the test branch with those two
+gwt publish DROP-123                                  # additive: push your ticket to the shared env
+gwt publish DROP-1 DROP-2 --regenerate                # rebuild the test branch with those two
+gwt publish --regenerate --base production            # CREATE temporary-unified-test from production (empty)
+gwt publish DROP-1 --regenerate --base production --into temporary-unified-test   # create from production + include DROP-1
 gwt publish DROP-123 --into temporary-unified-test --dry-run
 ```
 

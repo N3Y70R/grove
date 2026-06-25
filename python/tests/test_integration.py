@@ -166,3 +166,33 @@ def test_setup_autodetects_base_when_profile_base_missing(tmp_path):
                            name="repo", base_branch=cfg.DEFAULT_BASE)  # asks 'main'
     assert ctx.base == "production"             # fell back to origin's default
     assert (ctx.root / "production").is_dir()
+
+
+# --- publish: create integration branch from base --------------------- #
+
+def test_ensure_integration_creates_from_base(repo):
+    from grove.core import publish as core_publish
+    git, ctx = repo
+
+    # Branch doesn't exist anywhere yet → created from 'main'.
+    path, created = core_publish.ensure_integration(
+        git, ctx, "temporary-unified-test", create_base="main"
+    )
+    assert created is True
+    assert path == ctx.root / "temporary-unified-test"
+    assert path.is_dir()
+
+    # Idempotent: now it exists as a worktree → found, not created.
+    path2, created2 = core_publish.ensure_integration(
+        git, ctx, "temporary-unified-test", create_base="main"
+    )
+    assert created2 is False
+    assert path2 == path
+
+
+def test_ensure_integration_missing_without_base_errors(repo):
+    from grove.core import publish as core_publish
+    from grove.core.errors import ValidationError
+    git, ctx = repo
+    with pytest.raises(ValidationError):
+        core_publish.ensure_integration(git, ctx, "temporary-unified-test")

@@ -83,6 +83,29 @@ def test_op_compare_in_sync(repo):
     assert res["status"] == "in sync"
 
 
+def test_op_publish_creates_integration_then_regen_needs_confirm(repo):
+    _, ctx = repo
+    # First time: integration branch doesn't exist → created from main, no confirm.
+    res = _ops.op_publish(targets=[], into="temporary-unified-test",
+                          regenerate=True, base="main", cwd=str(ctx.root))
+    assert res["created"] is True
+    assert res["mode"] == "created"
+    assert (ctx.root / "temporary-unified-test").is_dir()
+
+    # Second time: it exists → regenerate force-pushes → requires confirm.
+    with pytest.raises(UsageError):
+        _ops.op_publish(targets=[], into="temporary-unified-test",
+                        regenerate=True, base="main", cwd=str(ctx.root))
+
+
+def test_op_publish_additive_missing_integration_errors(repo):
+    _, ctx = repo
+    # Additive with no targets is rejected, and a missing integration branch in
+    # additive mode is not auto-created.
+    with pytest.raises(UsageError):
+        _ops.op_publish(targets=[], into="temporary-unified-test", cwd=str(ctx.root))
+
+
 # --------------------------------------------------------------------------- #
 # SSH account provisioning ops (machine-level; redirected HOME).
 # --------------------------------------------------------------------------- #

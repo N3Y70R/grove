@@ -462,14 +462,26 @@ def cmd_publish(args, out: Output) -> int:
     if not integration:
         raise UsageError("No integration branch configured. Use --into <branch>.")
 
-    branches = [core_publish.resolve_branch(git, repo, t) for t in args.targets]
-    int_path = core_publish.ensure_integration(git, repo, integration, step=out.step)
-    suffix = " (dry-run)" if getattr(args, "dry_run", False) else ""
+    dry_run = getattr(args, "dry_run", False)
+    suffix = " (dry-run)" if dry_run else ""
 
-    mode = "regenerate" if args.regenerate else "additive"
-    if args.regenerate:
-        base = args.base or core_config.DEFAULT_BASE
-        if not args.yes and not getattr(args, "dry_run", False):
+    if not args.targets and not args.regenerate:
+        raise UsageError(
+            "Specify at least one ticket/branch to publish, or use "
+            "--regenerate --base <branch> to create the integration branch."
+        )
+
+    base = args.base or core_config.DEFAULT_BASE
+    branches = [core_publish.resolve_branch(git, repo, t) for t in args.targets]
+    # In regenerate mode, allow creating the integration branch from base if missing.
+    int_path, created = core_publish.ensure_integration(
+        git, repo, integration,
+        create_base=(base if args.regenerate else None), step=out.step,
+    )
+
+    if args.regenerate and not created:
+        # Rebuilding an existing branch → force-push → confirm.
+        if not args.yes and not dry_run:
             if out.json_mode:
                 raise UsageError(
                     f"--regenerate will force-push to origin/{integration}. "
@@ -487,14 +499,23 @@ def cmd_publish(args, out: Output) -> int:
         core_publish.publish_regenerate(
             git, repo, integration, int_path, branches, base=base, step=out.step
         )
+        mode = "regenerate"
+    elif args.regenerate and created:
+        # Freshly created from base → merge any targets and normal push (nothing to overwrite).
+        core_publish.publish_additive(
+            git, repo, integration, int_path, branches, no_sync=True, step=out.step
+        )
+        mode = "created"
     else:
         core_publish.publish_additive(
             git, repo, integration, int_path, branches, no_sync=args.no_sync, step=out.step
         )
+        mode = "additive"
 
-    out.set_result({"integration": integration, "mode": mode, "branches": branches,
-                    "dry_run": getattr(args, "dry_run", False)})
-    out.success(f"Published{suffix} to {integration}: {', '.join(branches)}")
+    out.set_result({"integration": integration, "mode": mode, "created": created,
+                    "branches": branches, "base": base, "dry_run": dry_run})
+    verb = "Created" if created else "Published"
+    out.success(f"{verb}{suffix} {integration}: {', '.join(branches) or '(no targets)'}")
     return 0
 
 
@@ -1107,7 +1128,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     pp = sub.add_parser("publish", help="bring branches into the shared integration branch")
     _common(pp)
-    pp.add_argument("targets", nargs="+", help="tickets or branches to publish")
+    pp.add_argument("targets", nargs="*",
+                    help="tickets or branches to publish (optional with --regenerate)")
     pp.add_argument("--into", help="integration branch (default: config integration_branch)")
     pp.add_argument("--regenerate", action="store_true",
                     help="regenerate the integration branch from the base (force-push)")

@@ -286,21 +286,24 @@ Re-synchronizes a worktree with the origin's state: `git fetch origin <branch>` 
 
 > Note: `track` recognizes special branches (`production`, `temporary-unified-test`, `development`, ...) and `temp/*`, placing them in their convention path; this way the integration branch can be fetched and then `sync`ed.
 
-### 6.12 `gwt publish <ticket|branch>... [--into <branch>] [--regenerate] [--base <branch>] [--no-sync] [--yes] [--dry-run]`
+### 6.12 `gwt publish [<ticket|branch>...] [--into <branch>] [--regenerate] [--base <branch>] [--no-sync] [--yes] [--dry-run]`
 
-Brings one or more ticket branches to the **shared integration branch** (config `integration_branch`, by default `temporary-unified-test`; override with `--into`). If that branch is not present as a local worktree, grove fetches it from the origin automatically.
+Brings ticket branches to the **shared integration branch** (config `integration_branch`, by default `temporary-unified-test`; override with `--into`).
 
-**Additive mode (default):**
+**Resolving the integration branch (existence check).** Before operating, grove locates it in this order: (1) an existing **worktree** → use it; (2) a branch on **origin** → fetch it as a worktree; (3) a **local** branch → materialize its worktree; (4) **it doesn't exist anywhere** → see the modes below.
+
+**Additive mode (default):** requires the integration branch to already exist (cases 1–3). If it doesn't (case 4), grove errors and suggests `--regenerate --base <branch>` to create it. At least one target is required. Steps:
 1. Synchronizes the integration branch with the origin (unless `--no-sync`).
 2. `merge`s each indicated branch/ticket.
 3. `push`es to `origin/<integration>`.
 
-**Regeneration mode (`--regenerate`):**
-1. Resets the integration branch to `origin/<base>` (`--base`, by default the repo's base).
-2. `merge`s the branches/tickets in order.
-3. `push --force` to `origin/<integration>` (with confirmation, unless `--yes`).
+**Regeneration mode (`--regenerate`):** `--base` defaults to the repo's base branch.
+- **If the integration branch already exists:** resets it to `origin/<base>`, `merge`s the targets in order, and `push --force`es to `origin/<integration>` (with confirmation, unless `--yes`).
+- **If it does NOT exist (first-time creation):** grove **creates** it from `<base>` (resolving `<base>` to a local branch or `origin/<base>`), `merge`s any targets, and does a **normal `push`** — no force and no confirmation needed, since there is nothing to overwrite. Targets are **optional** here, so `gwt publish --regenerate --base <branch>` with no targets seeds an empty integration branch from `<branch>`.
 
-In both modes, a merge **conflict** aborts the operation (leaves the worktree clean) and asks to resolve by hand. `--dry-run` shows the steps without executing.
+This makes `--regenerate --base <branch>` the single way to **create or rebuild** the integration branch — the same command whether or not it already exists (idempotent intent).
+
+In all modes, a merge **conflict** aborts the operation (leaves the worktree clean) and asks to resolve by hand. `--dry-run` shows the steps without executing.
 
 ### 6.13 `gwt config [show | set-ssh-alias <alias|none>]`
 

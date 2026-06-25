@@ -24,8 +24,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install (with test extra)
-        run: pip install "./python[test]"
+      - name: Install (with test + mcp extras)
+        run: pip install "./python[test,mcp]"
 
       - name: Unit + integration tests
         run: pytest python -q

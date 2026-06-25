@@ -6,6 +6,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ### Added
 
+- **Richer MCP tool schemas (agent discoverability)**: every tool now carries
+  per-parameter descriptions, enums for constrained choices (`grove_create.kind`),
+  and MCP annotations (read-only / destructive / idempotent, `openWorldHint=false`).
+  A schema test (`test_mcp_schema.py`) enforces that every parameter is described,
+  and CONTRIBUTING documents keeping the MCP enriched as part of the definition of
+  done.
 - **`publish --regenerate` creates the integration branch when missing**: it now
   locates the branch (worktree → origin → local) and, if it exists nowhere,
   **creates it from `--base`** with a normal push (no force/confirmation). Targets

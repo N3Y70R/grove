@@ -11,14 +11,19 @@ the agent's job, composing its own connectors with these tools.
 
 Run with the ``grove-mcp`` entry point, or ``python -m grove.mcp``.
 Requires the optional extra: ``pip install "grove[mcp]"``.
+
+Discoverability note: every tool carries per-parameter descriptions, enums for
+constrained choices, and MCP annotations (read-only / destructive / offline) so
+an agent can choose the right tool and arguments without trial and error. Keep
+this enrichment in sync whenever a tool or its parameters change.
 """
 
-from __future__ import annotations
-
-from typing import List, Optional
+from typing import Annotated, List, Literal, Optional
 
 try:
     from mcp.server.fastmcp import FastMCP
+    from mcp.types import ToolAnnotations
+    from pydantic import Field
 except ModuleNotFoundError as exc:  # pragma: no cover
     raise SystemExit(
         "The MCP SDK is not installed. Install the optional extra:\n"
@@ -29,218 +34,207 @@ from . import _ops
 
 mcp = FastMCP("grove")
 
+# Reusable parameter annotations -------------------------------------------- #
 
-@mcp.tool()
+Cwd = Annotated[Optional[str], Field(
+    description="Absolute path to the managed repo (a folder containing .bare/). "
+                "Defaults to the process working directory; always pass it explicitly "
+                "when driving grove from chat.")]
+
+# Annotation presets (openWorldHint=False: grove is offline, pure-git).
+def _ann(title, *, read_only=False, destructive=False, idempotent=False):
+    return ToolAnnotations(title=title, readOnlyHint=read_only,
+                           destructiveHint=destructive, idempotentHint=idempotent,
+                           openWorldHint=False)
+
+
+@mcp.tool(annotations=_ann("Set up a managed repo"))
 def grove_setup(
-    url: str,
-    name: Optional[str] = None,
-    into: Optional[str] = None,
-    profile: Optional[str] = None,
-    base: Optional[str] = None,
-    ssh_alias: Optional[str] = None,
-    cwd: Optional[str] = None,
+    url: Annotated[str, Field(description="Origin URL to clone (SSH or HTTPS).")],
+    name: Annotated[Optional[str], Field(description="Repo folder name (default: derived from the URL).")] = None,
+    into: Annotated[Optional[str], Field(description="Parent directory to create the repo folder in (default: cwd).")] = None,
+    profile: Annotated[Optional[str], Field(description="Policy profile: default | personal | gitflow | a custom one.")] = None,
+    base: Annotated[Optional[str], Field(description="Base branch override. If omitted, uses the profile's base and falls back to the origin's default branch (e.g. 'production' instead of 'main').")] = None,
+    ssh_alias: Annotated[Optional[str], Field(description="~/.ssh/config alias to rewrite the origin host with (or 'none').")] = None,
+    cwd: Cwd = None,
 ) -> dict:
     """Initialize a managed repo (bare model + base worktree) from an origin URL.
 
-    Applies a policy profile (default if omitted) and writes .bare/grove.toml.
-    'base' overrides the base branch; if omitted, grove uses the profile's base
-    and falls back to the origin's default branch when that base doesn't exist
-    (e.g. repos whose base is 'production', not 'main').
+    Applies a policy profile (default if omitted), auto-detects the base branch
+    from the origin when the configured one is absent, and writes .bare/grove.toml.
     """
     return _ops.op_setup(url, name=name, into=into, profile=profile,
                          base=base, ssh_alias=ssh_alias, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("List worktrees", read_only=True))
 def grove_list(
-    cwd: Optional[str] = None,
-    type: Optional[str] = None,
-    dirty: bool = False,
-    orphans: bool = False,
+    cwd: Cwd = None,
+    type: Annotated[Optional[str], Field(description="Filter by type/kind (feature, hotfix, release, special, temp…).")] = None,
+    dirty: Annotated[bool, Field(description="Only worktrees with uncommitted changes.")] = False,
+    orphans: Annotated[bool, Field(description="Only orphan/prunable worktrees.")] = False,
 ) -> dict:
-    """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty).
-
-    Optional filters: by type/kind, only dirty, or only orphan/prunable.
-    """
+    """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty)."""
     return _ops.op_list(cwd=cwd, type=type, dirty=dirty, orphans=orphans)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Create a worktree"))
 def grove_create(
-    kind: str = "ticket",
-    type: Optional[str] = None,
-    name: Optional[str] = None,
-    ticket: Optional[str] = None,
-    version: Optional[str] = None,
-    base: Optional[str] = None,
-    cwd: Optional[str] = None,
+    kind: Annotated[Literal["ticket", "release", "temp"], Field(
+        description="ticket: feature/hotfix/bugfix worktree; release: release/<version>; temp: throwaway worktree.")] = "ticket",
+    type: Annotated[Optional[str], Field(description="For kind=ticket: the type (feature/hotfix/bugfix…).")] = None,
+    name: Annotated[Optional[str], Field(description="Human description/slug (kind=ticket or temp). grove normalizes it.")] = None,
+    ticket: Annotated[Optional[str], Field(description="Ticket key e.g. PROJ-123 (kind=ticket; required/optional per repo policy).")] = None,
+    version: Annotated[Optional[str], Field(description="Version for kind=release, e.g. v1.2.0.")] = None,
+    base: Annotated[Optional[str], Field(description="Branch to start from. Say 'from <branch>' → this. Works for all kinds, including temp. Omit for the repo's default base.")] = None,
+    cwd: Cwd = None,
 ) -> dict:
-    """Create a worktree.
+    """Create a worktree (ticket, release or temp).
 
-    kind='ticket' (default): needs 'type' (e.g. feature/hotfix/bugfix) and
-    'name'; 'ticket' (e.g. PROJ-123) is required/optional per repo policy.
-    kind='release': needs 'version'. kind='temp': needs 'name'.
-    'base' branches the new worktree off a specific branch (works for all
-    kinds, including temp); omit it to use the repo's default base.
-    The ticket key and slug are supplied by the caller; grove does not query
-    any ticket system.
+    The ticket key and slug are supplied by the caller; grove does not query any
+    ticket system. Use 'base' to branch off a specific branch.
     """
     return _ops.op_create(kind=kind, type=type, name=name, ticket=ticket,
                           version=version, base=base, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Track an existing branch"))
 def grove_track(
-    branch: str,
-    as_: Optional[str] = None,
-    cwd: Optional[str] = None,
+    branch: Annotated[str, Field(description="Existing branch name (local or on origin) to bring in.")],
+    as_: Annotated[Optional[str], Field(description="Explicit destination path, e.g. 'hotfix/PROJ-1-fix', to relocate/force a type.")] = None,
+    cwd: Cwd = None,
 ) -> dict:
-    """Bring an existing branch (local or on origin) into the structure as a worktree.
-
-    Use 'as_' (e.g. 'hotfix/PROJ-1-fix') to set an explicit destination.
-    """
+    """Bring an existing branch (local or on origin) into the structure as a worktree."""
     return _ops.op_track(branch=branch, as_=as_, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Remove a worktree", destructive=True))
 def grove_remove(
-    target: Optional[str] = None,
-    merged: bool = False,
-    delete_branch: bool = False,
-    force: bool = False,
-    confirm: bool = False,
-    cwd: Optional[str] = None,
+    target: Annotated[Optional[str], Field(description="Ticket, branch or path of the worktree to remove.")] = None,
+    merged: Annotated[bool, Field(description="Sweep ALL ticket worktrees already merged into the base.")] = False,
+    delete_branch: Annotated[bool, Field(description="Also delete the local branch (if merged/pushed).")] = False,
+    force: Annotated[bool, Field(description="Remove even if dirty; delete the branch even if not merged.")] = False,
+    confirm: Annotated[bool, Field(description="Required: set true to actually remove (this is destructive).")] = False,
+    cwd: Cwd = None,
 ) -> dict:
-    """Remove a worktree (DESTRUCTIVE — set confirm=true to proceed).
+    """Remove a worktree (DESTRUCTIVE — requires confirm=true).
 
     Provide 'target' (ticket, branch or path), or merged=true to sweep all
-    ticket worktrees already merged into the base.
+    ticket worktrees already merged into the base. Special worktrees are protected.
     """
     return _ops.op_remove(target=target, merged=merged, delete_branch=delete_branch,
                           force=force, confirm=confirm, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Re-sync a worktree (reset --hard)", destructive=True))
 def grove_sync(
-    target: Optional[str] = None,
-    clean: bool = False,
-    confirm: bool = False,
-    cwd: Optional[str] = None,
+    target: Annotated[Optional[str], Field(description="Ticket/branch/path of the worktree (default: current one).")] = None,
+    clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
+    confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
+    cwd: Cwd = None,
 ) -> dict:
-    """Re-sync a worktree to its origin branch via reset --hard (DESTRUCTIVE).
-
-    Discards local commits/changes; set confirm=true to proceed.
-    """
+    """Re-sync a worktree to its origin branch via reset --hard (DESTRUCTIVE — requires confirm=true)."""
     return _ops.op_sync(target=target, clean=clean, confirm=confirm, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Publish to / create the integration branch", destructive=True))
 def grove_publish(
-    targets: List[str],
-    into: Optional[str] = None,
-    regenerate: bool = False,
-    base: Optional[str] = None,
-    no_sync: bool = False,
-    confirm: bool = False,
-    cwd: Optional[str] = None,
+    targets: Annotated[List[str], Field(description="Tickets or branches to merge in. May be empty with regenerate=true to seed an empty integration branch.")] = [],  # noqa: B006
+    into: Annotated[Optional[str], Field(description="Integration branch name (default: repo's integration_branch, e.g. temporary-unified-test).")] = None,
+    regenerate: Annotated[bool, Field(description="Rebuild from base; also CREATES the branch from base if it doesn't exist yet.")] = False,
+    base: Annotated[Optional[str], Field(description="Base branch for regenerate/creation (default: repo base). Say 'from <branch>' → this.")] = None,
+    no_sync: Annotated[bool, Field(description="Additive mode: don't sync the integration branch before merging.")] = False,
+    confirm: Annotated[bool, Field(description="Required only when regenerating an EXISTING branch (force-push). Not needed for first-time creation.")] = False,
+    cwd: Cwd = None,
 ) -> dict:
-    """Merge branches into the shared integration branch and push.
+    """Merge branches into the shared integration branch, or create it from a base.
 
-    Additive by default (requires the integration branch to exist). regenerate=true
-    rebuilds it from 'base'; if the branch already exists this force-pushes
-    (DESTRUCTIVE — requires confirm=true), and if it does NOT exist grove creates
-    it from 'base' with a normal push (no confirm needed). With regenerate=true,
-    'targets' may be empty to seed an empty integration branch from 'base'.
+    Additive (default) requires the branch to exist. regenerate=true rebuilds it
+    from 'base'; if it already exists this force-pushes (requires confirm=true),
+    and if it does NOT exist grove creates it from 'base' with a normal push
+    (no confirm needed). The result carries 'created' (bool) and 'mode'
+    (created | regenerate | additive).
     """
     return _ops.op_publish(targets=targets, into=into, regenerate=regenerate,
                            base=base, no_sync=no_sync, confirm=confirm, cwd=cwd)
 
 
-@mcp.tool()
-def grove_doctor(fix: bool = False, cwd: Optional[str] = None) -> dict:
+@mcp.tool(annotations=_ann("Diagnose/fix worktree hygiene", idempotent=True))
+def grove_doctor(
+    fix: Annotated[bool, Field(description="Apply the auto-fixable issues (otherwise report only).")] = False,
+    cwd: Cwd = None,
+) -> dict:
     """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones."""
     return _ops.op_doctor(fix=fix, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Compare branches (ahead/behind)", read_only=True))
 def grove_compare(
-    a: Optional[str] = None,
-    b: Optional[str] = None,
-    vs: Optional[str] = None,
-    fetch: bool = False,
-    cwd: Optional[str] = None,
+    a: Annotated[Optional[str], Field(description="Worktree/branch A (default: current worktree).")] = None,
+    b: Annotated[Optional[str], Field(description="Worktree/branch B (default: A's upstream).")] = None,
+    vs: Annotated[Optional[str], Field(description="Compare ALL worktrees against this ref.")] = None,
+    fetch: Annotated[bool, Field(description="git fetch origin before comparing.")] = False,
+    cwd: Cwd = None,
 ) -> dict:
-    """Read-only sync status between branches/worktrees (ahead/behind).
-
-    Compare 'a' vs 'b' (b defaults to a's upstream), or vs=REF to compare all
-    worktrees against REF. fetch=true updates from origin first.
-    """
+    """Read-only sync status between branches/worktrees (ahead/behind)."""
     return _ops.op_compare(a=a, b=b, vs=vs, fetch=fetch, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Show / set repo configuration"))
 def grove_config(
-    set_ssh_alias: Optional[str] = None,
-    cwd: Optional[str] = None,
+    set_ssh_alias: Annotated[Optional[str], Field(description="If given, set the repo's SSH alias and rewrite origin (or 'none' to clear). Omit to just show config.")] = None,
+    cwd: Cwd = None,
 ) -> dict:
-    """Show the repo configuration, or set the SSH alias (rewrites origin).
-
-    Omit 'set_ssh_alias' to show config; pass an alias (or 'none') to set it.
-    """
+    """Show the repo configuration, or set the SSH alias (rewrites origin)."""
     if set_ssh_alias is not None:
         return _ops.op_config_set_ssh_alias(value=set_ssh_alias, cwd=cwd)
     return _ops.op_config_show(cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Diagnose SSH for a remote", read_only=True))
 def grove_ssh_check(
-    target: Optional[str] = None,
-    all: bool = False,
-    live: bool = False,
-    cwd: Optional[str] = None,
+    target: Annotated[Optional[str], Field(description="URL or host to diagnose (default: the current repo's origin).")] = None,
+    all: Annotated[bool, Field(description="Diagnose every Host in ~/.ssh/config.")] = False,
+    live: Annotated[bool, Field(description="Actually test authentication (ssh -T).")] = False,
+    cwd: Cwd = None,
 ) -> dict:
-    """Diagnose SSH config for a git remote (keys, agent, permissions).
-
-    Defaults to the current repo's origin; pass 'target' (URL/host) or
-    all=true for every Host in ~/.ssh/config. live=true tests authentication.
-    """
+    """Diagnose SSH config for a git remote (keys, agent, permissions)."""
     return _ops.op_ssh_check(target=target, all=all, live=live, cwd=cwd)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Provision an SSH account", idempotent=True))
 def grove_ssh_add(
-    name: str,
-    host: str,
-    email: Optional[str] = None,
-    scope_dir: Optional[str] = None,
-    key: Optional[str] = None,
-    no_identity: bool = False,
-    no_agent: bool = False,
-    no_passphrase: bool = True,
-    dry_run: bool = False,
+    name: Annotated[str, Field(description="Alias name for the account, e.g. 'work-gh'.")],
+    host: Annotated[str, Field(description="Real host, e.g. github.com or bitbucket.org.")],
+    email: Annotated[Optional[str], Field(description="Git identity email for this account's folder zone (required for identity routing).")] = None,
+    scope_dir: Annotated[Optional[str], Field(description="Folder that should use this account (e.g. /Users/me/work).")] = None,
+    key: Annotated[Optional[str], Field(description="Reuse an existing private key path instead of generating one.")] = None,
+    no_identity: Annotated[bool, Field(description="Only the SSH Host block; skip git identity routing.")] = False,
+    no_agent: Annotated[bool, Field(description="Don't load the key into the ssh-agent.")] = False,
+    no_passphrase: Annotated[bool, Field(description="Generate the key without a passphrase (default true; no TTY here).")] = True,
+    dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
 ) -> dict:
-    """Provision an SSH account: generate an ed25519 key, write the ~/.ssh/config
-    Host alias, and (unless no_identity) wire git identity routing for 'scope_dir'
-    (includeIf + insteadOf + email) so repos under that folder use this account.
+    """Provision an SSH account (machine-level): generate an ed25519 key, write the
+    ~/.ssh/config Host alias, and wire folder-scoped git identity.
 
-    Machine-level (no repo context). The key is generated WITHOUT a passphrase by
-    default (no TTY here). grove never uploads the key — the returned 'pubkey' must
-    be uploaded to the host by you, e.g. via your GitHub/Bitbucket connector.
-    Identity routing requires 'email'. Use dry_run=true to preview the edits.
+    grove never uploads the key — the returned 'pubkey' must be uploaded to the
+    host by you (e.g. via your GitHub/Bitbucket connector). Idempotent.
     """
     return _ops.op_ssh_add(name, host=host, email=email, scope_dir=scope_dir,
                            key=key, no_identity=no_identity, no_agent=no_agent,
                            no_passphrase=no_passphrase, dry_run=dry_run)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("List SSH accounts", read_only=True))
 def grove_ssh_accounts() -> dict:
     """List grove-managed SSH accounts and zones (alias, host, key, routing coherence)."""
     return _ops.op_ssh_accounts()
 
 
-@mcp.tool()
-def grove_ssh_doctor(fix: bool = False) -> dict:
+@mcp.tool(annotations=_ann("Diagnose/fix SSH multi-account setup", idempotent=True))
+def grove_ssh_doctor(
+    fix: Annotated[bool, Field(description="Apply the auto-fixable items (otherwise report only).")] = False,
+) -> dict:
     """Diagnose the SSH/git multi-account setup; set fix=true to apply auto-fixable items.
 
     Reports the host-vs-alias trap, embedded secrets, missing IdentitiesOnly/insteadOf,
@@ -249,19 +243,15 @@ def grove_ssh_doctor(fix: bool = False) -> dict:
     return _ops.op_ssh_doctor(fix=fix)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ann("Remove an SSH account", destructive=True))
 def grove_ssh_remove(
-    name: str,
-    delete_key: bool = False,
-    keep_routing: bool = False,
-    confirm: bool = False,
-    dry_run: bool = False,
+    name: Annotated[str, Field(description="Account alias to remove.")],
+    delete_key: Annotated[bool, Field(description="Also delete the key files (kept by default).")] = False,
+    keep_routing: Annotated[bool, Field(description="Keep the git identity routing for the zone.")] = False,
+    confirm: Annotated[bool, Field(description="Required: set true to proceed (edits ~/.ssh/config and ~/.gitconfig).")] = False,
+    dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
 ) -> dict:
-    """Remove a grove-managed SSH account (edits ~/.ssh/config and ~/.gitconfig).
-
-    Set confirm=true to proceed (or dry_run=true to preview). Keeps key files unless
-    delete_key=true; keeps git routing if keep_routing=true.
-    """
+    """Remove a grove-managed SSH account (DESTRUCTIVE — requires confirm=true)."""
     return _ops.op_ssh_remove(name, delete_key=delete_key, keep_routing=keep_routing,
                               confirm=confirm, dry_run=dry_run)
 

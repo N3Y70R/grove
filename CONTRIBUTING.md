@@ -24,6 +24,25 @@ Work inside the folder for the language you touch. Each implementation has its o
 4. Make sure the implementation you touched compiles and passes its tests (and the CI smoke test).
 5. Open a Pull Request.
 
+## Definition of done (every behavior change)
+
+A change that adds or modifies a command/operation isn't done until **all four
+facades and docs stay in sync**:
+
+1. **core** — the logic, with unit/integration tests.
+2. **CLI** (`grove.cli`) — flags/args wired to the core.
+3. **MCP** (`grove.mcp`) — the tool exposed *and enriched*:
+   - every parameter has a **`Field(description=…)`**;
+   - constrained choices use an **enum** (`Literal[...]`);
+   - the tool has **`ToolAnnotations`** (read-only / destructive / idempotent,
+     `openWorldHint=False`).
+   `tests/test_mcp_schema.py` enforces this (it fails if any parameter lacks a
+   description). The MCP is the agent's only view of the tool, so poor schemas =
+   poor discoverability.
+4. **docs** — `USAGE.md` (reference), `TUTORIAL.md` (flow if relevant), and
+   `MCP.md` §9 (conversational example: CLI + tool call + chat phrasing), plus a
+   `CHANGELOG.md` entry.
+
 ## Commit message convention
 
 The grove standard combines **Conventional Commits** (in the title, to automate changelog/semver) with the **What / Why** discipline in the body (so the log makes sense months later). Structure:

@@ -12,6 +12,9 @@ license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Victor Ney" }]
 keywords = ["git", "worktree", "cli", "git-worktree", "branches"]
 dependencies = []  # standard library only
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -34,3 +37,7 @@ gwt = "grove.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

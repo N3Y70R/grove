@@ -24,15 +24,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install
-        run: pip install ./python
+      - name: Install (with test extra)
+        run: pip install "./python[test]"
+
+      - name: Unit + integration tests
+        run: pytest python -q
 
       - name: Smoke test (--version / --help)
         run: |
           gwt --version
           gwt --help
 
-      - name: Functional smoke (setup + list)
+      - name: Functional smoke (setup + list + create)
         run: |
           set -e
           git config --global user.email ci@example.com
@@ -40,9 +43,9 @@ jobs:
           tmp="$(mktemp -d)"; cd "$tmp"
           git init -q --bare origin.git
           git clone -q origin.git seed && cd seed
-          git checkout -q -b production && echo v > app.txt && git add . && git commit -qm init
-          git push -q origin production && cd ..
+          git checkout -q -b main && echo v > app.txt && git add . && git commit -qm init
+          git push -q origin main && cd ..
           gwt setup "file://$tmp/origin.git" --name repo
           cd repo
           gwt list --json
-          gwt create DROP-1 feature "ci smoke" --json
+          gwt create PROJ-1 feature "ci smoke" --json

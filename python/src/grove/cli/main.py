@@ -1019,7 +1019,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     verbose = getattr(args, "verbose", False) or getattr(args, "confirm_each", False)
     json_mode = getattr(args, "json", False)
-    # --print-path debe dejar solo la ruta en stdout: silencia los pasos.
+    # --print-path must leave only the path on stdout: silence the steps.
     quiet = getattr(args, "quiet", False) or getattr(args, "print_path", False)
     out = Output(
         quiet=quiet,

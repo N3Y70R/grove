@@ -129,14 +129,19 @@ def cmd_setup(args, out: Output) -> int:
 
     url = _resolve_setup_url(args, out)
 
+    base_branch = getattr(args, "base", None) or core_config.DEFAULT_BASE
     ctx = core_setup.setup(
         git,
         url,
         into=into,
         name=args.name,
-        base_branch=core_config.DEFAULT_BASE,
+        base_branch=base_branch,
         step=out.step,
     )
+    # setup may have auto-detected a different base (e.g. 'production'); record it
+    # so the written config and messages reflect the real base.
+    if ctx.base:
+        core_config.DEFAULT_BASE = ctx.base
     cfg_path = core_config.write_repo_config(ctx.bare, core_config.effective_policy())
     out.set_result({"name": ctx.name, "root": str(ctx.root), "profile": profile_name,
                     "base": core_config.DEFAULT_BASE})
@@ -252,7 +257,7 @@ def cmd_create(args, out: Output) -> int:
     elif kind == "temp":
         if len(params) < 2:
             raise UsageError("Usage: gwt create temp <name>")
-        path = core_create.create_temp(git, repo, name=params[1], step=out.step)
+        path = core_create.create_temp(git, repo, name=params[1], base=args.base, step=out.step)
     else:
         ticket, type_, desc = _parse_ticket_form(params)
         path = core_create.create_ticket(
@@ -1038,6 +1043,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("url", help="origin URL")
     sp.add_argument("--name", help="repo folder name")
     sp.add_argument("--into", help="where to create the repo folder (default: cwd)")
+    sp.add_argument("--base", help="base branch (default: profile's, or autodetected from origin)")
     sp.add_argument("--profile", help="policy profile to apply (default: default)")
     sp.add_argument("--ssh-alias", dest="ssh_alias", metavar="ALIAS",
                     help="~/.ssh/config alias to use for the remote (or 'none' for the URL as-is)")

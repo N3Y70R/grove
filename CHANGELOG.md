@@ -2,6 +2,21 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — unreleased
+
+### Added
+
+- **`create temp --base <branch>`**: temporary worktrees can now branch off a
+  specific base (previously they always used the repo default). Exposed in the
+  `grove_create` MCP tool via `base` for `kind="temp"`.
+- **`setup` auto-detects the base branch**: if the profile/`--base` base doesn't
+  exist on origin, grove falls back to the origin's default branch (e.g. repos
+  whose base is `production`, not `main`) and records it in `grove.toml`. Added
+  `gwt setup --base` and a `base` arg to the `grove_setup` MCP tool.
+- **Docs**: MCP client guide ([docs/MCP.md](docs/MCP.md)) with conversational
+  (chat) flow examples; tutorial pointer to it; `docs/FEEDBACK.md` capturing
+  real-world usage findings and the improvement backlog.
+
 ## python — 0.4.0
 
 ### Added

@@ -117,3 +117,52 @@ def test_patch_diff_is_empty_for_fresh_branch(repo, tmp_path):
     wt = _find(git, ctx, "feature/patchdiff")
     res = patch.generate(git, ctx, wt, base="main", patches_dir=tmp_path)
     assert res["empty"] is True
+
+
+# --- create temp --base ------------------------------------------------- #
+
+def test_create_temp_from_specific_base(repo):
+    git, ctx = repo
+    # A feature branch with an extra commit beyond main.
+    work = create.create_ticket(git, ctx, type="feature", name="src")
+    (work / "app.txt").write_text("changed\n", encoding="utf-8")
+    git.run(["add", "."], cwd=work)
+    git.run(["-c", "commit.gpgsign=false", "commit", "-m", "wip"], cwd=work)
+    feat_head = git.out(["rev-parse", "feature/src"], cwd=ctx.bare)
+
+    # temp worktree branched off that feature branch (not main).
+    tmp = create.create_temp(git, ctx, name="spike", base="feature/src")
+    assert tmp == ctx.root / "temp" / "spike"
+    tmp_head = git.out(["rev-parse", "temp/spike"], cwd=ctx.bare)
+    assert tmp_head == feat_head  # started from the requested base, not main
+
+
+# --- setup: auto-detect base from origin's default --------------------- #
+
+def test_setup_autodetects_base_when_profile_base_missing(tmp_path):
+    import subprocess
+    from grove.core import config as cfg, setup as core_setup
+    from grove.core.gitrunner import GitRunner
+
+    def g(args, cwd):
+        subprocess.run(["git", "-c", "commit.gpgsign=false", *args],
+                       cwd=str(cwd), check=True, capture_output=True, text=True)
+
+    # Origin whose default branch is 'production' (there is no 'main').
+    bare = tmp_path / "origin.git"
+    g(["init", "-q", "--bare", str(bare)], tmp_path)
+    seed = tmp_path / "seed"
+    g(["clone", "-q", str(bare), str(seed)], tmp_path)
+    (seed / "f.txt").write_text("x\n", encoding="utf-8")
+    g(["checkout", "-q", "-b", "production"], seed)
+    g(["add", "."], seed)
+    g(["commit", "-qm", "init"], seed)
+    g(["push", "-q", "origin", "production"], seed)
+    g(["symbolic-ref", "HEAD", "refs/heads/production"], bare)  # origin default
+
+    cfg.apply_policy(cfg.resolve_profile("default"))  # default base = 'main'
+    git = GitRunner()
+    ctx = core_setup.setup(git, f"file://{bare}", into=tmp_path / "work",
+                           name="repo", base_branch=cfg.DEFAULT_BASE)  # asks 'main'
+    assert ctx.base == "production"             # fell back to origin's default
+    assert (ctx.root / "production").is_dir()

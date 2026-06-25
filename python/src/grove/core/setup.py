@@ -52,11 +52,23 @@ def setup(
     # So that the first push of new branches creates the same-named branch on origin.
     git.run(["config", "push.default", "current"], cwd=bare)
 
-    # Verifies that the base branch (production) exists locally after the clone.
+    # Origin's default branch: HEAD of the fresh bare clone points to it.
+    detected = git.run(
+        ["symbolic-ref", "--short", "HEAD"], cwd=bare, check=False, mutating=False
+    ).stdout.strip()
+
+    # Verifies that the base branch exists locally after the clone. If not, fall
+    # back to origin's detected default (e.g. profile says 'main' but the repo
+    # uses 'production').
     if not git.ok(["rev-parse", "--verify", f"refs/heads/{base_branch}"], cwd=bare):
-        raise ValidationError(
-            f"Origin does not have the base branch '{base_branch}'; it cannot be initialized."
-        )
+        if detected and git.ok(["rev-parse", "--verify", f"refs/heads/{detected}"], cwd=bare):
+            step(f"Base branch '{base_branch}' not found on origin; "
+                 f"using origin's default '{detected}'")
+            base_branch = detected
+        else:
+            raise ValidationError(
+                f"Origin does not have the base branch '{base_branch}'; it cannot be initialized."
+            )
 
     step(f"Creating parking branch {config.PARKING_BRANCH} (base {base_branch})")
     git.run(["branch", config.PARKING_BRANCH, base_branch], cwd=bare)
@@ -75,4 +87,4 @@ def setup(
         step(f"Creating local artifacts folder {config.ARTIFACTS_DIR}/")
         (root / config.ARTIFACTS_DIR).mkdir(parents=True, exist_ok=True)
 
-    return RepoContext(root=root, bare=bare, name=name)
+    return RepoContext(root=root, bare=bare, name=name, base=base_branch)

@@ -90,6 +90,7 @@ def create_temp(
     repo: RepoContext,
     *,
     name: str,
+    base: Optional[str] = None,
     step: Step = lambda m: None,
 ) -> Path:
     safe = naming.slugify(name)
@@ -98,5 +99,6 @@ def create_temp(
     rel_path = f"{config.TEMP_DIR}/{safe}"
     branch = rel_path  # ephemeral branch with the same name
     return ops.add_new(
-        git, repo, branch=branch, rel_path=rel_path, base=config.DEFAULT_BASE, step=step
+        git, repo, branch=branch, rel_path=rel_path,
+        base=base or config.DEFAULT_BASE, step=step,
     )

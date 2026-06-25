@@ -142,3 +142,79 @@ the public key; the **agent uploads it** to GitHub/Bitbucket via its own connect
   client's MCP logs.
 - **"No managed repo (.bare/) found":** the tool needs the repo path — ask the
   agent again including the absolute path so it passes `cwd`.
+
+## 9. Conversational flows (chat → grove tools)
+
+Examples of what to type in chat and which tool/arguments the agent should use.
+Always mention the repo path so the agent passes `cwd`.
+
+### Set up a repo (incl. non-standard base branch)
+
+> "Set up grove for `git@github.com:org/app.git` under `/Users/me/code`,
+> base branch `production`, using my `work-gh` SSH alias."
+
+→ `grove_setup(url=…, into="/Users/me/code", ssh_alias="work-gh")`. If the repo's
+default branch isn't `main`, **say the base explicitly** (e.g. "production") or
+pick a profile whose `default_base` matches; otherwise grove uses the profile
+default. Tip: "use the `gitflow` profile" or "base branch is production".
+
+### Work a ticket (create a worktree)
+
+> "Create a feature worktree for PROJ-123 'login bug' in `/Users/me/code/app`."
+
+→ `grove_create(kind="ticket", type="feature", name="login bug", ticket="PROJ-123", cwd=…)`.
+
+### Create a worktree from a SPECIFIC base branch
+
+> "Create a temp worktree `spike-cache` **from branch `release/v2`** in
+> `/Users/me/code/app`."
+
+→ `grove_create(kind="temp", name="spike-cache", base="release/v2", cwd=…)`.
+The key is the word **"from `<branch>`"** → it maps to the `base` argument. The
+same `base` works for `kind="ticket"` and `kind="release"`.
+
+### See status / list
+
+> "List grove worktrees in `/Users/me/code/app`." → `grove_list(cwd=…)`
+> "Which ones are dirty?" → `grove_list(cwd=…, dirty=true)`
+> "How far ahead/behind is `feature/PROJ-123` vs `production`?"
+> → `grove_compare(a="feature/PROJ-123", b="production", cwd=…)`
+
+### Bring in an existing branch
+
+> "Track the existing branch `hotfix/PROJ-9-fix` in `/Users/me/code/app`."
+> → `grove_track(branch="hotfix/PROJ-9-fix", cwd=…)`
+
+### Publish to the shared integration branch
+
+> "Publish `PROJ-123` to the integration branch in `/Users/me/code/app`."
+> → `grove_publish(targets=["PROJ-123"], cwd=…)`
+> "Rebuild integration from `production` with PROJ-1 and PROJ-2."
+> → `grove_publish(targets=["PROJ-1","PROJ-2"], regenerate=true, base="production", confirm=true, cwd=…)`
+> (regeneration force-pushes → the agent must pass `confirm=true`).
+
+### Re-sync / clean up (destructive → need confirmation)
+
+> "Re-sync the integration worktree with origin (discard local), in `…/app`."
+> → `grove_sync(target="temporary-unified-test", confirm=true, cwd=…)`
+> "Remove the `PROJ-123` worktree and its branch." →
+> `grove_remove(target="PROJ-123", delete_branch=true, confirm=true, cwd=…)`
+> "Sweep all worktrees already merged into the base." →
+> `grove_remove(merged=true, confirm=true, cwd=…)`
+
+### SSH accounts (machine-level — no `cwd`)
+
+> "Diagnose my SSH/git setup and fix what's safe." → `grove_ssh_doctor(fix=true)`
+> "List my grove-managed SSH accounts." → `grove_ssh_accounts()`
+> "Provision a `work-gh` account for github.com, email me@org.com, scoped to
+> `/Users/me/work`." →
+> `grove_ssh_add(name="work-gh", host="github.com", email="me@org.com", scope_dir="/Users/me/work")`
+> (grove prints the public key; the agent uploads it via its own GitHub/Bitbucket connector).
+
+### Phrasing tips that avoid friction
+
+- To branch off something other than the repo default, say **"from `<branch>`"**
+  — it maps to `base`.
+- If the repo uses a non-standard base (e.g. `production`), state it on setup or
+  choose a matching profile; don't assume `main`.
+- For destructive actions, expect the agent to ask for / pass `confirm=true`.

@@ -36,15 +36,19 @@ def grove_setup(
     name: Optional[str] = None,
     into: Optional[str] = None,
     profile: Optional[str] = None,
+    base: Optional[str] = None,
     ssh_alias: Optional[str] = None,
     cwd: Optional[str] = None,
 ) -> dict:
     """Initialize a managed repo (bare model + base worktree) from an origin URL.
 
     Applies a policy profile (default if omitted) and writes .bare/grove.toml.
+    'base' overrides the base branch; if omitted, grove uses the profile's base
+    and falls back to the origin's default branch when that base doesn't exist
+    (e.g. repos whose base is 'production', not 'main').
     """
     return _ops.op_setup(url, name=name, into=into, profile=profile,
-                         ssh_alias=ssh_alias, cwd=cwd)
+                         base=base, ssh_alias=ssh_alias, cwd=cwd)
 
 
 @mcp.tool()
@@ -76,6 +80,8 @@ def grove_create(
     kind='ticket' (default): needs 'type' (e.g. feature/hotfix/bugfix) and
     'name'; 'ticket' (e.g. PROJ-123) is required/optional per repo policy.
     kind='release': needs 'version'. kind='temp': needs 'name'.
+    'base' branches the new worktree off a specific branch (works for all
+    kinds, including temp); omit it to use the repo's default base.
     The ticket key and slug are supplied by the caller; grove does not query
     any ticket system.
     """

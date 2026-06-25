@@ -113,6 +113,7 @@ def op_setup(
     name: Optional[str] = None,
     into: Optional[str] = None,
     profile: Optional[str] = None,
+    base: Optional[str] = None,
     ssh_alias: Optional[str] = None,
     cwd: Optional[str] = None,
 ) -> dict:
@@ -133,7 +134,10 @@ def op_setup(
 
     dest = Path(into).resolve() if into else (Path(cwd).resolve() if cwd else Path.cwd())
     ctx = core_setup.setup(git, final_url, into=dest, name=name,
-                           base_branch=core_config.DEFAULT_BASE)
+                           base_branch=base or core_config.DEFAULT_BASE)
+    # setup may have auto-detected a different base; record it before writing config.
+    if ctx.base:
+        core_config.DEFAULT_BASE = ctx.base
     core_config.write_repo_config(ctx.bare, core_config.effective_policy())
     return {"name": ctx.name, "root": str(ctx.root),
             "profile": profile_name, "base": core_config.DEFAULT_BASE}
@@ -182,7 +186,7 @@ def op_create(
     elif kind == "temp":
         if not name:
             raise UsageError("kind='temp' requires 'name'.")
-        path = core_create.create_temp(git, repo, name=name)
+        path = core_create.create_temp(git, repo, name=name, base=base)
     elif kind == "ticket":
         if not type or not name:
             raise UsageError("kind='ticket' requires 'type' and 'name'.")

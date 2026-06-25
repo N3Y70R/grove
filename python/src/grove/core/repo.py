@@ -14,6 +14,7 @@ class RepoContext:
     root: Path           # repo folder (contains .bare/)
     bare: Path           # .bare/
     name: str            # name of the repo folder
+    base: Optional[str] = None   # base branch actually used (set by setup)
 
 
 def find_repo(start: Optional[Path] = None) -> RepoContext:

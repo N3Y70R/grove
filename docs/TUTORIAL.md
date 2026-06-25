@@ -16,7 +16,7 @@ If you haven't installed it yet, go first to [INSTALL.md](INSTALL.md). For the d
 6. [Flow E — Re-sync a branch that gets regenerated](#6-flow-e--re-sync-a-branch-that-gets-regenerated)
 7. [Flow F — Close and clean up worktrees](#7-flow-f--close-and-clean-up-worktrees)
 8. [Flow G — Repo hygiene with doctor](#8-flow-g--repo-hygiene-with-doctor)
-9. [Flow H — SSH accounts: choose and diagnose (multiple remotes)](#9-flow-h--ssh-accounts-choose-and-diagnose-multiple-remotes)
+9. [Flow H — SSH accounts: provision, choose and diagnose (multiple remotes)](#9-flow-h--ssh-accounts-provision-choose-and-diagnose-multiple-remotes)
 10. [Flow I — Personal repos (personal profile)](#10-flow-i--personal-repos-personal-profile)
 11. [Flow J — Automation and scripts (`--json`)](#11-flow-j--automation-and-scripts---json)
 12. [Command cheat sheet](#12-command-cheat-sheet)
@@ -347,9 +347,80 @@ gwt doctor
 
 ---
 
-## 9. Flow H — SSH accounts: choose and diagnose (multiple remotes)
+## 9. Flow H — SSH accounts: provision, choose and diagnose (multiple remotes)
 
 **Goal:** you work with the work remote and a personal one (sometimes on the same host, `github.com`, with different keys), and you want each repo to use the correct account and to be able to verify it.
+
+### Provision an account end-to-end (`gwt ssh add`)
+
+Before *choosing* an account per repo, you need the account to **exist** on your machine: a key, an `~/.ssh/config` entry, and (ideally) git identity routing so commits are signed with the right email. `gwt ssh add` does all of it in one idempotent step. This is machine-level — you don't need to be inside a repo.
+
+The recommended layout puts each account's repos under its own folder, so the **folder decides everything**:
+
+```
+~/dropi/        # work: repos here use the Dropi key + dropi.co email
+~/personal/     # personal: your personal key + personal email
+```
+
+Set up the work GitHub and Bitbucket accounts (both under `~/dropi/`, same email → same zone), and a personal one:
+
+```
+gwt ssh add dropi-gh   --host github.com    --email victor.orobio@dropi.co --scope-dir ~/dropi
+gwt ssh add dropi-bb   --host bitbucket.org --email victor.orobio@dropi.co --scope-dir ~/dropi
+gwt ssh add neytor-gh  --host github.com    --email me@example.com         --scope-dir ~/personal
+```
+```
+→ generate key ~/.ssh/id_ed25519_dropi_gh
+→ write ~/.ssh/config block [grove:account=dropi-gh]
+→ route git@github.com: -> git@dropi-gh: (zone dropi, email victor.orobio@dropi.co)
+→ harden ~/.gitconfig: user.useConfigOnly = true
+✓ Account dropi-gh ready
+  Upload this public key to github.com (Settings → SSH keys):
+  ssh-ed25519 AAAA... dropi-gh
+  Then verify:  gwt ssh check github.com --live
+```
+
+grove **prints the public key but never uploads it** — paste it into the host's SSH-keys page (or let an agent do it via its connector). After that, you clone with the **canonical URL** and the folder routes everything automatically:
+
+```
+cd ~/dropi/github
+git clone git@github.com:gerenciadropi/backend.git   # rewritten to git@dropi-gh: → Dropi key + Dropi email
+```
+
+> **Why this is bulletproof.** The `Host` alias carries `IdentitiesOnly yes`; the zone's `insteadOf` rewrites canonical URLs to the alias (so you never type it); and `user.useConfigOnly = true` makes git refuse to invent an identity. Adding a second account on the same host later is just another `gwt ssh add` — nothing to migrate. Works on macOS, Linux and Windows (the Keychain step is macOS-only).
+
+### See what you have (`gwt ssh accounts`)
+
+```
+gwt ssh accounts
+```
+```
+ACCOUNT      HOST           KEY                          ZONE                          ROUTING
+dropi-bb     bitbucket.org  id_ed25519_dropi_bb ✓ agent  ~/dropi/  victor.orobio@dropi.co  ✓
+dropi-gh     github.com     id_ed25519_dropi_gh ✓ agent  ~/dropi/  victor.orobio@dropi.co  ✓
+neytor-gh    github.com     id_ed25519_neytor_gh ✓ agent ~/personal/  me@example.com        ✓
+```
+
+`ROUTING ✓` means the SSH alias and the git identity routing are coherent. `--json` gives the same as a parseable object.
+
+### Keep it healthy (`gwt ssh doctor`)
+
+```
+gwt ssh doctor
+```
+
+It detects and (with `--fix`) repairs the classic problems: a key with open permissions, a `Host` block missing `IdentitiesOnly`, a key not loaded in the agent, `user.useConfigOnly` unset, a missing `insteadOf` rewrite. It also **reports** (without touching) things that need your judgment: the host-vs-alias trap, an embedded token/secret in a `url.*` rewrite, orphans, or an unset global `user.name`. Exit code is `1` while problems remain, so it works as a CI gate.
+
+### Remove an account (`gwt ssh remove`)
+
+```
+gwt ssh remove dropi-bb            # removes the Host block + its routing; keeps the key files
+gwt ssh remove dropi-bb --delete-key
+```
+
+If the zone still has other accounts (here `dropi-gh` stays under `~/dropi/`), only `dropi-bb`'s routing is removed; the zone survives.
+
+> The commands below (`ssh check`, `config set-ssh-alias`) are about *which existing account a given repo uses*; the ones above are about *provisioning the accounts themselves*. They compose: provision once with `ssh add`, then pick per repo.
 
 ### Choose the account when setting up the repo
 
@@ -544,6 +615,10 @@ Two things to remember in `--json` mode:
 | Generate a patch | `gwt patch [<worktree>] [--format-patch] [--wip]` |
 | Local artifacts folder | `gwt artifacts [<worktree>]` |
 | Choose SSH account at setup | `gwt setup <url> --ssh-alias <alias>` |
-| Diagnose SSH | `gwt ssh check [--all] [--live]` |
+| Provision an SSH account | `gwt ssh add <name> --host <h> --email <e> --scope-dir <dir>` |
+| List provisioned accounts | `gwt ssh accounts` |
+| Diagnose/repair the SSH setup | `gwt ssh doctor [--fix]` |
+| Remove an account | `gwt ssh remove <name> [--delete-key]` |
+| Diagnose a remote's SSH | `gwt ssh check [--all] [--live]` |
 
 > Almost all of them accept `--dry-run` to see what they would do, `-v` to show each underlying git command, and `--json` for parseable output with status and reason.

@@ -245,6 +245,8 @@ Diagnoses the SSH configuration relevant to authenticate against git remotes. Us
 
 Unlike the rest, it **does not require** being inside a managed repo.
 
+> **Read vs write.** `ssh check` is the **read-only** diagnostic of low-level connectivity. The **write-mode** account provisioning (`ssh add`, `ssh accounts`, `ssh doctor`, `ssh remove`) is specified in **§14**; it is what creates and repairs the multi-account setup that `check` merely inspects.
+
 - **Contextual (default):** takes the host from the current repo's `origin`, or from the `<url-or-host>` passed. If there is no repo or argument → asks for a URL or `--all`.
 - **`--all`:** enumerates all `Host` entries in `~/.ssh/config` and reports each one.
 - **`--live`:** additionally runs `ssh -T` (with timeout) against the host and interprets the authentication response. Without `--live` there is no network traffic.
@@ -355,7 +357,9 @@ It fits with the local artifacts folder (§6.14): patches are kept locally and a
 
 ## 8. Per-repo configuration and profiles
 
-grove is **remote agnostic**: in `setup <url>` whatever URL is given is cloned (work or personal); handling multiple remotes/accounts belongs to git + SSH (`~/.ssh/config`), not grove. What does change between contexts is the **policy**, and that is why it is configurable per repo.
+grove is **remote agnostic at the repo level**: in `setup <url>` whatever URL is given is cloned (work or personal); deciding which key authenticates a given repo belongs to git + SSH (`~/.ssh/config`), not to the per-repo policy. What changes between contexts is the **policy**, and that is why it is configurable per repo.
+
+> **Scope clarification (see §14).** "Per-repo remote handling is not grove's job" remains true. What §14 adds is a separate, machine-level capability: **provisioning and repairing the `~/.ssh/config` + `~/.gitconfig` multi-account setup** itself. That is a different domain (the developer's machine, not a repo) and is explicitly opt-in via the `gwt ssh` write commands. The per-repo core stays remote-agnostic.
 
 ### 8.1 Configuration resolution (precedence)
 
@@ -670,16 +674,16 @@ Apply the 3 fixes? [y/N]
   - `doctor`: new item **"type not in allowed_types"** that is **reported** (manual) without auto-fix; do not mark as "out of convention" what `track` does accept.
 - **(Idea to discuss)** Command to **compare synchronization state between branches**: local worktree vs its remote, or between two worktrees/branches (ahead/behind, divergence), read-only, with optional `--fetch`.
 - **(Idea to discuss)** Generate a **patch file on demand** from a worktree (diff vs base/upstream, or `format-patch` of one's own commits) to share/back up without pushing. Possible destination: the local artifacts directory.
+- **SSH account provisioning module** (`gwt ssh add | accounts | doctor | remove`) — machine-level multi-account setup specified in **§14**. **Implemented in python 0.4.0** across all six phases: `core/platform` + `core/blockedit` (marker-based idempotent atomic edits), `core/sshprov` (account/zone model + read/add/remove), `core/gitidentity` (zones + global hardening), `core/sshdoctor` (diagnose/fix), the four CLI subcommands extending the `ssh` group, the cross-platform layer (macOS/Linux/Windows, §14.8), and the MCP tools (§14.9). Reuses the existing `sshcheck`/`sshalias` modules for read/resolve. See `docs/DESIGN-ssh-provisioning.md` for the implementation design.
 - Test the prototype against real repos and once on Windows before considering it stable.
 - **Conformance suite** (black box, language agnostic) to guarantee parity between implementations; detailed plan in `conformance/README.md`. Built when the 2nd implementation appears.
 - Implementations in Go and Rust (monorepo: `python/`, `go/`, `rust/`).
-- Phase 2: MCP facade (worktree operations as tools). Enrichment with tickets/PR is composed by the agent, not grove (see Design principles).
 
-Already implemented: per-repo config (`.bare/grove.toml`), profiles (`default`/`personal`/`gitflow` built-in + custom ones in `~/.config/grove/config.toml`), `setup --profile`, and the `tickets` policy (off/optional/required) with its effects on `create`/`doctor`/`list`.
+Already implemented: per-repo config (`.bare/grove.toml`), profiles (`default`/`personal`/`gitflow` built-in + custom ones in `~/.config/grove/config.toml`), `setup --profile`, the `tickets` policy (off/optional/required) with its effects on `create`/`doctor`/`list`, and the **SSH account provisioning module** of §14 (`gwt ssh add | accounts | doctor | remove`, cross-platform, with MCP tools).
 
-## 13. Phase 2 — MCP facade (design, not implemented)
+## 13. MCP facade (implemented)
 
-This section describes how grove would be exposed as an **MCP** (Model Context Protocol) server so that an agent (Claude/Cowork) invokes its operations. It is design; the code does not exist yet.
+This section describes how grove is exposed as an **MCP** (Model Context Protocol) server so that an agent (Claude/Cowork) invokes its operations. **Implemented** in python 0.3.0 (worktree/config/ssh-check tools) and extended in 0.4.0 with the SSH provisioning tools (§14.9); shipped behind the optional extra `pip install "grove[mcp]"` with the `grove-mcp` entry point.
 
 ### 13.1 Principle
 
@@ -698,7 +702,7 @@ Two pieces already built make it almost free:
 
 ### 13.2 Tools
 
-Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `grove_track`, `grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_config`, `grove_ssh_check`. Differences from the CLI:
+Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `grove_track`, `grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_config`, `grove_ssh_check`, and the account-provisioning tools `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` (§14.9). Differences from the CLI:
 
 - **Typed** inputs (JSON schema) instead of text flags.
 - **No interaction**: confirmation of destructive actions goes as a boolean parameter.
@@ -718,10 +722,211 @@ python/
 ├── pyproject.toml          # entry points: gwt and grove-mcp; MCP SDK as an OPTIONAL dependency
 └── src/grove/
     ├── core/   cli/         # existing
-    └── mcp/                 # MCP facade (placeholder today)
+    └── mcp/                 # MCP facade (_ops.py + server.py)
 ```
 
 - **MCP SDK as an optional extra** (`pip install "grove[mcp]"`), so the base CLI stays dependency-free.
 - **Own entry point** `grove-mcp` that launches the server (stdio transport).
 - **Versions with the implementation** (`python/vX.Y.Z`).
 - If Go/Rust want their own MCP, each would have its own under its folder, reusing its core. The spec remains the common contract; the conformance suite could also validate the MCP layer.
+
+## 14. SSH account provisioning (`gwt ssh add | accounts | doctor | remove`)
+
+A machine-level capability to **set up, inventory, diagnose and tear down** the multi-account SSH + git-identity configuration in a way that is **organized, repeatable and bulletproof** — so the developer never has to doubt how to wire a new account, and the classic failure modes cannot happen by construction.
+
+This complements the read-only `gwt ssh check` (§6.9): `check` *inspects*, the commands here *provision and repair*.
+
+### 14.1 Why it lives in grove (and how it respects the design principles)
+
+- **Offline, deterministic core.** Provisioning shells out to `ssh-keygen` / `ssh-add` (local subprocesses, same pattern as the git wrappers). **It never touches the network.** In particular, grove **does not upload public keys** to GitHub/Bitbucket — it prints the public key and the upload is done by the user, or by the agent composing `grove_ssh_add` with its own hosting connector (the "imperative shell" pattern, §1 and §13.3).
+- **No parallel state.** The source of truth is the **canonical files** (`~/.ssh/config`, `~/.gitconfig` and the git config files it `include`s). grove does not keep an accounts registry; it **derives** the inventory by reading those files. To operate safely on them it wraps every block it owns in **sentinel markers** (see §14.3) and never edits anything outside its markers.
+- **Idempotent.** Re-running `ssh add` for an existing account updates its block in place; it never duplicates.
+- **Cross-platform.** macOS, Linux and Windows are first-class; the differences are isolated in a small platform layer (§14.8).
+
+### 14.2 Model: accounts and zones
+
+Two concepts, each mapping to one of the two independent mechanisms a multi-account setup needs:
+
+- **Account** = the **SSH layer** for one hosting account. Fields: `name` (logical id, also the SSH `Host` alias, e.g. `dropi-gh`), `host` (the real `HostName`, e.g. `github.com`), `key` (private key path, default `~/.ssh/id_ed25519_<name>`). Produces one `Host` block in `~/.ssh/config`.
+- **Zone** = the **git-identity layer** for a folder. Fields: `scope_dir` (a directory, e.g. `~/dropi/`), `email` (the git author email for repos under it), and the set of accounts routed within it. Produces one `includeIf "gitdir:<scope_dir>"` in `~/.gitconfig` pointing to a grove-owned identity file that carries the `[user] email` plus the `insteadOf` rewrites (canonical URL → alias) for every account in the zone.
+
+Several accounts can share a zone (e.g. `dropi-gh` and `dropi-bb` both under `~/dropi/`). The relationship is: **zone 1—N accounts**. This is exactly why the identity routing is keyed by folder, not by account.
+
+Why this split is bulletproof: the **folder decides everything**. A canonical clone (`git@github.com:org/repo.git`) made inside a zone is rewritten by `insteadOf` to the account alias (→ correct key) and gets the zone's email (→ correct authorship), with **zero** manual alias typing. See §13 of the companion guide for the end-to-end rationale.
+
+### 14.3 Sentinel markers (how grove edits files safely)
+
+Every region grove manages is delimited so `accounts`/`doctor`/`remove` act only on grove-owned regions and **never clobber hand-written config**:
+
+`~/.ssh/config`:
+
+```sshconfig
+# >>> grove:account=dropi-gh >>>
+Host dropi-gh
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_dropi_gh
+    IdentitiesOnly yes
+# <<< grove:account=dropi-gh <<<
+```
+
+`~/.gitconfig` (the `includeIf` line is marked; the included file is grove-owned):
+
+```gitconfig
+# >>> grove:zone=dropi >>>
+[includeIf "gitdir:~/dropi/"]
+    path = ~/.config/grove/identities/dropi.gitconfig
+# <<< grove:zone=dropi <<<
+```
+
+`~/.config/grove/identities/dropi.gitconfig` (fully grove-owned; safe to rewrite):
+
+```gitconfig
+[user]
+    email = victor.orobio@dropi.co
+[url "git@dropi-bb:"]
+    insteadOf = git@bitbucket.org:
+    insteadOf = https://bitbucket.org/
+[url "git@dropi-gh:"]
+    insteadOf = git@github.com:
+    insteadOf = https://github.com/
+```
+
+Unmarked blocks are **read** (to detect conflicts) but **never modified**. On Windows the same markers apply to the same files under `%USERPROFILE%` (§14.8).
+
+### 14.4 `gwt ssh add <name>`
+
+```
+gwt ssh add <name> --host <host> --email <email>
+                   [--scope-dir <path>] [--key <path>]
+                   [--no-identity] [--no-agent] [--no-passphrase]
+                   [--print-pubkey] [--dry-run]
+```
+
+| Arg/Flag | Default | Description |
+|---|---|---|
+| `<name>` | — | Logical id = SSH alias (must be a valid host token: letters, digits, `-`, `_`) |
+| `--host <host>` | — | Real host (`github.com`, `bitbucket.org`, `gitlab.com`, …) |
+| `--email <email>` | — | git author email for this account's zone |
+| `--scope-dir <path>` | — | Folder that routes this account (defines/joins a zone). If omitted → `--no-identity` is implied (alias-only, no git routing) |
+| `--key <path>` | `~/.ssh/id_ed25519_<name>` | Private key path |
+| `--no-identity` | — | Configure only the SSH layer; do not touch `~/.gitconfig` |
+| `--no-agent` | — | Do not load the key into the agent/keychain |
+| `--no-passphrase` | — | Generate the key without passphrase (for headless/CI; interactive prompts a passphrase by default) |
+| `--print-pubkey` | — | Print only the public key (for piping to an upload step) |
+| `--dry-run` | — | Show the planned file edits without writing |
+
+Steps (all idempotent):
+
+1. **Validate** name/host/email; resolve the key path.
+2. **Key:** if the key does not exist → `ssh-keygen -t ed25519 -C "<name>" -f <key>` (prompts passphrase unless `--no-passphrase`). If it exists, reuse it.
+3. **SSH block:** upsert the marked `Host <name>` block (`HostName`, `User git`, `IdentityFile`, `IdentitiesOnly yes`).
+4. **Identity routing** (unless `--no-identity`): ensure the zone for `--scope-dir` (create the `includeIf` + identity file, or join the existing one), upsert `[user] email` and the `[url …] insteadOf` rewrites mapping the canonical host → this alias. **Harden the global `~/.gitconfig`:** ensure `user.name` is set and `user.useConfigOnly = true` (so git can never auto-invent an identity); if a **conflicting global `insteadOf`** for the same host exists (e.g. a token-bearing rewrite) it is **reported, never auto-removed** (it may contain a secret — human decision).
+5. **Agent:** unless `--no-agent`, load the key (macOS `ssh-add --apple-use-keychain`; Linux/Windows plain `ssh-add`; see §14.8).
+6. **Output:** print the public key and the **upload instructions** for the host (grove does not upload). Verify with a hint to run `gwt ssh check <host> --live` after uploading.
+
+```
+$ gwt ssh add dropi-gh --host github.com --email victor.orobio@dropi.co --scope-dir ~/dropi
+→ Generating key ~/.ssh/id_ed25519_dropi_gh (ed25519)
+→ Writing ~/.ssh/config block [grove:account=dropi-gh]
+→ Zone 'dropi' (~/dropi/): includeIf + identity file
+→ Routing git@github.com: → git@dropi-gh:  ·  email victor.orobio@dropi.co
+→ Hardening ~/.gitconfig: user.useConfigOnly = true
+→ Loading key into agent (keychain)
+✓ Account dropi-gh ready
+  Upload this public key to GitHub (Settings → SSH keys):
+  ssh-ed25519 AAAA... dropi-gh
+  Then verify:  gwt ssh check github.com --live
+```
+
+### 14.5 `gwt ssh accounts [--json]`
+
+Inventory of grove-managed accounts (derived from the marked blocks). Columns:
+
+| Column | Content |
+|---|---|
+| Account | Alias / `name` |
+| Host | Real `HostName` |
+| Key | Path · exists? · in agent? |
+| Zone | `scope_dir` and email (or `—` if alias-only) |
+| Routing | `✓` if `includeIf` + `insteadOf` are coherent, `!` if partial, `—` if none |
+
+```
+$ gwt ssh accounts
+ACCOUNT      HOST          KEY                          ZONE                         ROUTING
+dropi-gh     github.com    id_ed25519_dropi_gh ✓ agent  ~/dropi/  dropi.co            ✓
+dropi-bb     bitbucket.org id_ed25519_dropi_bb ✓ agent  ~/dropi/  dropi.co            ✓
+personal-gh  github.com    id_ed25519_personal ✓ agent  ~/personal/  me@example.com   ✓
+```
+
+(Distinct from `ssh check --all`, which diagnoses connectivity of *all* `Host` entries; `accounts` lists only what grove manages and its routing coherence.)
+
+### 14.6 `gwt ssh doctor [--fix] [--dry-run] [--json]`
+
+The diagnostic-and-repair engine — it encodes every failure mode documented in the companion guide. Mirrors the worktree `doctor` (§6.7) behavior: by default reports and asks; `--fix` applies safe fixes; `--dry-run` only reports; report-only items are never auto-touched.
+
+**Detects and fixes automatically** (with confirmation or `--fix`):
+
+| Check | Problem | Fix |
+|---|---|---|
+| Key permissions | Private key not `600` (POSIX only) | `chmod 600` |
+| `IdentitiesOnly` | A managed `Host` block lacks `IdentitiesOnly yes` | add it |
+| Agent | Managed key not loaded | `ssh-add` (keychain on macOS) |
+| `useConfigOnly` | `user.useConfigOnly` unset → git can auto-invent identity | set it `true` |
+| `user.name` | global `user.name` missing | set from existing identity (asks) |
+| Missing `insteadOf` | a zone account lacks its canonical→alias rewrite | re-add the rewrite |
+
+**Detects but reports only** (human judgment):
+
+| Check | Problem |
+|---|---|
+| Host-vs-alias trap | the key is under an alias but remotes/usage hit the **real host**, which only matches `Host *` (with `IdentitiesOnly` and no `IdentityFile`) → `Permission denied` though the key exists (the exact bug in the guide). Suggests adding a real-host block or repointing remotes. |
+| Secret in config | a global `insteadOf` (or any value) carries an embedded token/password → **flagged, never auto-edited**; advises rotating + removing. |
+| Email divergence | two accounts in the same zone declare different emails. |
+| Orphans | a marked block whose key file is gone; an `includeIf` whose `scope_dir` or identity file is missing. |
+| Unmanaged block | a hand-written `Host` that overlaps a managed one (reported; never modified). |
+
+```
+$ gwt ssh doctor
+→ Analyzing ~/.ssh/config and ~/.gitconfig
+  ✗ perms     id_ed25519_dropi_gh           mode 0644           -> chmod 600
+  ✗ identity  user.useConfigOnly            unset               -> set true
+  ! trap      bitbucket.org                 remote uses real host, key only under alias 'dropi-bb'   review
+  ! secret    url.insteadOf (bitbucket.org) embedded token      rotate & remove manually
+2 fixable automatically · 2 require manual review.
+Apply the 2 fixes? [y/N]
+```
+
+### 14.7 `gwt ssh remove <name> [--delete-key] [--keep-routing] [--dry-run]`
+
+Removes the account safely.
+
+- Removes the marked `Host <name>` block from `~/.ssh/config`.
+- Removes the account's `insteadOf` rewrites from its zone identity file. If the zone becomes **empty**, removes the `includeIf` + identity file too (unless `--keep-routing`).
+- **Keeps the key files** unless `--delete-key`. Never removes the key from the remote host (that is network; do it in the hosting UI).
+- `--dry-run` shows the planned edits.
+
+### 14.8 Cross-platform behavior (macOS · Linux · Windows)
+
+The capability must work for developers on **macOS, Linux and Windows**. All OS-specific behavior is isolated in a thin platform layer; the rest of the logic (markers, parsing, idempotent edits, zones) is shared.
+
+| Concern | macOS | Linux | Windows |
+|---|---|---|---|
+| Config paths | `~/.ssh/config`, `~/.gitconfig` | same | `%USERPROFILE%\.ssh\config`, `%USERPROFILE%\.gitconfig` |
+| Key permissions | `chmod 600` enforced/checked | same | **N/A** — NTFS ACLs; perms checks marked N/A (as `ssh check` already does, §6.9) |
+| Agent load | `ssh-add --apple-use-keychain` (persists in Keychain) | `ssh-add` (relies on a running `ssh-agent`; grove warns if `SSH_AUTH_SOCK` is unset) | `ssh-add` against the **OpenSSH Authentication Agent** service; grove warns if the service is not running/automatic |
+| Keychain block line | adds `UseKeychain yes` to the `Host *` defaults | omitted (no such option) | omitted |
+| `scope_dir` matching | `gitdir:` with POSIX path + trailing `/` | same | path normalized to forward slashes; grove writes `gitdir:` patterns git understands on Windows; trailing `/` enforced |
+| Path handling | `pathlib`, never hand-built `/` | same | same — `pathlib` + explicit normalization for git's `gitdir:` |
+
+Implementation notes:
+
+- A `platform` module exposes `home_config_paths()`, `enforce_key_perms()`, `agent_add(key)`, `keychain_supported()`. The commands call these; they branch internally on `sys.platform`.
+- Defaults in the `Host *` block are emitted conditionally: `AddKeysToAgent yes`, `IdentitiesOnly yes`, `ServerAliveInterval 60` everywhere; `UseKeychain yes` only on macOS.
+- `doctor`'s permission check is **skipped (N/A)** on Windows, exactly like `ssh check`.
+- Windows emergency note (consistent with §11): under Git Bash/WSL the POSIX path applies; native PowerShell uses the `%USERPROFILE%` paths. grove detects which environment it runs in.
+- The **conformance suite** (§12) gains OS-tagged cases so Python/Go/Rust implementations stay in parity on all three platforms.
+
+### 14.9 MCP exposure
+
+Adds `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` to the tool set (§13.2), same rules: typed inputs, structured output, confirmation by parameter. The canonical **enrichment** example: an agent calls `grove_ssh_add` and then uses its **GitHub/Bitbucket connector to upload the printed public key** — grove provisions locally, the agent does the network step. grove itself still never goes to the network.

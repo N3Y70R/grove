@@ -637,8 +637,179 @@ def cmd_ssh_check(args, out: Output) -> int:
     return 0
 
 
+def cmd_ssh_add(args, out: Output) -> int:
+    from ..core import sshprov
+
+    if out.json_mode and not args.no_passphrase:
+        raise UsageError("--json requires --no-passphrase (no TTY to enter a passphrase).")
+
+    spec = sshprov.AddSpec(
+        name=args.name,
+        host=args.host,
+        email=args.email,
+        scope_dir=Path(args.scope_dir) if args.scope_dir else None,
+        key=Path(args.key) if args.key else None,
+        no_identity=args.no_identity,
+        no_agent=args.no_agent,
+        no_passphrase=args.no_passphrase,
+        dry_run=args.dry_run,
+    )
+    git = GitRunner(dry_run=args.dry_run, on_command=out.git_echo)
+    res = sshprov.add_account(spec, git, echo=out.git_echo)
+
+    if args.print_pubkey:
+        print(res["pubkey"])
+        return 0
+
+    for s in res["steps"]:
+        out.step(s)
+    if res["name_missing"]:
+        out.warn("Global user.name is not set; set it so commits are well-formed: "
+                 "git config --global user.name \"Your Name\"")
+
+    if out.json_mode:
+        out.set_result(res)
+        out.success(f"account {args.name} ready")
+        return 0
+
+    out.success(f"Account {args.name} ready" + (" (dry-run)" if args.dry_run else ""))
+    if res["pubkey"]:
+        out.plain(f"  Upload this public key to {args.host} (Settings → SSH keys):")
+        out.plain(f"  {res['pubkey']}")
+        out.plain(f"  Then verify:  gwt ssh check {args.host} --live")
+    elif not args.dry_run:
+        out.plain(f"  Public key: {res['key']}.pub")
+    return 0
+
+
+def cmd_ssh_accounts(args, out: Output) -> int:
+    from ..core import sshprov
+
+    inv = sshprov.read_inventory()
+
+    rows = []
+    for a in inv.accounts:
+        st = sshprov.key_status(a, out.git_echo)
+        z = inv.zone_of(a)
+        rows.append((a, st, z, inv.routing_state(a)))
+
+    if out.json_mode:
+        out.set_result({
+            "accounts": [
+                {
+                    "name": a.name, "host": a.host, "key": a.key,
+                    "key_exists": st.exists, "in_agent": st.in_agent,
+                    "zone": (z.scope_dir if z else None),
+                    "email": (z.email if z else None),
+                    "routing": routing,
+                }
+                for (a, st, z, routing) in rows
+            ],
+            "zones": [
+                {"scope_dir": z.scope_dir, "email": z.email,
+                 "identity_path": z.identity_path, "rewrites": z.rewrites}
+                for z in inv.zones
+            ],
+        })
+        out.success(f"{len(inv.accounts)} account(s)")
+        return 0
+
+    if not rows:
+        out.plain("No grove-managed SSH accounts. Add one with: gwt ssh add <name> --host <host> --email <email> --scope-dir <dir>")
+        return 0
+
+    _ROUTING = {"ok": ("✓", "green"), "partial": ("!", "yellow"), "none": ("—", "dim")}
+    out.plain(f"{'ACCOUNT':<16}{'HOST':<16}{'KEY':<30}{'ZONE':<26}ROUTING")
+    for (a, st, z, routing) in rows:
+        keybits = Path(a.key).name
+        keybits += " ✓" if st.exists else out._c(" ✗", "yellow")
+        if st.in_agent is True:
+            keybits += " agent"
+        zone = f"{z.scope_dir}  {z.email}" if z else "—"
+        sym, color = _ROUTING[routing]
+        out.plain(f"{a.name:<16}{a.host:<16}{keybits:<30}{zone:<28} {out._c(sym, color)}")
+    return 0
+
+
+def cmd_ssh_remove(args, out: Output) -> int:
+    from ..core import sshprov
+
+    res = sshprov.remove_account(
+        args.name,
+        delete_key=args.delete_key,
+        keep_routing=args.keep_routing,
+        dry_run=args.dry_run,
+    )
+    for s in res["steps"]:
+        out.step(s)
+    if out.json_mode:
+        out.set_result(res)
+    out.success(f"Account {args.name} removed" + (" (dry-run)" if args.dry_run else ""))
+    if not args.delete_key and not args.dry_run:
+        out.plain("  (key files kept; pass --delete-key to remove them)")
+    return 0
+
+
+def cmd_ssh_doctor(args, out: Output) -> int:
+    from ..core import sshdoctor
+
+    git = GitRunner(on_command=out.git_echo)
+    findings = sshdoctor.diagnose(git=git, echo=out.git_echo)
+    auto = [f for f in findings if f.severity == "fix"]
+    review = [f for f in findings if f.severity == "review"]
+
+    _MARK = {"fix": ("✗", "red"), "review": ("!", "yellow")}
+
+    if out.json_mode:
+        applied = sshdoctor.apply_fixes(findings) if args.fix and auto else 0
+        out.set_result({
+            "findings": [
+                {"check": f.check, "severity": f.severity, "target": f.target,
+                 "message": f.message, "fixable": f.fixer is not None}
+                for f in findings
+            ],
+            "auto_fixable": len(auto), "review": len(review), "applied": applied,
+        })
+        out.success(f"{len(findings)} finding(s); {len(auto)} auto-fixable, {len(review)} manual")
+        return 1 if (len(review) or (auto and not args.fix)) else 0
+
+    if not findings:
+        out.success("No problems: the SSH/git multi-account setup is healthy.")
+        return 0
+
+    out.plain("Findings:")
+    for f in findings:
+        sym, color = _MARK[f.severity]
+        out.plain(f"  {out._c(sym, color)} {f.check:<14} {f.target}")
+        out.plain(f"      {f.message}")
+    out.plain(f"{len(auto)} auto-fixable · {len(review)} require manual review.")
+
+    if args.dry_run or not auto:
+        return 1 if (review or auto) else 0
+
+    do_fix = args.fix
+    if not do_fix:
+        try:
+            ans = input(f"Apply the {len(auto)} automatic fixes? [y/N] ").strip().lower()
+        except EOFError:
+            ans = ""
+        do_fix = ans in ("y", "yes")
+
+    if do_fix:
+        n = sshdoctor.apply_fixes(findings)
+        out.success(f"{n} fix(es) applied.")
+        return 1 if review else 0
+    out.plain("No changes were applied.")
+    return 1
+
+
 def cmd_ssh_help(args, out: Output) -> int:
-    out.plain("Usage: gwt ssh check [<url-or-host>] [--all] [--live]")
+    out.plain("Usage: gwt ssh <check|accounts|add|doctor|remove> ...")
+    out.plain("  gwt ssh check [<url-or-host>] [--all] [--live]")
+    out.plain("  gwt ssh accounts            list grove-managed SSH accounts")
+    out.plain("  gwt ssh add <name> --host <host> [--email <e> --scope-dir <dir>]")
+    out.plain("  gwt ssh doctor [--fix] [--dry-run]   diagnose & repair the setup")
+    out.plain("  gwt ssh remove <name> [--delete-key] [--keep-routing]")
     return 0
 
 
@@ -999,6 +1170,42 @@ def build_parser() -> argparse.ArgumentParser:
     chk.add_argument("--all", action="store_true", help="all Hosts in ~/.ssh/config")
     chk.add_argument("--live", action="store_true", help="authentication test (ssh -T)")
     chk.set_defaults(func=cmd_ssh_check)
+
+    acc = ssh_sub.add_parser("accounts", help="list grove-managed SSH accounts")
+    _common(acc)
+    acc.set_defaults(func=cmd_ssh_accounts)
+
+    addp = ssh_sub.add_parser("add", help="provision an SSH account (key + config + git routing)")
+    _common(addp)
+    addp.add_argument("name", help="account name = SSH Host alias (e.g. dropi-gh)")
+    addp.add_argument("--host", required=True, help="real host (github.com, bitbucket.org, …)")
+    addp.add_argument("--email", help="git author email for this account's zone")
+    addp.add_argument("--scope-dir", dest="scope_dir",
+                      help="folder that routes this account (defines/joins a zone)")
+    addp.add_argument("--key", help="private key path (default ~/.ssh/id_ed25519_<name>)")
+    addp.add_argument("--no-identity", action="store_true",
+                      help="configure SSH only; do not touch ~/.gitconfig")
+    addp.add_argument("--no-agent", action="store_true", help="do not load the key into the agent")
+    addp.add_argument("--no-passphrase", action="store_true",
+                      help="generate the key without passphrase (headless/CI)")
+    addp.add_argument("--print-pubkey", action="store_true", help="print only the public key")
+    addp.add_argument("--dry-run", action="store_true", help="show planned edits without writing")
+    addp.set_defaults(func=cmd_ssh_add)
+
+    doc = ssh_sub.add_parser("doctor", help="diagnose & repair the SSH/git multi-account setup")
+    _common(doc)
+    doc.add_argument("--fix", action="store_true", help="apply automatic fixes without asking")
+    doc.add_argument("--dry-run", action="store_true", help="only report, never modify")
+    doc.set_defaults(func=cmd_ssh_doctor)
+
+    rmp = ssh_sub.add_parser("remove", help="remove a grove-managed SSH account")
+    _common(rmp)
+    rmp.add_argument("name", help="account name to remove")
+    rmp.add_argument("--delete-key", action="store_true", help="also delete the key files")
+    rmp.add_argument("--keep-routing", action="store_true",
+                     help="keep the git identity routing (only remove the SSH block)")
+    rmp.add_argument("--dry-run", action="store_true", help="show planned edits without writing")
+    rmp.set_defaults(func=cmd_ssh_remove)
 
     return p
 

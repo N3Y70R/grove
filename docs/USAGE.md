@@ -448,6 +448,64 @@ gwt ssh check --all --live
 
 ---
 
+## `gwt ssh add | accounts | doctor | remove`
+
+Provision and maintain a multi-account SSH + git-identity setup at the **machine level** (your `~/.ssh/config` and `~/.gitconfig`). Unlike `ssh check` (read-only), these commands **write**. The guiding idea: the folder a repo lives in decides everything — which SSH key authenticates and which git identity signs commits — so you clone with the canonical URL and never type an alias. None of these require being inside a managed repo. grove edits only its own marker-delimited blocks (`# >>> grove:… >>>`) and backs files up before the first change; it never goes to the network (you upload the public key yourself).
+
+### `gwt ssh add`
+
+```
+gwt ssh add <name> --host <host> [--email <e>] [--scope-dir <dir>]
+            [--key <path>] [--no-identity] [--no-agent] [--no-passphrase]
+            [--print-pubkey] [--dry-run]
+```
+
+| Arg/Flag | Default | Description |
+|---|---|---|
+| `<name>` | — | Account name = SSH `Host` alias (e.g. `dropi-gh`) |
+| `--host <host>` | — | Real host (`github.com`, `bitbucket.org`, …) |
+| `--email <e>` | — | git author email for this account's zone (required for identity routing) |
+| `--scope-dir <dir>` | — | Folder that routes this account (defines/joins a zone). Omitting it implies `--no-identity` |
+| `--key <path>` | `~/.ssh/id_ed25519_<name>` | Private key path |
+| `--no-identity` | — | Configure SSH only; do not touch `~/.gitconfig` |
+| `--no-agent` | — | Do not load the key into the agent |
+| `--no-passphrase` | — | Generate the key without a passphrase (headless/CI; required with `--json`) |
+| `--print-pubkey` | — | Print only the public key (for piping to an upload step) |
+| `--dry-run` | — | Show the planned edits without writing |
+
+It generates an ed25519 key, writes a marked `Host` block (with `IdentitiesOnly yes`), and — unless `--no-identity` — wires the **zone**: an `includeIf "gitdir:<scope-dir>"` in `~/.gitconfig` pointing to a grove-owned identity file (the zone's email + `insteadOf` rewriting `git@<host>:` → `git@<name>:`), and hardens the global config with `user.useConfigOnly = true`. Several accounts can share a zone (e.g. a GitHub and a Bitbucket account both under `~/dropi/`). Finally it loads the key into the agent (macOS Keychain when available) and prints the public key to upload.
+
+```
+gwt ssh add dropi-gh --host github.com --email victor.orobio@dropi.co --scope-dir ~/dropi
+gwt ssh add personal-gh --host github.com --no-identity        # SSH only, no git routing
+```
+
+### `gwt ssh accounts`
+
+```
+gwt ssh accounts [--json]
+```
+
+Lists grove-managed accounts and zones (alias, host, key existence/agent state, zone folder + email, and routing coherence: `✓` ok, `!` partial, `—` none). Derived from the canonical files; there is no separate registry.
+
+### `gwt ssh doctor`
+
+```
+gwt ssh doctor [--fix] [--dry-run] [--json]
+```
+
+Diagnoses and repairs the setup. **Auto-fixable** (with `--fix` or confirmation): open key permissions, a managed block missing `IdentitiesOnly yes`, a key not loaded in the agent, `user.useConfigOnly` unset, a missing `insteadOf` rewrite. **Report-only** (human judgment): the host-vs-alias trap (a real host with no dedicated block and no rewrite → would fail), an embedded secret/token in a `url.*` rewrite, orphans (missing key or zone), and an unset global `user.name`. Exit code is `1` while problems remain (CI gate), `0` when healthy.
+
+### `gwt ssh remove`
+
+```
+gwt ssh remove <name> [--delete-key] [--keep-routing] [--dry-run]
+```
+
+Removes the account's `Host` block and its `insteadOf` rewrites from the zone; if the zone becomes empty, its `includeIf` and identity file are removed too (unless `--keep-routing`). Key files are kept unless `--delete-key`; the key is never removed from the remote host (do that in the hosting UI).
+
+---
+
 ## Configuration and profiles
 
 Each repo stores its policy in `.bare/grove.toml`, which `setup` writes from the profile. Precedence: internal defaults < global profile/config < repo config < environment variables < flags.

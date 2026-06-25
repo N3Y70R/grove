@@ -80,7 +80,7 @@ def publish_additive(
         git.run(["fetch", "origin", int_name], cwd=repo.bare)
         git.run(["reset", "--hard", f"origin/{int_name}"], cwd=int_path)
     _merge_all(git, int_path, branches, step=step)
-    step(f"Push a origin/{int_name}")
+    step(f"Push to origin/{int_name}")
     git.run(["push", "origin", int_name], cwd=int_path)
 
 
@@ -92,5 +92,5 @@ def publish_regenerate(
     git.run(["fetch", "origin", base], cwd=repo.bare)
     git.run(["reset", "--hard", f"origin/{base}"], cwd=int_path)
     _merge_all(git, int_path, branches, step=step)
-    step(f"Force-push a origin/{int_name}")
+    step(f"Force-push to origin/{int_name}")
     git.run(["push", "--force", "origin", int_name], cwd=int_path)

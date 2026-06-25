@@ -3,8 +3,9 @@
 Command: gwt
 
 Structure:
-    grove.core  -> reusable logic (importable by the future MCP facade)
-    grove.cli   -> command-line facade
+    grove.core  -> reusable logic (shared by the facades)
+    grove.cli   -> command-line facade (gwt)
+    grove.mcp   -> MCP server facade (grove-mcp)
 """
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"

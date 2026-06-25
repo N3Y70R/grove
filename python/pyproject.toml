@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "grove"
-version = "0.2.0"
+version = "0.4.0"
 description = "Manage git worktrees with a consistent convention and structure (gwt command)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,9 +12,6 @@ license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Victor Ney" }]
 keywords = ["git", "worktree", "cli", "git-worktree", "branches"]
 dependencies = []  # standard library only
-
-[project.optional-dependencies]
-test = ["pytest>=7"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -27,6 +24,10 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7"]
+mcp = ["mcp>=1.2"]
+
 [project.urls]
 Homepage = "https://github.com/N3Y70R/grove"
 Repository = "https://github.com/N3Y70R/grove"
@@ -34,6 +35,7 @@ Documentation = "https://github.com/N3Y70R/grove/tree/main/docs"
 
 [project.scripts]
 gwt = "grove.cli.main:main"
+grove-mcp = "grove.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

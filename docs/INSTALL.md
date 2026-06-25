@@ -2,9 +2,14 @@
 
 grove is a command-line tool written in pure Python. You install it once and the `gwt` command becomes available in your terminal, on Windows, macOS, and Linux.
 
-> **TL;DR (team):** with Python 3.11+ and `pipx` installed:
+> **Name note:** the install/distribution name is **`grove-wt`** (the name
+> `grove` was already taken on PyPI). The imported package is still `grove` and
+> the commands are still **`gwt`** and **`grove-mcp`** — only the label you type
+> in `pip`/`pipx` is `grove-wt`.
+
+> **TL;DR:** with Python 3.11+ and `pipx` installed:
 > ```
-> pipx install git+<repo-URL>
+> pipx install grove-wt          # from PyPI (or: grove-wt[mcp] for the MCP server)
 > gwt --version
 > ```
 
@@ -40,6 +45,17 @@ After `pipx ensurepath`, **close and reopen the terminal** so the PATH is update
 ---
 
 ## 2. Installation options
+
+### Option A0 — From PyPI (simplest, recommended)
+
+```
+pipx install grove-wt            # CLI only
+pipx install "grove-wt[mcp]"     # CLI + the grove-mcp MCP server
+gwt --version
+```
+
+Update later with `pipx upgrade grove-wt`. (If you also want the MCP server,
+keep the `[mcp]` extra in mind when reinstalling.)
 
 ### Option A — From a git repository (recommended for teams)
 
@@ -173,18 +189,27 @@ gwt --help             # list of commands
 
 ## 6. Updating
 
-The update method depends on how it was installed. In all cases, **verify at the end** with `gwt --version` that the number went up.
+The update method depends on how it was installed. In all cases, **verify at the end** with `gwt --version` that the number went up. If you use the MCP server, **restart your MCP client** (e.g. Claude Desktop) after updating so it picks up the new `grove-mcp`.
+
+### 6.0 If you installed it from PyPI (Option A0)
+
+```
+pipx upgrade grove-wt
+```
+
+That's it — pipx pulls the latest published version. (If you installed the MCP
+server, the `grove-mcp` command stays at the same path.)
 
 ### 6.1 If you installed it from git (Option A)
 
 ```
-pipx upgrade grove
+pipx upgrade grove-wt
 ```
 
-pipx re-clones the repo and reinstalls if there are changes. To force it (e.g. same branch, new commits):
+pipx re-clones the repo and reinstalls if there are changes. To force it (e.g. same branch, new commits) or to pin a released tag:
 
 ```
-pipx install --force git+<repo-URL>
+pipx install --force "git+https://github.com/N3Y70R/grove.git@python/v0.5.0#subdirectory=python"
 ```
 
 ### 6.2 If you were handed a new wheel (Option B)

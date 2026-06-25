@@ -2,10 +2,20 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
-## python — unreleased
+## python — 0.5.0
+
+### Changed
+
+- **PyPI distribution name is `grove-wt`** (`grove` was already taken by an
+  unrelated project). The imported package is still `grove` and the commands are
+  still `gwt` and `grove-mcp`; only the install label changes
+  (`pipx install grove-wt`, `pipx upgrade grove-wt`).
 
 ### Added
 
+- **Publishing**: a release workflow (`.github/workflows/release.yml`) that, on a
+  `python/v*` tag, builds the sdist+wheel and publishes to **PyPI** and creates a
+  **GitHub Release** with the artifacts.
 - **Richer MCP tool schemas (agent discoverability)**: every tool now carries
   per-parameter descriptions, enums for constrained choices (`grove_create.kind`),
   and MCP annotations (read-only / destructive / idempotent, `openWorldHint=false`).

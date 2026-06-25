@@ -13,15 +13,19 @@ The MCP SDK is an optional extra; install grove so that the `grove-mcp`
 executable lands on your `PATH`. **pipx** is the cleanest option:
 
 ```bash
-# from the published GitHub repo (PEP 508 extra + git URL):
-pipx install "grove[mcp] @ git+https://github.com/N3Y70R/grove.git#subdirectory=python"
+# from PyPI (simplest):
+pipx install "grove-wt[mcp]"
+
+# or from the GitHub repo (PEP 508 extra + git URL):
+pipx install "grove-wt[mcp] @ git+https://github.com/N3Y70R/grove.git#subdirectory=python"
 
 # or from a local checkout:
 pipx install "./python[mcp]"
 ```
 
-(Plain `pip install "grove[mcp]"` also works inside a virtualenv; pipx just
-keeps it isolated and on your PATH.)
+(The install name is `grove-wt`; the command is still `grove-mcp`. Plain
+`pip install "grove-wt[mcp]"` also works inside a virtualenv; pipx just keeps it
+isolated and on your PATH.)
 
 Verify and note the absolute path — some clients don't inherit your shell PATH,
 so using the full path in the config is the most reliable:

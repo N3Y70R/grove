@@ -6,17 +6,24 @@ To learn how to use the tool, see the shared documentation in [`../docs/`](../do
 
 ## Installation
 
+The PyPI/distribution name is **`grove-wt`** (the name `grove` was taken); the
+imported package and commands are still `grove`, `gwt` and `grove-mcp`.
+
 With [pipx](https://pipx.pypa.io/) (recommended):
 
 ```
+# from PyPI
+pipx install grove-wt            # or: grove-wt[mcp] for the MCP server
+
 # from the repo folder
 pipx install ./python
 
 # from git, pointing at the subdirectory
-pipx install "git+https://github.com/N3Y70R/grove.git#subdirectory=python"
+pipx install "grove-wt[mcp] @ git+https://github.com/N3Y70R/grove.git#subdirectory=python"
 ```
 
-Verify with `gwt --version`. Full guide (other systems, updating, troubleshooting) in [`../docs/INSTALL.md`](../docs/INSTALL.md).
+Verify with `gwt --version`. Update with `pipx upgrade grove-wt`. Full guide
+(other systems, updating, troubleshooting) in [`../docs/INSTALL.md`](../docs/INSTALL.md).
 
 Development (editable):
 

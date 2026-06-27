@@ -26,9 +26,13 @@ def clone(tmp_path):
     _g(["add", "."], seed)
     _g(["commit", "-qm", "init"], seed)
     _g(["push", "-q", "origin", "main"], seed)
+    # Point the bare origin's HEAD at 'main' so clones check it out regardless of
+    # the host git's init.defaultBranch (CI runners often default to 'master').
+    _g(["symbolic-ref", "HEAD", "refs/heads/main"], origin)
 
     work = tmp_path / "work"
     _g(["clone", "-q", str(origin), str(work)], tmp_path)  # normal clone, on main
+    _g(["checkout", "-q", "-B", "main", "origin/main"], work)  # be explicit about the branch
     return work
 
 

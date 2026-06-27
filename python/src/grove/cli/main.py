@@ -136,6 +136,8 @@ def cmd_setup(args, out: Output) -> int:
         into=into,
         name=args.name,
         base_branch=base_branch,
+        git_pointer=getattr(args, "git_pointer", True),
+        keep_on_error=getattr(args, "keep_on_error", False),
         step=out.step,
     )
     # setup may have auto-detected a different base (e.g. 'production'); record it
@@ -149,6 +151,30 @@ def cmd_setup(args, out: Output) -> int:
     if not out.quiet:
         out.plain(f"  .bare/       bare repository (+ {cfg_path.name})")
         out.plain(f"  {core_config.DEFAULT_BASE}/  [tracks origin/{core_config.DEFAULT_BASE}]")
+    return 0
+
+
+def cmd_convert(args, out: Output) -> int:
+    from ..core import convert as core_convert
+
+    git = _make_runner(args, out)
+    path = Path(args.path).resolve() if args.path else _base_dir(args)
+    ctx = core_convert.convert(
+        git,
+        path=path,
+        into=(Path(args.into).resolve() if args.into else None),
+        branches=args.branches,
+        fetch=getattr(args, "fetch", True),
+        force=args.force,
+        git_pointer=getattr(args, "git_pointer", True),
+        keep_on_error=getattr(args, "keep_on_error", False),
+        dry_run=getattr(args, "dry_run", False),
+        step=out.step,
+    )
+    out.set_result({"name": ctx.name, "root": str(ctx.root), "base": ctx.base,
+                    "into": bool(args.into), "dry_run": getattr(args, "dry_run", False)})
+    suffix = " (dry-run)" if getattr(args, "dry_run", False) else ""
+    out.success(f"Converted{suffix}: {ctx.root} (base {ctx.base})")
     return 0
 
 
@@ -1065,10 +1091,33 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--name", help="repo folder name")
     sp.add_argument("--into", help="where to create the repo folder (default: cwd)")
     sp.add_argument("--base", help="base branch (default: profile's, or autodetected from origin)")
+    sp.add_argument("--no-git-pointer", dest="git_pointer", action="store_false",
+                    help="don't write the root .git pointer (gitdir: ./.bare)")
+    sp.add_argument("--keep-on-error", dest="keep_on_error", action="store_true",
+                    help="on failure, keep the partial folder (default: clean it up)")
     sp.add_argument("--profile", help="policy profile to apply (default: default)")
     sp.add_argument("--ssh-alias", dest="ssh_alias", metavar="ALIAS",
                     help="~/.ssh/config alias to use for the remote (or 'none' for the URL as-is)")
     sp.set_defaults(func=cmd_setup)
+
+    cv = sub.add_parser("convert",
+                        help="convert an existing clone into the grove model")
+    _common(cv)
+    cv.add_argument("path", nargs="?", help="path of the existing clone (default: cwd)")
+    cv.add_argument("--into", help="create a new grove repo here; leave the source intact")
+    cv.add_argument("--branches", choices=["current", "current+base", "all"],
+                    default="current+base", help="which worktrees to materialize")
+    cv.add_argument("--no-fetch", dest="fetch", action="store_false",
+                    help="don't contact origin (offline)")
+    cv.add_argument("--force", action="store_true",
+                    help="proceed even if submodules or Git LFS are detected")
+    cv.add_argument("--no-git-pointer", dest="git_pointer", action="store_false",
+                    help="don't write the root .git pointer (gitdir: ./.bare)")
+    cv.add_argument("--keep-on-error", dest="keep_on_error", action="store_true",
+                    help="on failure, keep partial output (default: clean it up; in-place stops and reports)")
+    cv.add_argument("--dry-run", dest="dry_run", action="store_true",
+                    help="print the plan without making changes")
+    cv.set_defaults(func=cmd_convert)
 
     lp = sub.add_parser("list", help="list the repo's worktrees")
     _common(lp)

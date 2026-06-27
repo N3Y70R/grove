@@ -162,6 +162,22 @@ default branch isn't `main`, **say the base explicitly** (e.g. "production") or
 pick a profile whose `default_base` matches; otherwise grove uses the profile
 default. Tip: "use the `gitflow` profile" or "base branch is production".
 
+### Convert an existing clone to the grove model
+
+> "Convert my existing clone at `/Users/me/code/api` to grove (keep all local
+> branches)." →
+> `grove_convert(path="/Users/me/code/api", branches="all")`
+> — in-place: auto-stashes/restores your WIP, preserves ignored files.
+
+> "Convert `/Users/me/code/api` into `/Users/me/code/api-grove` but leave the
+> original alone." → `grove_convert(path="/Users/me/code/api", into="/Users/me/code/api-grove")`
+
+> "Show me what converting this repo would do first." →
+> `grove_convert(path=…, dry_run=true)` (no changes; returns the plan).
+
+If the repo uses submodules or Git LFS, `convert` refuses unless you pass
+`force=true`.
+
 ### Work a ticket (create a worktree)
 
 > "Create a feature worktree for PROJ-123 'login bug' in `/Users/me/code/app`."

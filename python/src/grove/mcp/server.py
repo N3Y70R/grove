@@ -56,15 +56,43 @@ def grove_setup(
     profile: Annotated[Optional[str], Field(description="Policy profile: default | personal | gitflow | a custom one.")] = None,
     base: Annotated[Optional[str], Field(description="Base branch override. If omitted, uses the profile's base and falls back to the origin's default branch (e.g. 'production' instead of 'main').")] = None,
     ssh_alias: Annotated[Optional[str], Field(description="~/.ssh/config alias to rewrite the origin host with (or 'none').")] = None,
+    git_pointer: Annotated[bool, Field(description="Write the root .git pointer (gitdir: ./.bare) so plain git works from the repo root. Default true.")] = True,
+    keep_on_error: Annotated[bool, Field(description="If setup fails midway, keep the partial folder instead of removing it. Default false (clean up so a retry starts fresh).")] = False,
     cwd: Cwd = None,
 ) -> dict:
     """Initialize a managed repo (bare model + base worktree) from an origin URL.
 
     Applies a policy profile (default if omitted), auto-detects the base branch
     from the origin when the configured one is absent, and writes .bare/grove.toml.
+    Transactional: on failure the partial folder is removed (unless keep_on_error).
     """
     return _ops.op_setup(url, name=name, into=into, profile=profile,
-                         base=base, ssh_alias=ssh_alias, cwd=cwd)
+                         base=base, ssh_alias=ssh_alias, git_pointer=git_pointer,
+                         keep_on_error=keep_on_error, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("Convert an existing clone to the grove model"))
+def grove_convert(
+    path: Annotated[Optional[str], Field(description="Path of the existing normal clone to convert (default: cwd).")] = None,
+    into: Annotated[Optional[str], Field(description="Create a NEW grove repo here and leave the source clone untouched (no WIP carried). Omit for in-place.")] = None,
+    branches: Annotated[Literal["current", "current+base", "all"], Field(description="Which worktrees to materialize.")] = "current+base",
+    fetch: Annotated[bool, Field(description="Contact origin (fetch). Set false for fully offline.")] = True,
+    force: Annotated[bool, Field(description="Proceed even if submodules or Git LFS are detected (blocked by default).")] = False,
+    git_pointer: Annotated[bool, Field(description="Write the root .git pointer (gitdir: ./.bare). Default true.")] = True,
+    keep_on_error: Annotated[bool, Field(description="If conversion fails midway, keep partial output. Default false: with --into the new folder is removed; in-place stops and reports (never auto-deletes user files).")] = False,
+    dry_run: Annotated[bool, Field(description="Return the plan without making changes.")] = False,
+    cwd: Cwd = None,
+) -> dict:
+    """Convert an existing normal clone into grove's bare + worktrees model.
+
+    In-place by default (reuses .git, auto-stashes and restores uncommitted work,
+    keeps ignored files). `into` builds a fresh grove repo beside the source,
+    leaving it untouched. Submodules/Git LFS are refused unless force=true.
+    With `into`, a failed conversion cleans up the new folder (unless keep_on_error).
+    """
+    return _ops.op_convert(path=path, into=into, branches=branches, fetch=fetch,
+                           force=force, git_pointer=git_pointer,
+                           keep_on_error=keep_on_error, dry_run=dry_run, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("List worktrees", read_only=True))

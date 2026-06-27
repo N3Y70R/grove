@@ -122,6 +122,43 @@ gwt setup git@github.com:acme/backend.git --ssh-alias gh-work   # work account
 gwt setup git@github.com:neytor/proyecto.git --ssh-alias gh-personal      # personal account
 ```
 
+(Use `--no-git-pointer` to skip writing the root `.git` pointer.)
+
+**If setup fails partway**, grove removes the half-created folder so your next try starts clean (no leftover `.bare/` blocking the retry). Add `--keep-on-error` if you'd rather keep the partial folder to inspect what went wrong.
+
+---
+
+## `gwt convert`
+
+Converts an **existing normal clone** into the grove model, without re-cloning.
+
+```
+gwt convert [path] [--into <dir>] [--branches current|current+base|all]
+                   [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]
+```
+
+| Arg/Flag | Description |
+|---|---|
+| `[path]` | The existing clone (default: current directory) |
+| `--into <dir>` | Build a new grove repo there; leave the source clone untouched |
+| `--branches` | Worktrees to materialize (default: `current+base`) |
+| `--no-fetch` | Don't contact origin (offline) |
+| `--force` | Proceed even if submodules or Git LFS are detected (blocked by default) |
+| `--no-git-pointer` | Don't write the root `.git` pointer |
+| `--keep-on-error` | On failure, keep partial output (default: clean it up) |
+| `--dry-run` | Print the plan without changing anything |
+
+- **In-place (default):** reuses `.git` (→ `.bare/`), **auto-stashes and restores** your uncommitted work in the current worktree, and **preserves ignored files** (moved into the current worktree). Keeps all local branches/stashes/config.
+- **`--into`:** safest; the source is left intact (your WIP stays there).
+- **Cleanup on failure:** with `--into`, a failed conversion removes the new folder (the source is never touched) so retries are clean. In-place never auto-deletes (it could discard files already moved into a worktree): it restores the auto-stash if it fails before any change, otherwise it stops and reports for manual inspection. `--keep-on-error` preserves partial `--into` output.
+
+```
+gwt convert                                   # convert the repo in the current folder
+gwt convert ~/dropi/api-backend --branches all
+gwt convert ~/dropi/api-backend --into ~/dropi/api-backend-grove   # keep the original
+gwt convert --dry-run                         # preview only
+```
+
 ---
 
 ## `gwt create`

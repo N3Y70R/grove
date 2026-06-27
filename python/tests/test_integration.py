@@ -33,6 +33,54 @@ def test_setup_creates_structure(repo):
     assert (ctx.root / "artifacts").is_dir()
 
 
+def test_setup_writes_git_pointer_by_default(repo):
+    _, ctx = repo
+    p = ctx.root / ".git"
+    assert p.is_file()
+    assert p.read_text(encoding="utf-8").strip() == "gitdir: ./.bare"
+
+
+def test_setup_no_git_pointer_flag(tmp_path, origin):
+    from grove.core import config as cfg, setup as core_setup
+    from grove.core.gitrunner import GitRunner
+    cfg.apply_policy(cfg.resolve_profile("default"))
+    ctx = core_setup.setup(GitRunner(), origin, into=tmp_path / "w", name="r",
+                           base_branch=cfg.DEFAULT_BASE, git_pointer=False)
+    assert not (ctx.root / ".git").exists()
+
+
+def test_setup_rolls_back_partial_on_failure(tmp_path, origin, monkeypatch):
+    from grove.core import config as cfg, setup as core_setup
+    from grove.core.gitrunner import GitRunner
+    cfg.apply_policy(cfg.resolve_profile("default"))
+
+    def boom(_root):
+        raise RuntimeError("boom late in setup")
+
+    monkeypatch.setattr(core_setup, "write_git_pointer", boom)
+    into = tmp_path / "w"
+    with pytest.raises(RuntimeError):
+        core_setup.setup(GitRunner(), origin, into=into, name="r",
+                         base_branch=cfg.DEFAULT_BASE)
+    assert not (into / "r").exists()        # partial folder cleaned up → retry is clean
+
+
+def test_setup_keep_on_error_leaves_partial(tmp_path, origin, monkeypatch):
+    from grove.core import config as cfg, setup as core_setup
+    from grove.core.gitrunner import GitRunner
+    cfg.apply_policy(cfg.resolve_profile("default"))
+
+    def boom(_root):
+        raise RuntimeError("boom late in setup")
+
+    monkeypatch.setattr(core_setup, "write_git_pointer", boom)
+    into = tmp_path / "w"
+    with pytest.raises(RuntimeError):
+        core_setup.setup(GitRunner(), origin, into=into, name="r",
+                         base_branch=cfg.DEFAULT_BASE, keep_on_error=True)
+    assert (into / "r" / ".bare").exists()  # preserved for debugging
+
+
 # --- create ------------------------------------------------------------- #
 
 def test_create_ticket_with_key(repo):

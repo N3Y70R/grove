@@ -115,9 +115,39 @@ Steps:
 
 Result: repo ready with `.bare/` + `production/`.
 
+**Base branch.** `--base` overrides the base; if it's absent on origin, `setup` falls back to the origin's default branch (e.g. `production` when the profile assumes `main`) and records it in `grove.toml`.
+
+**Root `.git` pointer.** By default `setup` writes a `.git` file at the repo root containing `gitdir: ./.bare`, so plain `git` works from the container folder (`git worktree list`, `fetch`, …) and editors detect the repo. Disable with `--no-git-pointer`. grove's own commands don't need it (they address `.bare` directly).
+
 **SSH alias.** The canonical URL copied from the remote does not carry local aliases. `setup` uses it as-is by default, but if `~/.ssh/config` has aliases whose `HostName` matches the URL's host, it detects them and lets you choose (interactive, or `--ssh-alias <alias>`; `none` forces the canonical one). When choosing an alias, it rewrites the `origin` URL to that alias so git uses the correct key in all commands.
 
+**Transactional (cleanup on failure).** `setup` only creates the destination folder if it doesn't exist; if any step fails afterwards, the partial folder is removed so the next attempt starts clean (no leftover `.bare/` to trip over). `--keep-on-error` preserves the partial state for debugging.
+
 The `production/` worktree must end up **tracking** `origin/production` (upstream set and verified; see §6.8).
+
+### 6.1b `gwt convert [<path>] [--into <dir>] [--branches current|current+base|all] [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]`
+
+Converts an **existing normal clone** into the grove model, without re-cloning
+from the network. Full design in [`../docs/DESIGN-convert.md`](../docs/DESIGN-convert.md).
+
+- **In-place (default):** reuses the existing `.git` (moves it to `.bare/`,
+  marks it bare), auto-stashes uncommitted work (`git stash -u`) and restores it
+  in the current worktree, preserves ignored files (moves them into the current
+  worktree), then creates the parking branch, the worktrees and the root `.git`
+  pointer. Keeps all local branches, stashes and config.
+- **`--into <dir>`:** builds a fresh grove repo there from the local objects and
+  leaves the source clone untouched (uncommitted/stashed work stays in the source).
+- **`--branches`:** which worktrees to materialize — the current branch, the
+  current branch + the base (default), or all local branches.
+- **Submodules / Git LFS:** detected and **refused** with a report unless
+  `--force` (full support is future work).
+- **`--dry-run`:** prints the plan (mode, base, worktrees) without changing anything.
+- **Cleanup on failure:** with `--into`, a failed conversion removes the new
+  folder it created (the source is never touched) so a retry is clean.
+  `--keep-on-error` preserves it. In-place conversion never auto-deletes (it
+  could discard files already moved into a worktree): if it fails before any
+  change it restores the auto-stash, otherwise it stops and reports for manual
+  inspection (`gwt doctor`, `git worktree list`).
 
 ### 6.2 `gwt create <PROJ-XXXXX> <type> <name> [--base <branch>]`
 

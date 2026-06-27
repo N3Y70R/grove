@@ -115,6 +115,8 @@ def op_setup(
     profile: Optional[str] = None,
     base: Optional[str] = None,
     ssh_alias: Optional[str] = None,
+    git_pointer: bool = True,
+    keep_on_error: bool = False,
     cwd: Optional[str] = None,
 ) -> dict:
     git = _git()
@@ -134,13 +136,39 @@ def op_setup(
 
     dest = Path(into).resolve() if into else (Path(cwd).resolve() if cwd else Path.cwd())
     ctx = core_setup.setup(git, final_url, into=dest, name=name,
-                           base_branch=base or core_config.DEFAULT_BASE)
+                           base_branch=base or core_config.DEFAULT_BASE,
+                           git_pointer=git_pointer, keep_on_error=keep_on_error)
     # setup may have auto-detected a different base; record it before writing config.
     if ctx.base:
         core_config.DEFAULT_BASE = ctx.base
     core_config.write_repo_config(ctx.bare, core_config.effective_policy())
     return {"name": ctx.name, "root": str(ctx.root),
             "profile": profile_name, "base": core_config.DEFAULT_BASE}
+
+
+def op_convert(
+    *,
+    path: Optional[str] = None,
+    into: Optional[str] = None,
+    branches: str = "current+base",
+    fetch: bool = True,
+    force: bool = False,
+    git_pointer: bool = True,
+    keep_on_error: bool = False,
+    dry_run: bool = False,
+    cwd: Optional[str] = None,
+) -> dict:
+    from ..core import convert as core_convert
+    git = _git()
+    src = Path(path).resolve() if path else (Path(cwd).resolve() if cwd else Path.cwd())
+    ctx = core_convert.convert(
+        git, path=src,
+        into=(Path(into).resolve() if into else None),
+        branches=branches, fetch=fetch, force=force,
+        git_pointer=git_pointer, keep_on_error=keep_on_error, dry_run=dry_run,
+    )
+    return {"name": ctx.name, "root": str(ctx.root), "base": ctx.base,
+            "into": bool(into), "dry_run": dry_run}
 
 
 def op_list(

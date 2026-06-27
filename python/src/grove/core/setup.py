@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 from typing import Optional
 
 from . import config
 from .errors import UsageError, ValidationError
 from .gitrunner import GitRunner
-from .repo import RepoContext
+from .repo import RepoContext, write_git_pointer
 
 
 def derive_name(url: str) -> str:
@@ -29,11 +30,17 @@ def setup(
     into: Path,
     name: Optional[str] = None,
     base_branch: str = config.DEFAULT_BASE,
+    git_pointer: bool = True,
+    keep_on_error: bool = False,
     step=lambda msg: None,
 ) -> RepoContext:
     """Creates <into>/<name> with .bare/ and the production/ worktree.
 
     'step' is an optional callback to report progress (provided by the CLI).
+
+    Transactional: if any step fails after the destination is created, the
+    partial <name>/ folder is removed so a retry starts clean. Pass
+    ``keep_on_error=True`` to leave the partial state in place for debugging.
     """
     name = name or derive_name(url)
     root = Path(into).resolve() / name
@@ -42,6 +49,18 @@ def setup(
     if root.exists():
         raise UsageError(f"The destination already exists: {root}")
 
+    try:
+        return _setup_inner(git, url, root, bare, name, base_branch, git_pointer, step)
+    except BaseException:
+        # The destination did not exist before us, so anything at 'root' now is
+        # our partial work: clean it up so the next attempt isn't blocked.
+        if not keep_on_error and root.exists():
+            step(f"Setup failed — cleaning up partial {name}/")
+            shutil.rmtree(root, ignore_errors=True)
+        raise
+
+
+def _setup_inner(git, url, root, bare, name, base_branch, git_pointer, step) -> RepoContext:
     step(f"Cloning bare into {name}/.bare")
     git.run(["clone", "--bare", url, str(bare)], cwd=None)
 
@@ -86,5 +105,9 @@ def setup(
     if config.ARTIFACTS_DIR:
         step(f"Creating local artifacts folder {config.ARTIFACTS_DIR}/")
         (root / config.ARTIFACTS_DIR).mkdir(parents=True, exist_ok=True)
+
+    # Root .git pointer so plain `git` works from the repo root.
+    if git_pointer and write_git_pointer(root):
+        step("Writing root .git pointer (gitdir: ./.bare)")
 
     return RepoContext(root=root, bare=bare, name=name, base=base_branch)

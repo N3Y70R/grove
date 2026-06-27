@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Distribution name on PyPI ("grove" was already taken). The imported package is
 # still `grove` and the commands are still `gwt` and `grove-mcp`.
 name = "grove-wt"
-version = "0.5.0"
+version = "0.6.0"
 description = "Manage git worktrees with a consistent convention and structure (gwt command)"
 readme = "README.md"
 requires-python = ">=3.11"

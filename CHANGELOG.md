@@ -2,6 +2,43 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.6.0
+
+### Changed
+
+- **`setup` and `convert --into` are now transactional**: if they fail partway
+  through, the partial repo folder they created is removed automatically, so a
+  retry starts clean instead of hitting "destination already exists" or leftover
+  `.bare/`. Use `--keep-on-error` (CLI) / `keep_on_error` (MCP) to preserve the
+  partial state for debugging. In-place `convert` never auto-deletes (it could
+  discard files already moved into a worktree): it restores the auto-stash if it
+  fails before any change, and otherwise stops and reports so you can inspect.
+
+### Added
+
+- **`gwt convert`** — turn an existing normal clone into the grove model without
+  re-cloning. In-place by default (reuses `.git`, auto-stashes/restores
+  uncommitted work, preserves ignored files, keeps local branches/stashes);
+  `--into <dir>` builds beside the source leaving it untouched; `--branches
+  current|current+base|all`; submodules/Git LFS refused unless `--force`;
+  `--dry-run`. Exposed as the `grove_convert` MCP tool.
+- **Root `.git` pointer** (`gitdir: ./.bare`) written by `setup` and `convert` by
+  default so plain `git` works from the repo root; disable with `--no-git-pointer`.
+- **`doctor` heals a missing root `.git` pointer** (new auto-fixable
+  `git-pointer` check), so repos created before this feature (or by hand) can be
+  fixed with `gwt doctor --fix`.
+- **`gwt config set | unset | edit`** — change the per-repo `grove.toml` without
+  hand-editing: `set <key> <value>` (list keys like `allowed_types` take a
+  comma-separated value; `ticket_prefixes`/`ticket_pattern` stay mutually
+  exclusive), `unset <key>` (reverts to the profile default), and `edit` (opens
+  `grove.toml` in `$EDITOR`). `set`/`unset` are exposed in the `grove_config` MCP
+  tool via `set_key`/`set_value`/`unset_key`.
+- **`gwt ssh aliases [<url-or-host>]`** — repo↔alias map: lists the
+  `~/.ssh/config` aliases whose `HostName` resolves to a repo's origin host (or a
+  given URL/host), resolving the real host when the origin already uses an alias
+  and marking the one currently applied. Removes the guesswork of "which alias
+  does this repo need?". Exposed as the read-only `grove_ssh_aliases` MCP tool.
+
 ## python — 0.5.0
 
 ### Changed

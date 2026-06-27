@@ -238,6 +238,18 @@ def test_ensure_integration_creates_from_base(repo):
     assert path2 == path
 
 
+def test_doctor_detects_and_fixes_missing_git_pointer(repo):
+    from grove.core import doctor as core_doctor
+    git, ctx = repo
+    (ctx.root / ".git").unlink()                    # remove the pointer
+    issues = core_doctor.diagnose(git, ctx)
+    ptr = [i for i in issues if i.kind == "git-pointer"]
+    assert ptr and ptr[0].fix is not None
+    core_doctor.apply(issues)
+    assert (ctx.root / ".git").is_file()
+    assert (ctx.root / ".git").read_text().strip() == "gitdir: ./.bare"
+
+
 def test_ensure_integration_missing_without_base_errors(repo):
     from grove.core import publish as core_publish
     from grove.core.errors import ValidationError

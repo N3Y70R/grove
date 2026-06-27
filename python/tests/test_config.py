@@ -1,6 +1,9 @@
 """Unit tests for the policy/config layer (profiles, ticket patterns, serialization)."""
 
+import pytest
+
 from grove.core import config
+from grove.core.errors import ValidationError
 
 
 def test_resolve_default_profile():
@@ -54,3 +57,40 @@ def test_effective_policy_roundtrip_renders_toml():
     text = config.render_repo_config(pol)
     assert 'tickets = "required"' in text
     assert "[release]" in text
+
+
+# --- config set / unset ------------------------------------------------- #
+
+def test_set_repo_value_scalar(tmp_path):
+    config.set_repo_value(tmp_path, "default_base", "production")
+    assert config.read_repo_config(tmp_path)["default_base"] == "production"
+
+
+def test_set_repo_value_list_is_split(tmp_path):
+    config.set_repo_value(tmp_path, "allowed_types", "feature, hotfix ,release")
+    assert config.read_repo_config(tmp_path)["allowed_types"] == ["feature", "hotfix", "release"]
+
+
+def test_set_repo_value_rejects_unknown_key(tmp_path):
+    with pytest.raises(ValidationError):
+        config.set_repo_value(tmp_path, "nope", "x")
+
+
+def test_set_repo_value_validates_tickets(tmp_path):
+    with pytest.raises(ValidationError):
+        config.set_repo_value(tmp_path, "tickets", "sometimes")
+    config.set_repo_value(tmp_path, "tickets", "required")  # ok
+
+
+def test_set_prefixes_and_pattern_are_mutually_exclusive(tmp_path):
+    config.set_repo_value(tmp_path, "ticket_pattern", r"[A-Z]+-\d+")
+    config.set_repo_value(tmp_path, "ticket_prefixes", "PROJ,OPS")
+    data = config.read_repo_config(tmp_path)
+    assert data["ticket_prefixes"] == ["PROJ", "OPS"]
+    assert "ticket_pattern" not in data
+
+
+def test_unset_repo_value(tmp_path):
+    config.set_repo_value(tmp_path, "ssh_alias", "work")
+    config.unset_repo_value(tmp_path, "ssh_alias")
+    assert "ssh_alias" not in config.read_repo_config(tmp_path)

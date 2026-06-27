@@ -16,6 +16,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from .errors import ValidationError
+
 try:                       # Python 3.11+
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover  (only interpreters < 3.11)
@@ -267,3 +269,55 @@ def effective_policy() -> dict:
     else:
         pol["ticket_pattern"] = TICKET_PATTERN
     return pol
+
+
+# --------------------------------------------------------------------------- #
+# Editing the repo config (config set/unset)
+# --------------------------------------------------------------------------- #
+
+# Keys a user may set, and which ones are lists (comma-separated on input).
+SETTABLE_KEYS = {
+    "parking_branch", "default_base", "allowed_types", "special_worktrees",
+    "temp_dir", "artifacts_dir", "tickets", "ticket_prefixes", "ticket_pattern",
+    "integration_branch", "ssh_alias", "known_git_hosts",
+}
+_LIST_KEYS = {"allowed_types", "special_worktrees", "ticket_prefixes", "known_git_hosts"}
+
+
+def read_repo_config(bare: Path) -> dict:
+    """Returns the repo's grove.toml as a dict (empty if it doesn't exist)."""
+    cfg = Path(bare) / CONFIG_FILENAME
+    return _read_toml(cfg) if cfg.is_file() else {}
+
+
+def _coerce(key: str, value: str):
+    if key in _LIST_KEYS:
+        return [v.strip() for v in value.split(",") if v.strip()]
+    return value
+
+
+def set_repo_value(bare: Path, key: str, value: str) -> dict:
+    """Sets one key in the repo's grove.toml and rewrites it. Returns the new dict."""
+    if key not in SETTABLE_KEYS:
+        raise ValidationError(
+            f"Unknown config key '{key}'. Settable: {', '.join(sorted(SETTABLE_KEYS))}."
+        )
+    if key == "tickets" and value not in ("off", "optional", "required"):
+        raise ValidationError("tickets must be one of: off, optional, required.")
+    data = read_repo_config(bare)
+    # ticket_prefixes and ticket_pattern are mutually exclusive in the file.
+    if key == "ticket_prefixes":
+        data.pop("ticket_pattern", None)
+    elif key == "ticket_pattern":
+        data.pop("ticket_prefixes", None)
+    data[key] = _coerce(key, value)
+    write_repo_config(bare, data)
+    return data
+
+
+def unset_repo_value(bare: Path, key: str) -> dict:
+    """Removes a key from the repo's grove.toml and rewrites it. Returns the new dict."""
+    data = read_repo_config(bare)
+    data.pop(key, None)
+    write_repo_config(bare, data)
+    return data

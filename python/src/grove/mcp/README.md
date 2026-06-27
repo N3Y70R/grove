@@ -39,8 +39,9 @@ and unit-testable on its own; `server.py` only wraps each function as a tool.
 | `grove_publish` | additive; `regenerate` force-push → `confirm=true` |
 | `grove_doctor` | `fix=true` applies auto-fixable issues |
 | `grove_compare` | read-only ahead/behind (`a`/`b` or `vs`) |
-| `grove_config` | show, or set the SSH alias (`set_ssh_alias`) |
+| `grove_config` | show, set/unset a key (`set_key`/`set_value`/`unset_key`), or set the SSH alias (`set_ssh_alias`) |
 | `grove_ssh_check` | SSH diagnostics for the remote |
+| `grove_ssh_aliases` | repo↔alias map: aliases that match a repo/host (read-only) |
 
 Differences from the CLI: typed inputs (JSON schema) instead of text flags;
 no interaction (destructive actions confirm via a boolean parameter); output

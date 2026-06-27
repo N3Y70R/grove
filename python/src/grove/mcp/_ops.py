@@ -411,6 +411,18 @@ def op_config_set_ssh_alias(*, value: str, cwd: Optional[str] = None) -> dict:
     return {"ssh_alias": core_config.SSH_ALIAS, "origin": new_url}
 
 
+def op_config_set(*, key: str, value: str, cwd: Optional[str] = None) -> dict:
+    repo = _enter(cwd)
+    data = core_config.set_repo_value(repo.bare, key, value)
+    return {"key": key, "value": data.get(key), "config": data}
+
+
+def op_config_unset(*, key: str, cwd: Optional[str] = None) -> dict:
+    repo = _enter(cwd)
+    data = core_config.unset_repo_value(repo.bare, key)
+    return {"unset": key, "config": data}
+
+
 def _ssh_report_to_dict(rep) -> dict:
     return {
         "target": rep.target,
@@ -454,6 +466,28 @@ def op_ssh_check(
                 raise UsageError("No SSH origin here; pass 'target' (URL or host) or set all=true.")
         reports = [sshcheck.check_host(host, live=live)]
     return {"hosts": [_ssh_report_to_dict(r) for r in reports]}
+
+
+def op_ssh_aliases(*, target: Optional[str] = None, cwd: Optional[str] = None) -> dict:
+    """Maps a repo (or host/URL) to the SSH aliases that could serve it."""
+    if target:
+        host = sshcheck.host_from_url(target) or target
+    else:
+        repo = _enter(cwd)
+        url = _origin(repo)
+        host = sshalias.url_host(url) if url else None
+        if not host:
+            raise UsageError("No SSH origin here; pass 'target' (a URL or host).")
+    rep = sshalias.report_for_host(host)
+    return {
+        "host": rep.host,
+        "current": rep.current,
+        "aliases": [
+            {"alias": m.alias, "hostname": m.hostname, "identity_files": m.identity_files,
+             "current": m.alias == rep.current}
+            for m in rep.matches
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- #

@@ -243,6 +243,7 @@ Detects **and fixes** hygiene problems.
 - **Flat folder of an allowed type:** a folder whose branch *is* of a type in `allowed_types` but which is not under its type folder → moves it to the convention.
 - **Old release format:** `release-vX.Y.Z` (dash) → normalizes to `release/vX.Y.Z`.
 - **Incorrect or missing upstream:** worktrees fetched from the origin whose local branch does not track —or tracks wrongly— its origin branch → fixes with `git branch --set-upstream-to`.
+- **Missing root `.git` pointer:** the repo root has no `.git` file pointing at `.bare` → writes `gitdir: ./.bare` (heals repos made before this feature or by hand).
 
 **Reports but does NOT fix** (requires human judgment):
 
@@ -292,6 +293,16 @@ Implementation: config resolution uses `ssh -G <host>` (lets ssh itself resolve 
 
 **Without `~/.ssh/config`:** contextual mode works the same (`ssh -G` uses the defaults) and shows only the keys that exist, warning of the absence of config. In `--all`, with no `Host` to enumerate, grove offers an alternative overview: keys present in `~/.ssh`, agent status, and diagnosis of known git hosts (`known_git_hosts`, configurable; by default `github.com`, `bitbucket.org`, `gitlab.com`).
 
+### 6.9b `gwt ssh aliases [<url-or-host>]`
+
+Shows the **repo↔alias map**: the `~/.ssh/config` aliases whose resolved `HostName` matches a repo's origin host (or the `<url-or-host>` passed). This is the discoverability counterpart of `set-ssh-alias` — when several accounts share a host (e.g. `github.com`), it surfaces the candidate aliases so the user/agent doesn't have to hunt for them. **Read-only.**
+
+- Default target: the current repo's `origin`. If the origin already uses an alias (its resolved `HostName` differs), grove resolves the real host first, then lists every alias for that host and marks the one **currently** applied (`current`).
+- With no repo, a URL or host must be passed.
+- Pairs with `gwt config set-ssh-alias <alias>` (§6.13) to actually pin one.
+
+Exposed as the read-only `grove_ssh_aliases` MCP tool.
+
 ### 6.10 `gwt remove <target> [--delete-branch] [--force] [--merged] [--dry-run]`
 
 Removes worktrees safely. Alias: `gwt rm`.
@@ -335,11 +346,14 @@ This makes `--regenerate --base <branch>` the single way to **create or rebuild*
 
 In all modes, a merge **conflict** aborts the operation (leaves the worktree clean) and asks to resolve by hand. `--dry-run` shows the steps without executing.
 
-### 6.13 `gwt config [show | set-ssh-alias <alias|none>]`
+### 6.13 `gwt config [show | set <key> <value> | unset <key> | edit | set-ssh-alias <alias|none>]`
 
 Shows or adjusts the repo configuration (`.bare/grove.toml`).
 
 - **`show`** (default): reports the repo, `origin` and the effective policy; with `--json`, as a parseable object.
+- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`, `parking_branch`. List keys take a comma-separated value; `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other). Unknown keys and invalid `tickets` values are rejected.
+- **`unset <key>`**: removes the key, reverting it to the active profile/default value.
+- **`edit`**: opens `grove.toml` in `$EDITOR` (else `$VISUAL`, else `vi`).
 - **`set-ssh-alias <alias>`**: saves `ssh_alias` in the config and rewrites the `origin` to the alias (so git uses the correct key); `none` resolves the real host and reverts to the canonical URL.
 
 The alias chosen in `setup` (§6.1) is persisted in `ssh_alias`, and this command lets you query or change it later.

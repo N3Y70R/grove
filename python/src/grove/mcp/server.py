@@ -31,6 +31,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from . import _ops
+from ..core.errors import UsageError
 
 mcp = FastMCP("grove")
 
@@ -208,14 +209,25 @@ def grove_compare(
     return _ops.op_compare(a=a, b=b, vs=vs, fetch=fetch, cwd=cwd)
 
 
-@mcp.tool(annotations=_ann("Show / set repo configuration"))
+@mcp.tool(annotations=_ann("Show / set repo configuration", idempotent=True))
 def grove_config(
     set_ssh_alias: Annotated[Optional[str], Field(description="If given, set the repo's SSH alias and rewrite origin (or 'none' to clear). Omit to just show config.")] = None,
+    set_key: Annotated[Optional[str], Field(description="A grove.toml key to set (e.g. 'default_base', 'tickets', 'allowed_types', 'integration_branch'). Requires set_value.")] = None,
+    set_value: Annotated[Optional[str], Field(description="Value for set_key. For list keys (allowed_types, special_worktrees, ticket_prefixes, known_git_hosts) use a comma-separated string.")] = None,
+    unset_key: Annotated[Optional[str], Field(description="A grove.toml key to remove (reverts to the profile/default value).")] = None,
     cwd: Cwd = None,
 ) -> dict:
-    """Show the repo configuration, or set the SSH alias (rewrites origin)."""
+    """Show the repo configuration, or change it: set the SSH alias (rewrites
+    origin), set an arbitrary grove.toml key, or unset one. Omit all of these to
+    just show the current config."""
     if set_ssh_alias is not None:
         return _ops.op_config_set_ssh_alias(value=set_ssh_alias, cwd=cwd)
+    if set_key is not None:
+        if set_value is None:
+            raise UsageError("set_value is required when set_key is given.")
+        return _ops.op_config_set(key=set_key, value=set_value, cwd=cwd)
+    if unset_key is not None:
+        return _ops.op_config_unset(key=unset_key, cwd=cwd)
     return _ops.op_config_show(cwd=cwd)
 
 
@@ -228,6 +240,16 @@ def grove_ssh_check(
 ) -> dict:
     """Diagnose SSH config for a git remote (keys, agent, permissions)."""
     return _ops.op_ssh_check(target=target, all=all, live=live, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("Map a repo/host to SSH aliases", read_only=True))
+def grove_ssh_aliases(
+    target: Annotated[Optional[str], Field(description="URL or host to map (default: the current repo's origin). Use this to discover which ~/.ssh/config alias a repo should use.")] = None,
+    cwd: Cwd = None,
+) -> dict:
+    """List the ~/.ssh/config aliases that resolve to a repo's host (the
+    repo↔alias map), marking which one is currently applied. Read-only."""
+    return _ops.op_ssh_aliases(target=target, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("Provision an SSH account", idempotent=True))

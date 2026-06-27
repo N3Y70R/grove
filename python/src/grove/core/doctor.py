@@ -9,7 +9,7 @@ from typing import Callable, List, Optional
 from . import config, naming, ops
 from .gitrunner import GitRunner
 from .model import Worktree, list_worktrees
-from .repo import RepoContext
+from .repo import RepoContext, has_git_pointer, write_git_pointer
 
 AUTO = "auto"
 MANUAL = "manual"
@@ -46,6 +46,16 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
     ALLOWED_TOP = _allowed_top()
 
     real = [w for w in wts if not w.is_bare]
+
+    # --- missing root .git pointer ---------------------------------------- #
+    if not has_git_pointer(repo.root):
+        def _fix_pointer():
+            write_git_pointer(repo.root)
+        issues.append(Issue(
+            kind="git-pointer", severity=AUTO, target=".git",
+            message="missing root .git pointer (gitdir: ./.bare)",
+            action="write .git → gitdir: ./.bare", fix=_fix_pointer,
+        ))
 
     # --- orphans ---------------------------------------------------------- #
     def _prune():

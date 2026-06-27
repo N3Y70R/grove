@@ -123,8 +123,9 @@ Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`.
 
-SSH account provisioning (machine-level; see USAGE §`gwt ssh add …`):
-`grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove`.
+SSH discovery / account provisioning (machine-level; see USAGE §`gwt ssh …`):
+`grove_ssh_aliases` (read-only repo↔alias map), `grove_ssh_add`,
+`grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove`.
 
 Destructive tools (`grove_remove`, `grove_sync`, `grove_publish` with
 `regenerate`, and `grove_ssh_remove`) require a `confirm: true` argument; the
@@ -238,6 +239,24 @@ The result includes `created: true/false` and `mode` (`created` | `regenerate` |
 > `grove_remove(target="PROJ-123", delete_branch=true, confirm=true, cwd=…)`
 > "Sweep all worktrees already merged into the base." →
 > `grove_remove(merged=true, confirm=true, cwd=…)`
+
+### Inspect or change the repo config
+
+> "What's the config for `/Users/me/code/app`?" → `grove_config(cwd=…)`
+> "Set the default base to `production` here." →
+> `grove_config(set_key="default_base", set_value="production", cwd=…)`
+> "Allow types feature, hotfix and release." →
+> `grove_config(set_key="allowed_types", set_value="feature,hotfix,release", cwd=…)`
+> "Stop pinning the SSH alias for this repo." →
+> `grove_config(unset_key="ssh_alias", cwd=…)`
+> (list keys take a comma-separated `set_value`; `ticket_prefixes`/`ticket_pattern` are mutually exclusive.)
+
+### Which SSH alias should this repo use?
+
+> "Which SSH alias does `/Users/me/code/app` use (or could use)?" →
+> `grove_ssh_aliases(cwd=…)` (lists aliases for the origin host, marks the current one)
+> "What aliases point at github.com?" → `grove_ssh_aliases(target="github.com")`
+> Then pin one: `grove_config(set_ssh_alias="gh-work", cwd=…)`.
 
 ### SSH accounts (machine-level — no `cwd`)
 

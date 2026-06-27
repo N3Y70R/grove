@@ -446,15 +446,24 @@ Shows or adjusts the repo configuration (`.bare/grove.toml`).
 
 ```
 gwt config [show]                    # reports the configuration (with --json, in JSON)
+gwt config set <key> <value>         # set a key in grove.toml
+gwt config unset <key>               # remove a key (revert to the profile default)
+gwt config edit                      # open grove.toml in $EDITOR
 gwt config set-ssh-alias <alias>     # sets the SSH alias and rewrites the origin
 gwt config set-ssh-alias none        # returns to the canonical URL
 ```
 
 - **`show`** (default): reports the repo, origin, and the effective policy. With the global `--json` flag, it delivers it as a parseable object (ideal for inspecting a repo from scripts).
+- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`, `parking_branch`. List keys take a comma-separated value (`feature,hotfix,release`); `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other).
+- **`unset <key>`**: removes the key so the value falls back to the active profile/default.
+- **`edit`**: opens `grove.toml` in `$EDITOR` (or `$VISUAL`, else `vi`) for free-form edits.
 - **`set-ssh-alias <alias>`**: saves `ssh_alias` in `grove.toml` and **rewrites the `origin`** to the alias (`git@github.com:...` → `git@gh-work:...`), so that `fetch`/`push` use the correct key. `none` resolves the alias's real host and returns the `origin` to its canonical form.
 
 ```
 gwt config --json
+gwt config set default_base production
+gwt config set allowed_types feature,hotfix,release
+gwt config unset ssh_alias
 gwt config set-ssh-alias gh-work
 ```
 
@@ -484,6 +493,24 @@ It reports, per host: the `HostName`, `User`, `IdentitiesOnly`, and the resolved
 gwt ssh check                              # the origin of the current repo
 gwt ssh check git@github.com:acme/repo.git
 gwt ssh check --all --live
+```
+
+---
+
+## `gwt ssh aliases`
+
+Shows the **repo↔alias map**: the `~/.ssh/config` aliases whose resolved `HostName` matches a repo's origin host (or a host/URL you pass). Answers "which alias should this repo use?" — the friction point when several accounts share a host like `github.com`. **Read-only.**
+
+```
+gwt ssh aliases [<url-or-host>]
+```
+
+By default it uses the current repo's `origin`. If the origin already points at an alias (e.g. `git@gh-work:…`), grove resolves the real host first, lists every alias for it, and marks the one currently applied. With no repo, pass a URL or host. List the candidates, then pin one with `gwt config set-ssh-alias <alias>`.
+
+```
+gwt ssh aliases                            # aliases for the current repo's host
+gwt ssh aliases git@github.com:acme/repo.git
+gwt ssh aliases github.com --json
 ```
 
 ---

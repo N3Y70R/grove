@@ -19,6 +19,12 @@ class AliasMatch(NamedTuple):
     identity_files: List[str]
 
 
+class AliasReport(NamedTuple):
+    host: str                    # the real hostname (resolved if the input was an alias)
+    current: Optional[str]       # alias currently in effect (input host if it is an alias)
+    matches: List["AliasMatch"]  # all aliases in ~/.ssh/config pointing at 'host'
+
+
 def split_ssh_url(url: str):
     """(scheme, user, host, rest) for SSH URLs; None if not SSH (e.g. https)."""
     url = url.strip()
@@ -65,3 +71,21 @@ def matching_aliases(host: str, echo: Optional[Echo] = None) -> List[AliasMatch]
         if hostname.lower() == host.lower():
             out.append(AliasMatch(alias, hostname, cfg.get("identityfile", [])))
     return out
+
+
+def report_for_host(host: str, echo: Optional[Echo] = None) -> AliasReport:
+    """Maps a host (or an alias) to the candidate ~/.ssh/config aliases.
+
+    If `host` is itself an alias (its resolved HostName differs), the real
+    hostname is used to find siblings and `current` records the active alias.
+    This is what answers "which SSH alias should this repo use?".
+    """
+    real = host
+    current: Optional[str] = None
+    cfg, err = _ssh_g(host, echo)
+    if not err:
+        hostname = cfg.get("hostname", "")
+        if hostname and hostname.lower() != host.lower():
+            real = hostname
+            current = host
+    return AliasReport(host=real, current=current, matches=matching_aliases(real, echo))

@@ -689,6 +689,50 @@ def cmd_ssh_check(args, out: Output) -> int:
     return 0
 
 
+def cmd_ssh_aliases(args, out: Output) -> int:
+    """Maps a repo (or a host/URL) to the SSH aliases that could serve it."""
+    from ..core import sshalias, sshcheck
+
+    target = args.target
+    if target:
+        host = sshcheck.host_from_url(target) or target
+    else:
+        repo = _enter_repo(args)
+        origin = _origin_of(repo)
+        if not origin:
+            raise UsageError("No repo/origin here. Pass a URL or host.")
+        host = sshalias.url_host(origin)
+        if not host:
+            raise UsageError(f"The origin is not SSH ({origin}); no alias applies.")
+
+    rep = sshalias.report_for_host(host, out.git_echo)
+
+    if out.json_mode:
+        out.set_result({
+            "host": rep.host,
+            "current": rep.current,
+            "aliases": [
+                {"alias": m.alias, "hostname": m.hostname, "identity_files": m.identity_files,
+                 "current": m.alias == rep.current}
+                for m in rep.matches
+            ],
+        })
+        out.success(f"{len(rep.matches)} alias(es) for {rep.host}")
+        return 0
+
+    out.plain(f"SSH aliases for {rep.host}:")
+    if not rep.matches:
+        out.plain("  (none in ~/.ssh/config — the canonical host is used directly)")
+        return 0
+    for m in rep.matches:
+        mark = out._c(" ← current", "green") if m.alias == rep.current else ""
+        keys = ", ".join(m.identity_files) or "(no IdentityFile)"
+        out.plain(f"  {out._c('•', 'dim')} {m.alias}   {keys}{mark}")
+    if rep.current is None:
+        out.plain("  (none applied to this origin; set one with: gwt config set-ssh-alias <alias>)")
+    return 0
+
+
 def cmd_ssh_add(args, out: Output) -> int:
     from ..core import sshprov
 
@@ -1041,6 +1085,33 @@ def cmd_config(args, out: Output) -> int:
         out.success(f"ssh_alias = '{core_config.SSH_ALIAS or '(none)'}' · origin = {new_url}")
         return 0
 
+    if args.config_command == "set":
+        data = core_config.set_repo_value(repo.bare, args.key, args.value)
+        out.set_result({"key": args.key, "value": data.get(args.key), "config": data})
+        out.success(f"config set · {args.key} = {data.get(args.key)}")
+        return 0
+
+    if args.config_command == "unset":
+        data = core_config.unset_repo_value(repo.bare, args.key)
+        out.set_result({"unset": args.key, "config": data})
+        out.success(f"config unset · {args.key}")
+        return 0
+
+    if args.config_command == "edit":
+        import os
+        import subprocess
+        cfg_path = repo.bare / core_config.CONFIG_FILENAME
+        if not cfg_path.exists():
+            core_config.write_repo_config(repo.bare, core_config.effective_policy())
+        editor = os.environ.get("EDITOR") or os.environ.get("VISUAL") or "vi"
+        try:
+            subprocess.run([*editor.split(), str(cfg_path)], check=False)
+        except OSError as exc:
+            raise UsageError(f"could not launch editor '{editor}': {exc}")
+        out.set_result({"edited": str(cfg_path)})
+        out.success(f"edited {cfg_path}")
+        return 0
+
     # show
     pol = core_config.effective_policy()
     report = {"repo": repo.name, "root": str(repo.root), "origin": origin, **pol}
@@ -1235,6 +1306,18 @@ def build_parser() -> argparse.ArgumentParser:
     _common(cset)
     cset.add_argument("value", help="~/.ssh/config alias (or 'none' for the canonical URL)")
     cset.set_defaults(func=cmd_config, config_command="set-ssh-alias")
+    cput = cfg_sub.add_parser("set", help="set a repo config key in grove.toml")
+    _common(cput)
+    cput.add_argument("key", help="config key (e.g. default_base, tickets, allowed_types)")
+    cput.add_argument("value", help="value; comma-separated for list keys")
+    cput.set_defaults(func=cmd_config, config_command="set")
+    cdel = cfg_sub.add_parser("unset", help="remove a repo config key from grove.toml")
+    _common(cdel)
+    cdel.add_argument("key", help="config key to remove")
+    cdel.set_defaults(func=cmd_config, config_command="unset")
+    cedit = cfg_sub.add_parser("edit", help="open grove.toml in $EDITOR")
+    _common(cedit)
+    cedit.set_defaults(func=cmd_config, config_command="edit")
     # 'gwt config' without a subcommand = show
     _common(cfgp)
 
@@ -1247,6 +1330,11 @@ def build_parser() -> argparse.ArgumentParser:
     chk.add_argument("--all", action="store_true", help="all Hosts in ~/.ssh/config")
     chk.add_argument("--live", action="store_true", help="authentication test (ssh -T)")
     chk.set_defaults(func=cmd_ssh_check)
+
+    alp = ssh_sub.add_parser("aliases", help="show SSH aliases that match a repo/host (repo↔alias map)")
+    _common(alp)
+    alp.add_argument("target", nargs="?", help="URL or host (default: repo origin)")
+    alp.set_defaults(func=cmd_ssh_aliases)
 
     acc = ssh_sub.add_parser("accounts", help="list grove-managed SSH accounts")
     _common(acc)

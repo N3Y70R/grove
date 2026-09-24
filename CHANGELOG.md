@@ -2,6 +2,24 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.9.2
+
+### Added
+
+- **`gwt start`** (MCP: **`grove_start`**): start or resume work on a ticket in
+  one idempotent call — fetch, then return the ticket's existing worktree
+  (`existing`), bring its branch if it exists locally or on origin (`resumed`), or
+  create it from the freshly fetched `origin/<base>` (`created`). Returns path,
+  branch, base, upstream, gitdir and next steps; refuses ambiguous tickets. It is
+  the composite operation the feedback asked for ("start ticket X from base Y").
+
+### Fixed
+
+- **A branch created from a remote base tracked it**: `create --base origin/x`
+  (and any start point that is a remote-tracking ref) made `origin/x` the new
+  branch's upstream, so `git pull` pulled the base and `list` measured against
+  it. New branches are now created with `--no-track`.
+
 ## python — 0.9.1
 
 ### Added

@@ -312,7 +312,7 @@ days, L more).
 | 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
 | 15 | ~~Migrate to mcp 2.x~~ ✅ 0.9.0 | §17 | M |
 | 16 | ~~Split `cli/main.py`~~ ✅ 0.8.4 | §17 | M |
-| 17 | Composite MCP op "start ticket X from base Y" | meta | M |
+| 17 | ~~Composite MCP op "start ticket X from base Y"~~ ✅ 0.9.2 (`gwt start` / `grove_start`) | meta | M |
 | 18 | ~~Docs: arbitrary-base recipe, profile editing & precedence, work-style profile, SSH key selection, ticket prefixes, release tagging~~ ✅ 0.8.2 | §1–4, §16, §17 | M |
 | 19 | ~~Suggest an existing base when the configured one is missing~~ ✅ 0.8.1 | §3 | S |
 | 20 | ~~`rel_path` correct from another mount~~ ✅ 0.8.0 (and never prunable/orphan there) | §7 | S |
@@ -332,4 +332,5 @@ suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1); `unset` falls back t
 recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
 (0.8.3); `cli/main.py` split into `cli/commands/*` (0.8.4); mcp 2.x, default profile for
 repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
-results (0.9.1).
+results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
+(0.9.2).

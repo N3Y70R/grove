@@ -61,7 +61,7 @@ connectors with these tools.
 ## Install & run
 
 ```
-pip install "grove[mcp]"   # base CLI stays dependency-free; SDK is an extra
+pip install "grove-wt[mcp]"   # base CLI stays dependency-free; SDK is an extra
 grove-mcp                  # starts the server over stdio
 # or
 python -m grove.mcp

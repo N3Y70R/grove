@@ -10,7 +10,7 @@ keys/slugs arrive by parameter. Enrichment (e.g. fetching an issue title) is
 the agent's job, composing its own connectors with these tools.
 
 Run with the ``grove-mcp`` entry point, or ``python -m grove.mcp``.
-Requires the optional extra: ``pip install "grove[mcp]"``.
+Requires the optional extra: ``pip install "grove-wt[mcp]"``.
 
 Discoverability note: every tool carries per-parameter descriptions, enums for
 constrained choices, and MCP annotations (read-only / destructive / offline) so
@@ -25,9 +25,16 @@ try:
     from mcp.types import ToolAnnotations
     from pydantic import Field
 except ModuleNotFoundError as exc:  # pragma: no cover
-    raise SystemExit(
-        "The MCP SDK is not installed. Install the optional extra:\n"
-        '    pip install "grove[mcp]"'
+    # ImportError (not SystemExit) so importers like pytest report it cleanly.
+    try:
+        import mcp as _mcp_pkg  # noqa: F401
+    except ModuleNotFoundError:
+        _hint = "The MCP SDK is not installed."
+    else:
+        _hint = "Incompatible MCP SDK version (grove requires mcp<2)."
+    raise ImportError(
+        f"{_hint} Install the optional extra:\n"
+        '    pip install "grove-wt[mcp]"'
     ) from exc
 
 from . import _ops

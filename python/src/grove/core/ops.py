@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
+from typing import List, Callable
 
+from . import config
 from .errors import GitError, ValidationError
 from .gitrunner import GitRunner
 from .repo import RepoContext
@@ -27,6 +28,51 @@ def _ensure_free(repo: RepoContext, rel_path: str) -> Path:
     return path
 
 
+# Usual names for a base branch, tried when the requested one doesn't exist.
+_COMMON_BASES = ("main", "master", "production", "develop", "development")
+
+
+def branch_candidates(git: GitRunner, cwd, prefixes=("refs/heads/", "refs/remotes/origin/"),
+                      exclude=()) -> List[str]:
+    """Existing branches worth suggesting as a base: the configured base and the
+    usual names first; if none exists, whatever branches there are (max 8)."""
+    def exists(name):
+        return any(git.ok(["rev-parse", "--verify", "-q", f"{p}{name}"], cwd=cwd) for p in prefixes)
+
+    wanted = [config.DEFAULT_BASE, *_COMMON_BASES]
+    found = [b for i, b in enumerate(wanted) if b not in wanted[:i] and b not in exclude and exists(b)]
+    if found:
+        return found
+    names = []
+    for p in prefixes:
+        out = git.run(["for-each-ref", "--format=%(refname)", p], cwd=cwd,
+                      check=False, mutating=False).stdout.split()
+        for ref in out:
+            n = ref[len(p):]
+            if n not in names and n not in exclude and n not in ("HEAD", config.PARKING_BRANCH):
+                names.append(n)
+    return names[:8]
+
+
+def _require_base(git: GitRunner, repo: RepoContext, base: str) -> None:
+    """Fail with a helpful message (instead of git's 'invalid reference') when
+    the base doesn't exist locally or on origin."""
+    if git.ok(["rev-parse", "--verify", "-q", f"{base}^{{commit}}"], cwd=repo.bare):
+        return
+    if git.ok(["rev-parse", "--verify", "-q", f"refs/remotes/origin/{base}"], cwd=repo.bare):
+        return
+    cands = branch_candidates(git, repo.bare, exclude=(base,))
+    msg = f"Base branch '{base}' does not exist (locally or on origin)."
+    if cands:
+        msg += f" Existing candidates: {', '.join(cands)}."
+        if base == config.DEFAULT_BASE:
+            msg += (f" The repo's default_base looks outdated; fix it with: "
+                    f"gwt config set default_base {cands[0]}")
+        else:
+            msg += f" Use --base {cands[0]}."
+    raise ValidationError(msg)
+
+
 def add_new(
     git: GitRunner,
     repo: RepoContext,
@@ -42,6 +88,7 @@ def add_new(
             f"Branch '{branch}' already exists. "
             f"Use 'gwt track {branch}' to create the worktree from the existing branch."
         )
+    _require_base(git, repo, base)
     path = _ensure_free(repo, rel_path)
     step(f"Creating worktree {rel_path}/ with new branch {branch} (base {base})")
     git.run(["worktree", "add", "-b", branch, str(path), base], cwd=repo.bare)

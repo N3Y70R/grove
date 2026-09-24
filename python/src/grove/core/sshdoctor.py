@@ -106,8 +106,8 @@ def _check_global(git) -> List[Finding]:
     if gitidentity._get_global(git, "user.useConfigOnly").lower() != "true":
         out.append(Finding("useconfigonly", "fix", "~/.gitconfig",
                            "user.useConfigOnly unset → git may auto-invent an identity",
-                           fixer=lambda: git.run(["config", "--global",
-                                                  "user.useConfigOnly", "true"])))
+                           fixer=lambda: gitidentity.run_global(
+                               git, ["config", "--global", "user.useConfigOnly", "true"])))
     if not gitidentity._get_global(git, "user.name"):
         out.append(Finding("username", "review", "~/.gitconfig",
                            "global user.name is not set "

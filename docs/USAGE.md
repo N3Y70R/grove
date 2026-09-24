@@ -188,7 +188,7 @@ gwt create <type> "<name>"                              # when tickets = off
 
 The **name is provided by you**; grove only normalizes it (lowercase, hyphens, no accents) and validates it — it does not summarize it or derive it from any source.
 
-`create` is only for **new** branches: it validates that the branch does not exist (neither locally nor in the origin) and that the folder is free; if something fails, it reports the reason. If the branch **already exists**, use `gwt track <branch>` (which derives the name from the existing branch). The new branch is not tracked to the base; the upstream is set on the first `git push -u`.
+`create` is only for **new** branches: it validates that the branch does not exist (neither locally nor in the origin) and that the folder is free; if something fails, it reports the reason. If the **base** doesn't exist, it names the existing candidates and the fix (`--base <candidate>`, or `gwt config set default_base <candidate>` when your `grove.toml` points at a base the repo doesn't have). If the branch **already exists**, use `gwt track <branch>` (which derives the name from the existing branch). The new branch is not tracked to the base; the upstream is set on the first `git push -u`.
 
 The ticket behavior depends on the repo's `tickets` policy:
 

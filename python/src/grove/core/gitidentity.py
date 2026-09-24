@@ -27,9 +27,26 @@ _HOST_FROM_INSTEADOF = re.compile(r'(?:git@|https://)(?P<host>[\w.\-]+)[:/]')
 # Global scalars (via git config)
 # --------------------------------------------------------------------------- #
 
+def _global_cwd():
+    """A neutral directory for machine-level git commands.
+
+    `git config --global` doesn't need a repo, but git still inspects the cwd:
+    inside a folder whose `.git` is broken (a worktree seen from another mount,
+    a deleted repo) it fails with "not a git repository". Running from $HOME
+    avoids depending on wherever the process happens to be.
+    """
+    home = plat.paths().home
+    return home if home.is_dir() else None
+
+
+def run_global(git, args, **kw):
+    """Run a `git config --global …` command from a neutral cwd."""
+    return git.run(args, cwd=_global_cwd(), **kw)
+
+
 def _get_global(git, key: str) -> str:
-    return git.run(["config", "--global", "--get", key],
-                   check=False, mutating=False).stdout.strip()
+    return run_global(git, ["config", "--global", "--get", key],
+                      check=False, mutating=False).stdout.strip()
 
 
 def harden_global(git, name: Optional[str] = None) -> dict:
@@ -37,11 +54,11 @@ def harden_global(git, name: Optional[str] = None) -> dict:
     and, if missing and `name` is given, `user.name`. Returns {changes, name}."""
     changes: List[str] = []
     if _get_global(git, "user.useConfigOnly").lower() != "true":
-        git.run(["config", "--global", "user.useConfigOnly", "true"])
+        run_global(git, ["config", "--global", "user.useConfigOnly", "true"])
         changes.append("user.useConfigOnly = true")
     cur_name = _get_global(git, "user.name")
     if not cur_name and name:
-        git.run(["config", "--global", "user.name", name])
+        run_global(git, ["config", "--global", "user.name", name])
         cur_name = name
         changes.append(f"user.name = {name}")
     return {"changes": changes, "name": cur_name}
@@ -49,8 +66,8 @@ def harden_global(git, name: Optional[str] = None) -> dict:
 
 def conflicting_url_rewrites(git) -> List[Tuple[str, str]]:
     """Global `url.*` rewrites (for doctor to review; e.g. token-bearing ones)."""
-    proc = git.run(["config", "--global", "--get-regexp", r"^url\."],
-                   check=False, mutating=False)
+    proc = run_global(git, ["config", "--global", "--get-regexp", r"^url\."],
+                      check=False, mutating=False)
     out: List[Tuple[str, str]] = []
     for line in proc.stdout.splitlines():
         if " " in line:

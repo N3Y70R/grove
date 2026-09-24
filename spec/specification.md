@@ -420,6 +420,8 @@ It fits with the local artifacts folder (§6.14): patches are kept locally and a
 - Branch type within the allowed set.
 - Folder ticket = branch ticket in ticket worktrees.
 - Do not create branches/folders that already exist.
+- The base must exist (locally or on origin). If it doesn't, fail with the existing candidates (the configured base and usual names: `main`, `master`, `production`, `develop`, `development`) and the fix: `--base <candidate>`, or `gwt config set default_base <candidate>` when the missing one is the configured `default_base`. `setup` does the same with the branches on origin when neither the requested base nor origin's default exist.
+- Machine-level git commands (`git config --global`, used by `ssh add`/`ssh doctor`) run from `$HOME`, so a broken repo in the current directory can't make them fail.
 - `release`: mandatory version and no collision with the origin.
 - Protected special ones: `production`, `temporary-unified-test` are never deleted automatically; `temp/*` is disposable.
 

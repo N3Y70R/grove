@@ -90,9 +90,16 @@ def _setup_inner(git, url, root, bare, name, base_branch, git_pointer, step) -> 
                  f"using origin's default '{detected}'")
             base_branch = detected
         else:
-            raise ValidationError(
-                f"Origin does not have the base branch '{base_branch}'; it cannot be initialized."
-            )
+            from .ops import branch_candidates
+            cands = branch_candidates(git, bare, prefixes=("refs/heads/",),
+                                      exclude=(base_branch,))
+            msg = f"Origin does not have the base branch '{base_branch}'"
+            msg += (f" and its default branch ('{detected}') doesn't exist either."
+                    if detected else ".")
+            if cands:
+                msg += (f" Branches on origin: {', '.join(cands)}. "
+                        f"Re-run with --base {cands[0]}.")
+            raise ValidationError(msg)
 
     step(f"Creating parking branch {config.PARKING_BRANCH} (base {base_branch})")
     git.run(["branch", config.PARKING_BRANCH, base_branch], cwd=bare)

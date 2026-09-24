@@ -28,7 +28,9 @@ jobs:
         run: pip install "./python[test,mcp]"
 
       - name: Unit + integration tests
-        run: pytest python -q
+        run: |
+          git --version   # relative-worktree tests need git >= 2.48 (skipped otherwise, see -rs)
+          pytest python -q -rs
 
       - name: Smoke test (--version / --help)
         run: |

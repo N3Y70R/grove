@@ -2,6 +2,27 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.11.0
+
+### Added
+
+- **Opt-in relative worktree paths**: `relative_worktrees = true` in
+  `grove.toml` (`gwt config set relative_worktrees true`) makes every
+  worktree's `.git` and its admin `gitdir` relative, so the repo works from any
+  mount (container, VM). grove sets `worktree.useRelativePaths` in the bare —
+  every later `git worktree add/move/repair` follows — and converts existing
+  worktrees; `false` converts them back and removes
+  `extensions.relativeWorktrees`. **Off by default** because it isn't backward
+  compatible: older git (< 2.48) and libgit2 < 1.9.4 refuse such repos (verified:
+  git 2.34 fails with "unknown repository extension"). grove refuses to enable it
+  on an older git; profiles can carry it (`setup`/`convert` apply it, warning on
+  an older git); `doctor` fixes a repo whose paths don't match the setting.
+
+### Tests / CI
+
+- Tested against a real git 2.51 (the full suite passes on it too); the CI now
+  prints `git --version` and the reasons for skipped tests.
+
 ## python — 0.10.0
 
 ### Changed

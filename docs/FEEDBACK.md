@@ -311,7 +311,7 @@ days, L more).
 | 10 | ~~`version` in `grove_config` / `grove_doctor`~~ ✅ 0.7.1 | §15 | S |
 | 11 | ~~`kind: "base"` for the base worktree~~ ✅ 0.8.0 (also protected from `remove`) | §13 | S |
 | 12 | ~~`gwt fetch` verb~~ ✅ 0.8.3 | §8 | S |
-| 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
+| 13 | ~~Opt-in relative worktree paths (`relative_worktrees`)~~ ✅ 0.11.0 | §7 | M |
 | 14 | ~~Parking branch out of `refs/heads`~~ ✅ 0.10.0 — removed: bare `HEAD` → base; `doctor` migrates | §12 | M |
 | 15 | ~~Migrate to mcp 2.x~~ ✅ 0.9.0 | §17 | M |
 | 16 | ~~Split `cli/main.py`~~ ✅ 0.8.4 | §17 | M |
@@ -336,4 +336,4 @@ recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
 (0.8.3); `cli/main.py` split into `cli/commands/*` (0.8.4); mcp 2.x, default profile for
 repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
 results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
-(0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0).
+(0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0); opt-in `relative_worktrees` (0.11.0).

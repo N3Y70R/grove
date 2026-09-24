@@ -2,6 +2,24 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.11.1
+
+### Added
+
+- **Typed MCP output schemas** for the 12 everyday tools (`grove_list`,
+  `grove_start`, `grove_fetch`, `grove_create`, `grove_track`, `grove_remove`,
+  `grove_reset`/`grove_sync`, `grove_doctor`, `grove_compare`, `grove_setup`,
+  `grove_convert`): every field with its type, allowed values (e.g. `mode`:
+  existing/resumed/created; `status`: in sync/ahead/behind/diverged) and a
+  description, instead of a generic "object". An agent now knows what it will
+  receive before calling. Results are unchanged.
+
+### Tests
+
+- **Output contract test**: calls every typed tool through the MCP server on a
+  real repo and checks `structured_content` equals the JSON text — the SDK
+  silently drops keys a schema doesn't declare, so any drift fails the test.
+
 ## python — 0.11.0
 
 ### Added

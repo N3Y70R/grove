@@ -321,6 +321,8 @@ days, L more).
 | 20 | ~~`rel_path` correct from another mount~~ ✅ 0.8.0 (and never prunable/orphan there) | §7 | S |
 | 21 | ~~CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14)~~ ✅ 0.8.1 | — | S |
 | 22 | ~~Structured MCP results so clients get `structured_content`, not only JSON text~~ ✅ 0.9.1 | §17 | S |
+| 23 | ~~Typed output schemas (fields, types, descriptions) for the everyday MCP tools~~ ✅ 0.11.1 | §17 | M |
+| 24 | Typed output schemas for `grove_config`, `grove_publish` and `grove_ssh_*` (shapes vary per mode) | §17 | M |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -336,4 +338,5 @@ recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
 (0.8.3); `cli/main.py` split into `cli/commands/*` (0.8.4); mcp 2.x, default profile for
 repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
 results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
-(0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0); opt-in `relative_worktrees` (0.11.0).
+(0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0); opt-in `relative_worktrees` (0.11.0); typed MCP output schemas for the
+everyday tools + output contract test (0.11.1).

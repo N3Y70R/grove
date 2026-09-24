@@ -337,7 +337,7 @@ Safeguards: the **base** worktree and the special ones (`production`, `temporary
 
 ### 6.11 `gwt reset [<target>] [--clean] [--yes] [--dry-run]`
 
-*(Formerly `gwt sync`, renamed in python 0.7.0 because "sync" reads as "update from the remote" while it **discards** local work. `sync` remains as a deprecated alias that prints a warning; MCP: `grove_reset`, with `grove_sync` as a deprecated alias.)* To only bring remote changes without touching worktrees, use `gwt compare --fetch` (§6.15).
+*(Formerly `gwt sync`, renamed in python 0.7.0 because "sync" reads as "update from the remote" while it **discards** local work. `sync` remains as a deprecated alias that prints a warning; MCP: `grove_reset`, with `grove_sync` as a deprecated alias.)* To only bring remote changes without touching worktrees, use `gwt fetch` (§6.14b).
 
 Resets a worktree to the origin's state: `git fetch origin <branch>` + `git reset --hard origin/<branch>`. Intended for branches that are **regenerated/force-pushed** (e.g. the shared test integration branch), where a normal `pull` diverges.
 
@@ -389,6 +389,10 @@ Prints (and creates if missing) the path of the repo's **local artifacts/documen
 - `setup` creates the folder upon initialization.
 
 It is not versioned, so it has no history; if history is wanted, it is the user's responsibility (e.g. a git of their own inside that folder).
+
+### 6.14b `gwt fetch [--prune]`
+
+`git fetch origin` (with `--prune`, also drops `origin/*` refs of branches deleted on the remote), then reports every worktree's ahead/behind against `compared_to` (its upstream, or the base when it has none, as in `list`) with a status word (`in sync`/`ahead`/`behind`/`diverged`) and `dirty`. **Never modifies a worktree**: it is the safe way to bring remote changes, as opposed to `reset` (§6.11). MCP: `grove_fetch`.
 
 ### 6.15 `gwt compare [<a>] [<b>] [--vs <ref>] [--fetch]`
 

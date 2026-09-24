@@ -250,7 +250,8 @@ The result includes `created: true/false` and `mode` (`created` | `regenerate` |
 ### Reset / clean up (destructive → need confirmation)
 
 > "Bring what's new on the remote (don't lose anything)." →
-> `grove_compare(vs="main", fetch=true, cwd=…)` — safe: only updates `origin/*`.
+> `grove_fetch(cwd=…)` — safe: only updates `origin/*` and reports each worktree's
+> ahead/behind. (Against one branch: `grove_compare(vs="main", fetch=true, cwd=…)`.)
 
 > "Reset the integration worktree to origin (discard local), in `…/app`."
 > → `grove_reset(target="temporary-unified-test", confirm=true, cwd=…)`

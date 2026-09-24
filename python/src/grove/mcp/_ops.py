@@ -286,7 +286,7 @@ def op_reset(
 ) -> dict:
     if not confirm:
         raise UsageError("reset DISCARDS local commits and changes in the worktree; "
-                         "set confirm=true. To only bring remote changes use grove_compare(fetch=true).")
+                         "set confirm=true. To only bring remote changes use grove_fetch.")
     git = _git()
     repo = _enter(cwd)
     wt = _target_worktree(git, repo, target)
@@ -364,6 +364,13 @@ def op_doctor(
         "applied": applied,
         "version": __version__,
     }
+
+
+def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
+    from ..core import fetch as core_fetch
+    git = _git()
+    repo = _enter(cwd)
+    return {"prune": prune, "worktrees": core_fetch.fetch(git, repo, prune=prune)}
 
 
 def op_compare(

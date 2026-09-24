@@ -421,7 +421,7 @@ def cmd_reset(args, out: Output) -> int:
     if getattr(args, "command", None) == "sync":
         out.warn("'gwt sync' is deprecated and will be removed; use 'gwt reset' "
                  "(same behavior: it DISCARDS local commits and changes). "
-                 "To only bring remote changes, use 'gwt compare --fetch'.")
+                 "To only bring remote changes, use 'gwt fetch'.")
     git = _make_runner(args, out)
     repo = _enter_repo(args)
 
@@ -921,6 +921,34 @@ def _cwd_branch(git, repo):
     return None
 
 
+def cmd_fetch(args, out: Output) -> int:
+    from ..core import fetch as core_fetch
+
+    git = _make_runner(args, out)
+    repo = _enter_repo(args)
+    rows = core_fetch.fetch(git, repo, prune=args.prune, step=out.step)
+    behind = [r for r in rows if r["behind"]]
+    if out.json_mode:
+        out.set_result({"prune": args.prune, "worktrees": rows})
+        out.success(f"Fetched from origin; {len(behind)} worktree(s) behind")
+        return 0
+    out.success("Fetched from origin (worktrees untouched)")
+    if rows:
+        w0 = max(len("WORKTREE"), *(len(r["worktree"]) for r in rows))
+        out.plain(f"  {'WORKTREE':<{w0}}   STATUS")
+        for r in rows:
+            if r["ahead"] is None:
+                status = "no upstream"
+            else:
+                status = f"↑{r['ahead']} ↓{r['behind']} vs {r['compared_to']}  {r['status']}"
+            dirty = "  (dirty)" if r["dirty"] else ""
+            out.plain(f"  {r['worktree']:<{w0}}   {status}{dirty}")
+    if behind:
+        out.plain("To bring a worktree up to date: cd <worktree> && git merge --ff-only "
+                  "(or git pull). grove never changes your worktrees on fetch.")
+    return 0
+
+
 def cmd_compare(args, out: Output) -> int:
     from ..core import compare as core_compare
 
@@ -1268,6 +1296,15 @@ def build_parser() -> argparse.ArgumentParser:
     syp.add_argument("--dry-run", dest="dry_run", action="store_true",
                      help="show what it would do without executing")
     syp.set_defaults(func=cmd_reset)
+
+    fp = sub.add_parser(
+        "fetch",
+        help="bring what's new on origin and show each worktree's ahead/behind "
+             "(safe: never touches your worktrees)")
+    _common(fp)
+    fp.add_argument("--prune", action="store_true",
+                    help="also drop origin/* refs of branches deleted on the remote")
+    fp.set_defaults(func=cmd_fetch)
 
     mp = sub.add_parser(
         "compare",

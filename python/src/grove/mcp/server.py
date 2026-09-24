@@ -204,7 +204,7 @@ def grove_reset(
     (fetch + reset --hard). Requires confirm=true.
 
     For branches that are regenerated/force-pushed. To only BRING remote changes
-    without losing anything, use grove_compare(fetch=true) instead.
+    without losing anything, use grove_fetch instead.
 
     CLI: `gwt reset [target] [--clean] [--yes]`
     """
@@ -219,7 +219,7 @@ def grove_sync(
     cwd: Cwd = None,
 ) -> dict:
     """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
-    to origin). To only bring remote changes, use grove_compare(fetch=true).
+    to origin). To only bring remote changes, use grove_fetch.
 
     CLI: `gwt sync` (deprecated) → `gwt reset`
     """
@@ -265,6 +265,23 @@ def grove_doctor(
     CLI: `gwt doctor [--fix] [--dry-run]`
     """
     return _ops.op_doctor(fix=fix, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("Fetch from origin (never touches worktrees)", idempotent=True))
+def grove_fetch(
+    prune: Annotated[bool, Field(description="Also drop origin/* refs of branches deleted on the remote (git fetch --prune).")] = False,
+    cwd: Cwd = None,
+) -> dict:
+    """Bring what's new on origin and report each worktree's ahead/behind — the
+    SAFE way to update from the remote: it only updates origin/* refs and never
+    modifies any worktree (unlike grove_reset, which discards local work).
+
+    Each row: worktree, branch, compared_to, ahead, behind, status
+    (in sync | ahead | behind | diverged), dirty.
+
+    CLI: `gwt fetch [--prune]`
+    """
+    return _ops.op_fetch(prune=prune, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("Compare branches (ahead/behind)", read_only=True))

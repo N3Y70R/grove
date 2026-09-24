@@ -355,7 +355,7 @@ gwt publish DROP-123 --into temporary-unified-test --dry-run
 
 **Discards local work:** resets a worktree to its origin branch (`fetch` + `reset --hard`). Useful for branches that are regenerated/force-pushed, like a shared test integration branch, where a normal `pull` diverges.
 
-> Renamed in 0.7.0: `sync` sounded like "update from the remote". `gwt sync` still works but warns. To **only bring** remote changes without touching anything, use `gwt compare --fetch`.
+> Renamed in 0.7.0: `sync` sounded like "update from the remote". `gwt sync` still works but warns. To **only bring** remote changes without touching anything, use `gwt fetch`.
 
 ```
 gwt reset [<target>] [--clean] [--yes] [--dry-run]
@@ -375,6 +375,30 @@ gwt reset temporary-unified-test         # take the regenerated version from the
 gwt reset                                 # resets the current worktree
 gwt reset temporary-unified-test --clean --yes
 ```
+
+---
+
+## `gwt fetch`
+
+Brings what's new on origin and shows where each worktree stands. **Safe:** it only updates the `origin/*` refs and never modifies a worktree (compare with `gwt reset`, which discards local work).
+
+```
+gwt fetch [--prune]
+```
+
+| Flag | Description |
+|---|---|
+| `--prune` | Also drop `origin/*` refs of branches deleted on the remote |
+
+```
+✓ Fetched from origin (worktrees untouched)
+  WORKTREE                STATUS
+  feature/PROJ-101-login  ↑2 ↓0 vs main  ahead
+  main                    ↑0 ↓3 vs origin/main  behind
+To bring a worktree up to date: cd <worktree> && git merge --ff-only (or git pull). grove never changes your worktrees on fetch.
+```
+
+A branch with no upstream is measured against the base (see `list`). With `--json`: `{prune, worktrees: [{worktree, branch, compared_to, ahead, behind, status, dirty}]}`.
 
 ---
 
@@ -607,7 +631,7 @@ Don't re-clone: `gwt convert ~/code/api` (alias `gwt adopt`). Preview with `--dr
 
 ### Bring what's new on the remote — without losing anything
 
-`gwt compare --vs main --fetch` fetches from origin and shows every worktree's ahead/behind against `main`. It never touches your worktrees.
+`gwt fetch` fetches from origin and shows every worktree's ahead/behind against its upstream. It never touches your worktrees; to bring one up to date, `cd` into it and `git merge --ff-only` (or `git pull`). To see everything against one branch instead: `gwt compare --vs main --fetch`.
 
 `gwt reset <worktree>` is different: it **discards** local commits and changes to match origin. Use it only for branches that get force-pushed (e.g. an integration branch).
 

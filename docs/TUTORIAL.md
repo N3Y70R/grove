@@ -298,7 +298,7 @@ Continue? [y/N] y
 ✓ Worktree reset to origin: temporary-unified-test
 ```
 
-`reset` does a `fetch` + `reset --hard` to the origin's version (with `--clean` it also deletes untracked files). When inside the worktree, you can omit the name: `gwt reset`. *(Until 0.7.0 this command was `gwt sync`; the old name still works with a warning.)* If you only want to **see** what changed on the remote without discarding anything, use `gwt compare --fetch`.
+`reset` does a `fetch` + `reset --hard` to the origin's version (with `--clean` it also deletes untracked files). When inside the worktree, you can omit the name: `gwt reset`. *(Until 0.7.0 this command was `gwt sync`; the old name still works with a warning.)* If you only want to **see** what changed on the remote without discarding anything, use `gwt fetch`.
 
 ```mermaid
 flowchart LR
@@ -650,7 +650,7 @@ Two things to remember in `--json` mode:
 | Publish to test (add) | `gwt publish PROJ-1` |
 | Publish to test (rebuild) | `gwt publish PROJ-1 PROJ-2 --regenerate` |
 | Reset a regenerated branch (discards local) | `gwt reset <branch>` |
-| Bring remote changes (safe) | `gwt compare --fetch` |
+| Bring remote changes (safe) | `gwt fetch` |
 | Remove a worktree | `gwt remove PROJ-1 [--delete-branch]` |
 | Clean up what's already merged | `gwt remove --merged --delete-branch` |
 | Review/fix hygiene | `gwt doctor [--fix]` |

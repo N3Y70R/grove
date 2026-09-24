@@ -41,7 +41,7 @@ def register_skill(sub) -> None:
                      help="install into the current worktree's .agents/skills")
     tgt.add_argument("--path", help="install into DIR/grove")
     ip.add_argument("--force", action="store_true",
-                    help="overwrite an installed copy that differs (edited or another version)")
+                    help="overwrite a copy that was edited (or has no install manifest); untouched copies are refreshed anyway")
     ip.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="show what would be installed without writing")
     ip.set_defaults(func=cmd_skill_install, target="agents")

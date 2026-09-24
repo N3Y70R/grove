@@ -426,7 +426,7 @@ Each side is resolved flexibly: if the token matches a worktree (ticket/branch/p
 
 ### 6.15b `gwt skill install [--claude | --project | --path <dir>] [--force] [--dry-run]`
 
-Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. Every install writes `<skill>/.grove-install.json` (`{"grove_version", "files": {path: sha256}}`) so `doctor` can tell an untouched copy from an edited one (§6.7); the refusal message names the installed and the running version. MCP: `grove_skill_install`.
+Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is refreshed when its install manifest proves it untouched (e.g. left by an older version), and otherwise — edited, or no manifest — only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. Every install writes `<skill>/.grove-install.json` (`{"grove_version", "files": {path: sha256}}`) so `doctor` can tell an untouched copy from an edited one (§6.7); the refusal message names the installed and the running version. MCP: `grove_skill_install`.
 
 ### 6.15c `gwt repos [<path>...] [--depth N]`
 

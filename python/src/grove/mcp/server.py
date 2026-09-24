@@ -456,13 +456,14 @@ def grove_ssh_remove(
 def grove_skill_install(
     target: Annotated[Literal["agents", "claude", "project"], Field(description="agents: ~/.agents/skills (cross-client, default); claude: ~/.claude/skills; project: the cwd worktree's .agents/skills.")] = "agents",
     path: Annotated[Optional[str], Field(description="Install into this directory instead (the skill goes to <path>/grove). Overrides target.")] = None,
-    force: Annotated[bool, Field(description="Overwrite an installed copy that differs (edited, or another grove version).")] = False,
+    force: Annotated[bool, Field(description="Overwrite an installed copy that differs and was edited (or has no install manifest). An untouched copy from an older grove is refreshed without it.")] = False,
     dry_run: Annotated[bool, Field(description="Report what would be installed without writing.")] = False,
     cwd: Cwd = None,
 ) -> SkillInstallResult:
     """Install grove's Agent Skill (agentskills.io): instructions that teach an
     agent the grove workflow, which tool fits which request, and the gotchas.
-    Idempotent; never overwrites an edited copy without force.
+    Idempotent; refreshes an untouched copy left by an older grove; never
+    overwrites an edited copy without force.
 
     CLI: `gwt skill install [--claude | --project | --path DIR] [--force] [--dry-run]`
     """

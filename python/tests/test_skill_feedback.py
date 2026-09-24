@@ -251,3 +251,28 @@ def test_long_gotchas_moved_to_references():
     c = (REPO_SKILL / "references" / "configuration.md").read_text(encoding="utf-8")
     assert "GIT_DIR=" in t and "extensions.relativeWorktrees" in c
     assert "GIT_DIR=<repo>" not in _skill()
+
+
+# --- 0.13.2: install refreshes an untouched outdated copy ------------------ #
+
+def test_install_refreshes_an_untouched_outdated_copy(tmp_path):
+    root = tmp_path / "skills"
+    core_skill.install(dest_root=root)
+    _age(root / "grove")
+    core_skill._write_manifest(root / "grove", core_skill._files())   # as an older grove left it
+    res = core_skill.install(dest_root=root)                          # no force needed
+    assert res["mode"] == "updated"
+    assert core_skill.version_of(root / "grove") == grove.__version__
+    assert core_skill.status(root / "grove")["edited"] is False
+
+
+def test_install_still_refuses_edited_or_unknown_copies(tmp_path):
+    root = tmp_path / "skills"
+    core_skill.install(dest_root=root)
+    _age(root / "grove")                                      # edited after install
+    with pytest.raises(ValidationError, match="and it was edited"):
+        core_skill.install(dest_root=root)
+    (root / "grove" / core_skill.MANIFEST).unlink()           # installed by 0.12.0
+    with pytest.raises(ValidationError, match="no install manifest"):
+        core_skill.install(dest_root=root)
+    assert core_skill.install(dest_root=root, force=True)["mode"] == "updated"

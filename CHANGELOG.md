@@ -2,6 +2,17 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.13.2
+
+### Fixed
+
+- **`gwt skill install` refreshes an untouched copy left by an older grove**
+  without `--force`. 0.13.0 wrote the install manifest so this could be told
+  apart, but `install` still refused every copy that differed (seen upgrading
+  0.13.0 → 0.13.1); only `doctor --fix` used it. Edited copies, and copies
+  without a manifest (installed by 0.12.0), still need `--force`; the error now
+  says which case it is.
+
 ## python — 0.13.1
 
 Follow-ups from the second review of the Agent Skill (FEEDBACK §20).

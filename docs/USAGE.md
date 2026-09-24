@@ -591,7 +591,7 @@ gwt skill install --force          # overwrite a copy that differs (edited or an
 gwt skill install --dry-run        # show what would be installed
 ```
 
-Idempotent: if the installed copy is identical it reports `unchanged`; if it differs it refuses unless `--force` (saying which grove version the copy is for), so your edits are never lost silently. Each install writes `.grove-install.json` next to the skill (grove version + a hash per file), which lets `gwt doctor` tell an untouched outdated copy — refreshed with `--fix` — from an edited one. Re-run it after upgrading grove. MCP: `grove_skill_install`. The source is [`skills/grove/`](../skills/grove/SKILL.md) in the repo.
+Idempotent: if the installed copy is identical it reports `unchanged`; if it is an untouched copy from an older grove it is refreshed (`updated`); if it was edited — or has no install manifest, like copies installed by 0.12.0 — it refuses unless `--force` (saying which grove version the copy is for), so your edits are never lost silently. So after upgrading grove, `gwt skill install` (and `--claude`) is enough. Each install writes `.grove-install.json` next to the skill (grove version + a hash per file), which lets `gwt doctor` tell an untouched outdated copy — refreshed with `--fix` — from an edited one. Re-run it after upgrading grove. MCP: `grove_skill_install`. The source is [`skills/grove/`](../skills/grove/SKILL.md) in the repo.
 
 ---
 

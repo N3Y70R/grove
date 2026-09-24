@@ -122,8 +122,11 @@ def target_root(target: str = "agents", *, cwd: Optional[Path] = None) -> Path:
 
 
 def install(*, dest_root: Path, force: bool = False, dry_run: bool = False) -> dict:
-    """Copy the bundled skill to <dest_root>/grove. Never overwrites a file that
-    differs (edited, or another version) unless force=True."""
+    """Copy the bundled skill to <dest_root>/grove.
+
+    A copy that differs is refreshed when its install manifest shows it was not
+    edited (typically: installed by an older grove). An edited copy, or one with
+    no manifest, is only overwritten with force=True."""
     src, dest = bundled_dir(), Path(dest_root) / SKILL_NAME
     files = _files()
     differ = [f for f in files if (dest / f).exists() and not filecmp.cmp(src / f, dest / f, shallow=False)]
@@ -133,15 +136,16 @@ def install(*, dest_root: Path, force: bool = False, dry_run: bool = False) -> d
     elif not differ and not missing:
         mode = "unchanged"
     else:
-        if differ and not force:
-            st = status(dest)
+        st = status(dest) if differ else None
+        if differ and not force and st["edited"] is not False:
             if st["installed_version"] != st["current_version"]:
                 why = (f"the installed copy is for grove {st['installed_version'] or '(unknown)'}, "
                        f"this grove is {st['current_version']}")
-                if st["edited"]:
-                    why += ", and it was edited"
+                why += (", and it was edited" if st["edited"]
+                        else ", and it has no install manifest to prove it wasn't edited")
             else:
-                why = "it was edited"
+                why = ("it was edited" if st["edited"]
+                       else "it has no install manifest to prove it wasn't edited")
             raise ValidationError(
                 f"{dest} differs from grove's skill ({', '.join(differ)}): {why}. "
                 f"Re-run with force to overwrite.")

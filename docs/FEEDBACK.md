@@ -387,6 +387,10 @@ against the live MCP server: no technical errors) found gaps, not mistakes:
 - Later: a `repos_roots` list in `~/.config/grove/config.toml` — extra folders
   `gwt repos` searches besides the zones. → issue
 
+**Found releasing 0.13.1:** `gwt skill install` refused the untouched 0.13.0
+copies ("installed copy is for grove 0.13.0 … Re-run with force") — the
+manifest existed, but only `doctor` consulted it. Fixed in 0.13.2 (item 38).
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -446,6 +450,7 @@ days, L more).
 | 34 | ~~R1: `repos` reports the effective origin (`remote get-url`) and profile, like `config`~~ ✅ 0.13.1 | §20 | S |
 | 35 | ~~R2: the `reset` gotcha points to the "origin moved" flow~~ ✅ 0.13.1 | §20 | S |
 | 36 | ~~R3: `publish` and `ssh_*` in the operation table; long gotchas moved to `references/`~~ ✅ 0.13.1 | §20 | S |
+| 38 | ~~`skill install` refreshes an untouched outdated copy without `--force`~~ ✅ 0.13.2 | §20 | S |
 | 37 | `repos_roots` in `~/.config/grove/config.toml`: extra folders for `gwt repos` besides the identity zones | §20 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
@@ -467,4 +472,4 @@ everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
 (0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0); skill feedback —
 `skill-outdated` in `doctor`, `gwt repos`, flow for a moved base, Spanish
 triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
-skill review follow-ups (0.13.1).
+skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2).

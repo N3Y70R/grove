@@ -53,6 +53,9 @@ def _status_str(wt: Worktree) -> str:
     if wt.upstream is None:
         clean = "dirty" if wt.dirty else "clean"
         merged = " merged" if wt.merged else ""
+        if wt.compared_to:
+            return (f"↑{wt.ahead or 0} ↓{wt.behind or 0} vs {wt.compared_to} "
+                    f"(no upstream) {clean}{merged}")
         return f"no-upstream {clean}{merged}"
     clean = "dirty" if wt.dirty else "clean"
     merged = " merged" if wt.merged else ""
@@ -442,11 +445,7 @@ def cmd_reset(args, out: Output) -> int:
             raise UsageError("Specify the worktree to reset (not detected from the current directory).")
 
     # Destructive warning.
-    losses = []
-    if wt.ahead:
-        losses.append(f"{wt.ahead} local commit(s) not pushed")
-    if wt.dirty:
-        losses.append("uncommitted changes")
+    losses = core_sync.reset_losses(wt)
     if losses and not args.yes and not getattr(args, "dry_run", False):
         if out.json_mode:
             raise UsageError(

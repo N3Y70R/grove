@@ -261,6 +261,9 @@ def op_remove(
             "dry_run": dry_run}
 
 
+_reset_losses = core_sync.reset_losses
+
+
 def op_sync(
     *,
     target: Optional[str] = None,
@@ -287,11 +290,7 @@ def op_reset(
     git = _git()
     repo = _enter(cwd)
     wt = _target_worktree(git, repo, target)
-    losses = []
-    if wt.ahead:
-        losses.append(f"{wt.ahead} local commit(s) not pushed")
-    if wt.dirty:
-        losses.append("uncommitted changes")
+    losses = _reset_losses(wt)
     upstream = core_sync.reset_worktree(git, repo, wt, clean=clean)
     return {"worktree": wt.rel_path, "upstream": upstream, "discarded": losses}
 

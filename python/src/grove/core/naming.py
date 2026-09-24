@@ -31,7 +31,7 @@ def extract_ticket(text: str) -> Optional[str]:
 class Classification:
     """Classification of a worktree based on its relative path and its branch."""
 
-    kind: str  # 'special' | 'temp' | 'ticket' | 'release' | 'unknown'
+    kind: str  # 'base' | 'special' | 'temp' | 'ticket' | 'release' | 'unknown'
     type: Optional[str] = None  # feature/hotfix/bugfix/release
     ticket: Optional[str] = None
     version: Optional[str] = None
@@ -44,6 +44,9 @@ def classify(rel_path: str, branch: Optional[str]) -> Classification:
     """
     parts = [p for p in rel_path.replace("\\", "/").split("/") if p]
     head = parts[0] if parts else ""
+
+    if rel_path.strip("/") == config.DEFAULT_BASE:
+        return Classification(kind="base")
 
     if head in config.SPECIAL_WORKTREES or rel_path in config.SPECIAL_WORKTREES:
         return Classification(kind="special")

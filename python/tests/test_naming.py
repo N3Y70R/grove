@@ -32,7 +32,12 @@ def test_extract_ticket_none():
 
 
 def test_classify_special():
-    assert naming.classify("production", "production").kind == "special"
+    assert naming.classify("temporary-unified-test", "temporary-unified-test").kind == "special"
+
+
+def test_classify_base_wins_over_special():
+    # module defaults: base = production, which is also listed as special
+    assert naming.classify("production", "production").kind == "base"
 
 
 def test_classify_temp():

@@ -121,6 +121,10 @@ def grove_list(
 ) -> dict:
     """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty).
 
+    `ahead`/`behind` are measured against `compared_to`: the upstream, or the
+    repo base for a branch with no upstream yet. The base worktree has
+    kind="base". Paths are correct even when the repo is seen from another mount.
+
     Each row also carries `gitdir`: the worktree's internal admin dir relative to
     the repo root (e.g. .bare/worktrees/PROJ-1-login). Use it to build GIT_DIR
     when the repo is seen from another mount (the worktree's .git file holds an

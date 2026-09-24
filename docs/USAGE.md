@@ -254,14 +254,14 @@ gwt list [--type <type>] [--dirty] [--orphans] [--json]
 
 | Flag | Description |
 |---|---|
-| `--type <type>` | Filters by type/kind (`feature`, `release`, `temp`, `special`, ...) |
+| `--type <type>` | Filters by type/kind (`feature`, `release`, `temp`, `special`, `base`, ...) |
 | `--dirty` | Only worktrees with uncommitted changes |
 | `--orphans` | Only orphaned records |
 | `--json` | JSON output (for scripting) |
 
-Columns: **folder · branch · ticket · git status** (ahead/behind, clean/dirty, upstream, and `merged` when the branch has no commits outside the base). In repos with `tickets = off` the ticket column is empty.
+Columns: **folder · branch · ticket · git status** (ahead/behind, clean/dirty, upstream, and `merged` when the branch has no commits outside the base). A branch with no upstream yet is measured against the base: `↑3 ↓0 vs main (no upstream)`. In repos with `tickets = off` the ticket column is empty.
 
-`--json` rows also include **`merged`** (see `remove --merged`) and **`gitdir`**, the worktree's internal directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`; git names it after the last path component). Useful when the repo is mounted at another path (container, VM): `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git status`.
+`--json` rows also include **`compared_to`** (the upstream, or the base when there is no upstream), **`merged`** (see `remove --merged`) and **`gitdir`**, the worktree's internal directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`; git names it after the last path component). Useful when the repo is mounted at another path (container, VM): `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git status`.
 
 ---
 
@@ -303,7 +303,7 @@ gwt remove --merged [--delete-branch] [--dry-run]
 | `--merged` | Sweep: removes all ticket worktrees merged to the base |
 | `--dry-run` | Shows what it would do without executing |
 
-By default it removes the worktree and **keeps** the branch. The special ones (`production`, `temporary-unified-test`) are protected; a dirty worktree requires `--force`. Parent folders left empty (e.g. `feature/`) are removed.
+By default it removes the worktree and **keeps** the branch. The base worktree and the special ones (`production`, `temporary-unified-test`) are protected; a dirty worktree requires `--force`. Parent folders left empty (e.g. `feature/`) are removed.
 
 "Merged" = the branch has no commits outside the base (a brand-new branch with no commits also counts). Check it first with `gwt list` (the status shows `merged`) or `gwt remove --merged --dry-run`.
 

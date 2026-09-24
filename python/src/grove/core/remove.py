@@ -16,7 +16,8 @@ Step = lambda m: None  # noqa: E731  (placeholder; replaced by the real callback
 
 
 def _is_special(wt: Worktree) -> bool:
-    return bool(wt.classification and wt.classification.kind == "special")
+    # The base worktree is protected like the special ones.
+    return bool(wt.classification and wt.classification.kind in ("special", "base"))
 
 
 def resolve_target(git: GitRunner, repo: RepoContext, query: str) -> Worktree:
@@ -93,7 +94,7 @@ def remove_one(
 ) -> None:
     if _is_special(wt):
         raise ValidationError(
-            f"'{wt.rel_path}' is a protected special worktree; it is not removed with remove."
+            f"'{wt.rel_path}' is a protected worktree (base or special); it is not removed with remove."
         )
 
     base = base or config.DEFAULT_BASE

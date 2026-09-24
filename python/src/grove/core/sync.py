@@ -52,5 +52,19 @@ def reset_worktree(
     return upstream
 
 
+def reset_losses(wt: Worktree) -> list:
+    """What a reset would discard, worded by what ahead is measured against."""
+    losses = []
+    if wt.ahead:
+        if wt.upstream:
+            losses.append(f"{wt.ahead} local commit(s) not pushed")
+        else:
+            ref = wt.compared_to or "the base"
+            losses.append(f"{wt.ahead} commit(s) ahead of {ref} with no upstream (may not be pushed)")
+    if wt.dirty:
+        losses.append("uncommitted changes")
+    return losses
+
+
 # Deprecated name, kept for backward compatibility.
 sync_worktree = reset_worktree

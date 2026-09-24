@@ -236,9 +236,13 @@ Shows the repo's worktree inventory. Columns:
 | Folder | Relative path of the worktree inside the repo |
 | Branch | Associated branch |
 | Ticket | `PROJ-XXXXX` extracted (or empty for special/temp) |
-| Git status | ahead/behind relative to upstream + clean/dirty |
+| Git status | ahead/behind relative to the upstream — or, for a branch with no upstream yet, relative to the base (`↑3 ↓0 vs main (no upstream)`) — + clean/dirty (+ `merged`) |
 
-The JSON/MCP view also carries **`merged`** (`true` when the branch has no commits outside the base — what `remove --merged` would sweep; `null` for the base itself) and **`gitdir`**: the worktree's internal admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`). git names it after the *last* path component, so it cannot be derived from the folder; it lets a tool that sees the repo from another mount build `GIT_DIR` (the worktree's `.git` file holds an absolute path). `null` for the bare entry.
+The JSON/MCP view carries **`compared_to`** (what `ahead`/`behind` are measured against: the upstream, e.g. `origin/main`, or the base, e.g. `main`, when there is no upstream; `null` when not computed). The base worktree is classified **`kind: "base"`** (it wins over `special` when the base is also listed there).
+
+**Seen from another mount.** git records absolute paths, so when the repo is viewed from another path (container, VM) the recorded location doesn't exist there. `list` finds the local folder (the trailing part of the recorded path whose `.git` points at the same admin dir) and reports the local `path`/`rel_path` with `exists: true` and `prunable: false` — so `doctor` never treats those worktrees as orphans (a `git worktree prune` from that mount would unregister them).
+
+It also carries **`merged`** (`true` when the branch has no commits outside the base — what `remove --merged` would sweep; `null` for the base itself) and **`gitdir`**: the worktree's internal admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`). git names it after the *last* path component, so it cannot be derived from the folder; it lets a tool that sees the repo from another mount build `GIT_DIR` (the worktree's `.git` file holds an absolute path). `null` for the bare entry.
 
 `list` reports only what git knows; it does not query ticket systems (see Design principles). Any enrichment (issue/PR status) is done by the orchestration layer combining `list` with its own sources.
 
@@ -329,7 +333,7 @@ Removes worktrees safely. Alias: `gwt rm`.
 
 "Merged" means the branch has **no commits outside the base** (`git merge-base --is-ancestor <branch> <base>`); a brand-new branch with no commits of its own also qualifies. `list` exposes it as the `merged` field (§6.6) so the sweep can be previewed.
 
-Safeguards: special ones (`production`, `temporary-unified-test`) are protected and never removed with `remove`; a worktree with uncommitted changes requires `--force`.
+Safeguards: the **base** worktree and the special ones (`production`, `temporary-unified-test`) are protected and never removed with `remove`; a worktree with uncommitted changes requires `--force`.
 
 ### 6.11 `gwt reset [<target>] [--clean] [--yes] [--dry-run]`
 

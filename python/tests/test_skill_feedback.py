@@ -205,3 +205,49 @@ def test_frontmatter_is_valid_yaml():
     yaml = pytest.importorskip("yaml")          # what agentskills validate parses with
     meta = yaml.safe_load(_skill().split("\n---\n", 1)[0][4:])
     assert meta["name"] == "grove" and meta["metadata"]["grove-version"] == grove.__version__
+
+
+# --- 0.13.1: repos agrees with config (R1) --------------------------------- #
+
+def test_repos_reports_what_config_reports(repo):
+    import subprocess
+    from grove.mcp import _ops
+    git, ctx = repo
+    raw = subprocess.run(["git", "--git-dir", str(ctx.bare), "remote", "get-url", "--push", "origin"],
+                         capture_output=True, text=True).stdout.strip()
+    # a zone-style rewrite: git uses the alias, remote.origin.url keeps the raw URL
+    subprocess.run(["git", "--git-dir", str(ctx.bare), "config",
+                    "url.git@work-gh:org/.insteadOf", raw], check=True)
+    row = next(r for r in core_repos.find([ctx.root.parent]) if r["path"] == str(ctx.root))
+    shown = _ops.op_config_show(cwd=str(ctx.root))
+    assert row["origin"] == shown["origin"] == "git@work-gh:org/"
+    assert row["profile"] == shown["profile"]
+
+
+def test_repos_profile_is_the_effective_one(repo):
+    git, ctx = repo
+    toml = ctx.bare / "grove.toml"
+    toml.write_text('default_base = "main"\n', encoding="utf-8")         # no profile key
+    assert core_repos._describe(ctx.root)["profile"] == "default"
+    toml.write_text('profile = "personal"\ndefault_base = "main"\n', encoding="utf-8")
+    assert core_repos._describe(ctx.root)["profile"] == "personal"
+
+
+# --- 0.13.1: skill review follow-ups (R2, R3) ------------------------------ #
+
+def test_reset_gotcha_points_to_the_flow():
+    body = _skill()
+    gotcha = body[body.index("**`grove_reset`"):].split("\n- ", 1)[0]
+    assert "When origin moved" in gotcha and "--ff-only" not in gotcha
+
+
+def test_table_covers_publish_and_ssh():
+    table = _skill().split("## Pick the operation", 1)[1].split("\n\n", 2)[1]
+    assert "grove_publish" in table and "grove_ssh_check" in table and "grove_ssh_add" in table
+
+
+def test_long_gotchas_moved_to_references():
+    t = (REPO_SKILL / "references" / "troubleshooting.md").read_text(encoding="utf-8")
+    c = (REPO_SKILL / "references" / "configuration.md").read_text(encoding="utf-8")
+    assert "GIT_DIR=" in t and "extensions.relativeWorktrees" in c
+    assert "GIT_DIR=<repo>" not in _skill()

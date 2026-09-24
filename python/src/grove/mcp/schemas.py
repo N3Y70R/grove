@@ -325,9 +325,9 @@ class SkillInstallResult(TypedDict):
 class RepoRow(TypedDict):
     path: Annotated[str, D("Absolute path of the repo (the folder containing .bare/): pass it as cwd.")]
     name: Annotated[str, D("Folder name.")]
-    origin: Annotated[Optional[str], D("remote.origin.url, or null.")]
+    origin: Annotated[Optional[str], D("URL git uses for origin (`git remote get-url`, url.insteadOf applied: the SSH alias when a zone rewrites it), or null.")]
     base: Annotated[Optional[str], D("Base branch: default_base from .bare/grove.toml, else the bare HEAD; null if unknown.")]
-    profile: Annotated[Optional[str], D("Profile recorded in .bare/grove.toml, or null.")]
+    profile: Annotated[Optional[str], D("Effective profile: the one in .bare/grove.toml, else 'default' (as grove loads it).")]
 
 
 class ReposResult(TypedDict):

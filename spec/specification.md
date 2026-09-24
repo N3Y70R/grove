@@ -430,7 +430,7 @@ Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo 
 
 ### 6.15c `gwt repos [<path>...] [--depth N]`
 
-Lists grove-managed repos (a folder with `.bare/HEAD`) under the given folders, or by default under the identity zones (`includeIf gitdir:` scopes written by `ssh add`, trailing `/**` stripped). Walks at most `N` levels (default 3), skips hidden folders, and does not descend into a repo once found. Each row: `path`, `name`, `origin` (`remote.origin.url`), `base` (`default_base` from `.bare/grove.toml`, else the bare `HEAD` unless it is the legacy parking branch), `profile`. With no roots or no repos, a `hint` says what to do (pass folders, or ask the user for the path). Read-only; there is no repo registry. MCP: `grove_repos`.
+Lists grove-managed repos (a folder with `.bare/HEAD`) under the given folders, or by default under the identity zones (`includeIf gitdir:` scopes written by `ssh add`, trailing `/**` stripped). Walks at most `N` levels (default 3), skips hidden folders, and does not descend into a repo once found. Each row: `path`, `name`, `origin` (`git remote get-url origin`: `url.insteadOf` rewrites applied, identical to `config`'s), `base` (`default_base` from `.bare/grove.toml`, else the bare `HEAD` unless it is the legacy parking branch), `profile` (effective: `default` when `grove.toml` names none). With no roots or no repos, a `hint` says what to do (pass folders, or ask the user for the path). Read-only; there is no repo registry. MCP: `grove_repos`.
 
 ### 6.16 `gwt patch [<worktree>] [--base <ref>] [--format-patch] [--wip] [--output <path>] [--stdout]`
 

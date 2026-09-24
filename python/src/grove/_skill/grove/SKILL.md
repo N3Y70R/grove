@@ -37,6 +37,8 @@ nothing, ask the user for the absolute path — never guess one.
 | fix hygiene problems | `grove_doctor`, then `fix=true` | `gwt doctor --fix` |
 | manage an existing normal clone | `grove_convert(path, dry_run=true)` first | `gwt convert <path>` (alias `adopt`) |
 | clone a new repo | `grove_setup(url, profile?)` | `gwt setup <url>` |
+| merge tickets into the shared integration branch (`integration_branch`) | `grove_publish(targets=[…])` | `gwt publish PROJ-1 PROJ-2` |
+| a push/fetch fails for SSH, or a new GitHub/Bitbucket account | `grove_ssh_check(live=true)`, `grove_ssh_add` | `gwt ssh check`, `gwt ssh add` |
 
 Default to **`grove_start`** for anything like "work on / start / continue
 ticket X": it fetches, then returns the existing worktree, brings the branch if
@@ -75,8 +77,8 @@ freshly fetched `origin/<base>`.
 
 - **`grove_reset` / `gwt reset` DISCARDS local commits and changes** (reset
   --hard to origin). `grove_sync` / `gwt sync` is its deprecated alias. To
-  *bring* remote changes use `grove_fetch`, then `git merge --ff-only` inside
-  the worktree. Reset only branches that get force-pushed, and only when asked.
+  *bring* remote changes follow "When origin moved while you worked" above.
+  Reset only branches that get force-pushed, and only when asked.
 - **Only touch the repos the user asked about.** Several grove repos may sit
   side by side (work and personal); never run fixes, migrations or config
   changes on one the user didn't name.
@@ -88,12 +90,11 @@ freshly fetched `origin/<base>`.
   environment that can't delete files: `grove_doctor` reports the lock; once it
   is stale (≥60 s, no git running; or ≥10 min) `fix=true` removes it. Never
   delete `.lock` files by hand while git may be running.
-- **Seen from another mount (container, VM)**, a worktree's `.git` holds an
-  absolute path of the other machine. Use each row's `gitdir` from
-  `grove_list`: `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git …`.
-  Do not run `git worktree prune` from there.
-- **`relative_worktrees = true` makes git < 2.48 refuse the whole repo.** Only
-  enable it if every git touching the repo is new enough.
+- **From another mount (container, VM)** git can't open a worktree by itself:
+  use `GIT_DIR` with each row's `gitdir` (see troubleshooting); never
+  `git worktree prune` from there.
+- **`relative_worktrees = true` breaks git < 2.48** for the whole repo (see
+  configuration).
 - **Check the versions match:** if `grove_config().version` differs from this
   file's `metadata.grove-version`, either the MCP server is stale (restart the
   MCP client after upgrading grove; new tools may need a tool-list refresh) or

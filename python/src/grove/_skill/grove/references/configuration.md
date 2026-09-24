@@ -19,5 +19,10 @@ remove it (falls back to the repo's profile) with `unset_key` / `gwt config unse
   built-in `default`, `personal`, `gitflow`, or `[profiles.<name>]` in
   `~/.config/grove/config.toml`. Editing a profile does not change existing
   repos; only unset keys fall back to it.
+- **`relative_worktrees`** makes each worktree work from any mount, but git
+  then marks the repo with `extensions.relativeWorktrees`: **git < 2.48 and
+  libgit2 < 1.9.4 tools (e.g. TortoiseGit) refuse the whole repo.** Enable it
+  only when every git that touches the repo is new enough; `gwt config set
+  relative_worktrees false` (with a new git) converts back.
 - A different base for one worktree doesn't need config: pass `base=` to
   `grove_start` / `grove_create`.

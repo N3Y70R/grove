@@ -61,10 +61,11 @@ def _read_toml(path: Path) -> dict:
 def _describe(repo: Path) -> dict:
     bare = repo / ".bare"
 
-    def cfg(key: str) -> Optional[str]:
-        r = subprocess.run(["git", "--git-dir", str(bare), "config", "--get", key],
-                           capture_output=True, text=True)
-        return (r.stdout.strip() or None) if r.returncode == 0 else None
+    # The URL git really uses: `remote get-url` applies url.insteadOf rewrites
+    # (e.g. a zone's https://github.com/ → git@work-gh:), like grove_config.
+    r = subprocess.run(["git", "--git-dir", str(bare), "remote", "get-url", "origin"],
+                       capture_output=True, text=True)
+    origin = (r.stdout.strip() or None) if r.returncode == 0 else None
 
     policy = _read_toml(bare / "grove.toml")
     base = policy.get("default_base") or None
@@ -74,8 +75,10 @@ def _describe(repo: Path) -> dict:
         base = head.stdout.strip() or None
         if base == policy.get("parking_branch", "worktree-config-root"):
             base = None
-    profile = policy.get("profile") or None
-    return {"path": str(repo), "name": repo.name, "origin": cfg("remote.origin.url"),
+    # Effective profile, as grove loads it: a grove.toml without `profile` (or
+    # no grove.toml) layers on the default profile.
+    profile = policy.get("profile") or "default"
+    return {"path": str(repo), "name": repo.name, "origin": origin,
             "base": base, "profile": profile}
 
 

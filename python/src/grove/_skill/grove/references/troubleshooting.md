@@ -11,7 +11,7 @@ Match the symptom, apply the fix, re-run `grove_doctor` to confirm.
 | setup: "already exists and is a git clone" | the repo is already cloned | `grove_convert(path, dry_run=true)`, then without `dry_run` |
 | "unknown repository extension: relativeworktrees" | `relative_worktrees` on, git < 2.48 | upgrade git, or with a new git: `gwt config set relative_worktrees false` |
 | `bare-head` / `parking-branch` issues | repo made before grove 0.10.0 | `grove_doctor(fix=true)` (keeps a parking branch that has its own commits) |
-| worktrees look missing/prunable from a container | absolute paths from another machine | use `gitdir` from `grove_list`; never prune from there |
+| worktrees look missing/prunable from a container / VM, or git says "not a git repository" inside one | the worktree's `.git` holds an absolute path of the other machine | `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git …` with `gitdir` / `rel_path` from `grove_list`; never `git worktree prune` from there (it would unregister them). Long term: `relative_worktrees` (see configuration) |
 | "Repository not found" on push/fetch | wrong SSH key for the host | `grove_ssh_aliases`, `grove_ssh_check(live=true)`, `gwt config set-ssh-alias <alias>` |
 | push rejected: `GH013` … "Commits must have verified signatures" | the remote requires signed commits | set up signing once (`gpg.format ssh`, `user.signingkey`, `commit.gpgsign true` — shared in `.bare/config`), re-sign: `git rebase --exec 'git commit --amend --no-edit -S' origin/<base>`, then `git push --force-with-lease` |
 | push rejected `(non-fast-forward)` right after a rebase | origin still has the pre-rebase commits | your own branch: `git push --force-with-lease`; if someone else pushed, `git pull --rebase` first |

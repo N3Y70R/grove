@@ -357,6 +357,36 @@ against the live MCP server: no technical errors) found gaps, not mistakes:
   for `.bare/`; the skill says to ask for the path when it finds nothing.
 - S2, S4–S7: skill text and `references/troubleshooting.md`.
 
+## 20. Agent Skill, second review (0.13.0)
+
+**Status:** ✅ R1–R3 done in 0.13.1; item 37 (`repos_roots`) open.
+
+**Finding.** All of §19 verified live. Left, and small:
+
+- **R1 — `grove_repos` and `grove_config` disagree on the same repo.** `repos`
+  read the raw `remote.origin.url` (`https://github.com/…`) while `config` uses
+  `git remote get-url` (the zone's `insteadOf` applied: `git@dropi-gh:…`); and
+  `repos` returned the `profile` written in `grove.toml` (`null` when absent)
+  while `config` shows the effective one (`default`). An agent using `repos`'s
+  origin would bypass the SSH alias `setup` configured.
+- **R2 — the `reset` gotcha repeated the old advice** (`fetch` + `--ff-only`),
+  which fails on a diverged branch; the full flow is a section below.
+- **R3 — `publish` and the SSH tools weren't in the operation table.**
+- Size: `SKILL.md` grew to 7 KB; the two longest gotchas (another mount,
+  `relative_worktrees`) belong in `references/`.
+- From using `grove_repos`: repos outside an identity zone (personal repos
+  reached through an SSH alias without a zone) are only found by passing
+  their folder.
+
+**Proposed improvement.**
+- R1: `repos` reports the effective origin (`remote get-url`) and profile.
+- R2: the gotcha points to "When origin moved while you worked".
+- R3: table rows for `grove_publish` and `grove_ssh_check` / `grove_ssh_add`.
+- Move the mount recipe to troubleshooting and the `relative_worktrees`
+  details to configuration; one line each in `SKILL.md`.
+- Later: a `repos_roots` list in `~/.config/grove/config.toml` — extra folders
+  `gwt repos` searches besides the zones. → issue
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -413,6 +443,10 @@ days, L more).
 | 31 | ~~S5: troubleshooting rows for `GH013` signatures, non-fast-forward after rebase, blocked force-push~~ ✅ 0.13.0 | §19 | S |
 | 32 | ~~S6: explain `grove_start`'s `mode` (`existing` / `resumed` / `created`)~~ ✅ 0.13.0 | §19 | S |
 | 33 | ~~S7: `grove_compare` in the table; no manual `git worktree add/remove`; shared `.bare/config`~~ ✅ 0.13.0 | §19 | S |
+| 34 | ~~R1: `repos` reports the effective origin (`remote get-url`) and profile, like `config`~~ ✅ 0.13.1 | §20 | S |
+| 35 | ~~R2: the `reset` gotcha points to the "origin moved" flow~~ ✅ 0.13.1 | §20 | S |
+| 36 | ~~R3: `publish` and `ssh_*` in the operation table; long gotchas moved to `references/`~~ ✅ 0.13.1 | §20 | S |
+| 37 | `repos_roots` in `~/.config/grove/config.toml`: extra folders for `gwt repos` besides the identity zones | §20 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -432,4 +466,5 @@ results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
 everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
 (0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0); skill feedback —
 `skill-outdated` in `doctor`, `gwt repos`, flow for a moved base, Spanish
-triggers, first-push troubleshooting (0.13.0).
+triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
+skill review follow-ups (0.13.1).

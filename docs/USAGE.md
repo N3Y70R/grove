@@ -605,7 +605,7 @@ gwt repos ~/code ~/work       # under these folders
 gwt repos --depth 4 --json
 ```
 
-grove keeps no registry of repos: it searches the given folders (default: the zone directories of `~/.gitconfig`'s `includeIf gitdir:` blocks), up to `--depth` levels (default 3), skipping hidden folders and never descending into a repo it found. Each row shows the path, the base (`default_base` from `.bare/grove.toml`, else the bare `HEAD`), the profile and `origin`. Read-only. MCP: `grove_repos`.
+grove keeps no registry of repos: it searches the given folders (default: the zone directories of `~/.gitconfig`'s `includeIf gitdir:` blocks), up to `--depth` levels (default 3), skipping hidden folders and never descending into a repo it found. Each row shows the path, the base (`default_base` from `.bare/grove.toml`, else the bare `HEAD`), the effective profile (`default` when `grove.toml` names none) and `origin` as git uses it (`git remote get-url`, with any `insteadOf` rewrite applied — the same value `gwt config` shows). Read-only. MCP: `grove_repos`.
 
 ---
 

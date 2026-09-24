@@ -2,6 +2,26 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.13.1
+
+Follow-ups from the second review of the Agent Skill (FEEDBACK §20).
+
+### Fixed
+
+- **`gwt repos` / `grove_repos` agree with `grove_config`**: `origin` is the
+  URL git really uses (`git remote get-url`, so a zone's `insteadOf` rewrite
+  shows the SSH alias instead of the raw `https://` URL), and `profile` is the
+  effective one (`default` when `grove.toml` doesn't name one) instead of `null`.
+
+### Changed
+
+- **The skill**: the `reset` gotcha points to "When origin moved while you
+  worked" instead of repeating the `--ff-only` advice that fails on a diverged
+  branch; the operation table gains `grove_publish` and `grove_ssh_check` /
+  `grove_ssh_add`; the another-mount recipe moved to `troubleshooting.md` and
+  the `relative_worktrees` details to `configuration.md` (one line each left in
+  `SKILL.md`).
+
 ## python — 0.13.0
 
 Feedback from reviewing the 0.12.0 Agent Skill in real use (FEEDBACK §19).

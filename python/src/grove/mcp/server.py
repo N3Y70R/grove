@@ -472,12 +472,13 @@ def grove_skill_install(
 
 @mcp.tool(annotations=_ann("Find grove-managed repos", read_only=True))
 def grove_repos(
-    paths: Annotated[Optional[List[str]], Field(description="Folders to search. Default: the identity zones set up with `gwt ssh add`.")] = None,
+    paths: Annotated[Optional[List[str]], Field(description="Folders to search. Default: the identity zones set up with `gwt ssh add` plus repos_roots in ~/.config/grove/config.toml.")] = None,
     depth: Annotated[int, Field(description="How deep to look under each folder.", ge=1, le=6)] = 3,
 ) -> ReposResult:
     """Find grove-managed repos (folders with .bare/) on this machine, to turn
     "the X repo" into the absolute path every other tool needs as cwd. grove
-    keeps no registry: it searches the given folders, else the identity zones.
+    keeps no registry: it searches the given folders, else the identity zones
+    and the repos_roots of ~/.config/grove/config.toml.
     If it finds nothing, ask the user for the path.
 
     CLI: `gwt repos [PATH ...] [--depth N]`

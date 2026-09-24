@@ -141,7 +141,8 @@ Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`, `grove_start`, `grove_fetch`, `grove_convert`,
 `grove_skill_install`, and `grove_repos` (read-only: finds the managed repos
-under your identity zones or given folders, to turn "the X repo" into a `cwd`).
+under your identity zones, the `repos_roots` of `~/.config/grove/config.toml`
+or given folders, to turn "the X repo" into a `cwd`).
 
 SSH discovery / account provisioning (machine-level; see USAGE §`gwt ssh …`):
 `grove_ssh_aliases` (read-only repo↔alias map), `grove_ssh_add`,

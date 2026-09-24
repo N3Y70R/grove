@@ -600,12 +600,20 @@ Idempotent: if the installed copy is identical it reports `unchanged`; if it is 
 Lists the grove-managed repos (folders with `.bare/`) on this machine — handy when you, or an agent, know a repo by name but need its path.
 
 ```
-gwt repos                     # under your identity zones (set up with `gwt ssh add`)
+gwt repos                     # under your identity zones (`gwt ssh add`) + repos_roots
 gwt repos ~/code ~/work       # under these folders
 gwt repos --depth 4 --json
 ```
 
-grove keeps no registry of repos: it searches the given folders (default: the zone directories of `~/.gitconfig`'s `includeIf gitdir:` blocks), up to `--depth` levels (default 3), skipping hidden folders and never descending into a repo it found. Each row shows the path, the base (`default_base` from `.bare/grove.toml`, else the bare `HEAD`), the effective profile (`default` when `grove.toml` names none) and `origin` as git uses it (`git remote get-url`, with any `insteadOf` rewrite applied — the same value `gwt config` shows). Read-only. MCP: `grove_repos`.
+grove keeps no registry of repos: it searches the given folders (default: the zone directories of `~/.gitconfig`'s `includeIf gitdir:` blocks, plus the folders listed in `repos_roots`), up to `--depth` levels (default 3), skipping hidden folders and never descending into a repo it found. Each row shows the path, the base (`default_base` from `.bare/grove.toml`, else the bare `HEAD`), the effective profile (`default` when `grove.toml` names none) and `origin` as git uses it (`git remote get-url`, with any `insteadOf` rewrite applied — the same value `gwt config` shows). Read-only. MCP: `grove_repos`.
+
+Repos that live outside any identity zone — for example personal repos reached through an SSH alias, with no `gwt ssh add --scope-dir` — are found by listing their parent folders once in `~/.config/grove/config.toml`:
+
+```toml
+repos_roots = ["~/neytor/workspace", "~/code"]
+```
+
+`~` is expanded; missing folders are skipped. Explicit `PATH` arguments replace the defaults for that call.
 
 ---
 
@@ -810,7 +818,7 @@ Without this option, `gwt list --json` still gives each worktree's `gitdir`, eno
 
 - **`required`**: requires a ticket key in `create`.
 - **`optional`**: accepts a key or just a description (it detects it).
-- **`off`**: names only by description; disables the ticket invariant and the `doctor` check.
+- **`off`**: names only by description; disables the ticket invariant and the `doctor` check, and nothing is read as a ticket — a branch like `feature/abc-12-login` shows no ticket in `list` or `start`.
 
 ### Ticket pattern (`ticket_pattern`)
 

@@ -27,6 +27,14 @@ def extract_ticket(text: str) -> Optional[str]:
     return m.group(0).upper() if m else None
 
 
+def ticket_of(text: Optional[str]) -> Optional[str]:
+    """The ticket a branch/folder carries, per the repo policy: None when
+    `tickets = "off"` (names are descriptions only; any WORD-123 is just text)."""
+    if not text or config.TICKETS == "off":
+        return None
+    return extract_ticket(text)
+
+
 @dataclass
 class Classification:
     """Classification of a worktree based on its relative path and its branch."""
@@ -59,7 +67,7 @@ def classify(rel_path: str, branch: Optional[str]) -> Classification:
         return Classification(kind="release", type="release", version=version)
 
     if head in config.TICKET_TYPES:
-        ticket = extract_ticket(rel_path) or (extract_ticket(branch) if branch else None)
+        ticket = ticket_of(rel_path) or ticket_of(branch)
         return Classification(kind="ticket", type=head, ticket=ticket)
 
     return Classification(kind="unknown")

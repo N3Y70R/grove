@@ -4,7 +4,8 @@ An agent often knows a repo by name ("the grove repo", "dropi-business-rules")
 but every grove operation needs its absolute path. grove keeps no registry of
 repos, so this looks for folders containing `.bare/` under a few roots: the
 directories given, else the identity zones configured with `gwt ssh add`
-(`includeIf gitdir:` scopes). The walk is shallow and skips hidden folders and
+(`includeIf gitdir:` scopes) plus the `repos_roots` listed in
+`~/.config/grove/config.toml` (for repos outside any zone). The walk is shallow and skips hidden folders and
 the inside of repos already found.
 """
 
@@ -56,6 +57,34 @@ def _read_toml(path: Path) -> dict:
         return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+def config_roots(paths: Optional[plat.Paths] = None) -> List[Path]:
+    """Existing folders from `repos_roots` in ~/.config/grove/config.toml."""
+    home = (paths or plat.paths()).home
+    data = _read_toml(home / ".config" / "grove" / "config.toml")
+    raw = data.get("repos_roots", [])
+    if isinstance(raw, str):
+        raw = [raw]
+    roots: List[Path] = []
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, str) or not item.strip():
+            continue
+        p = Path(os.path.expanduser(item.strip()))
+        if not p.is_absolute():
+            p = home / p
+        if p.is_dir() and p not in roots:
+            roots.append(p)
+    return roots
+
+
+def default_roots() -> List[Path]:
+    """Identity zones, then `repos_roots`, without duplicates."""
+    roots: List[Path] = []
+    for p in zone_roots() + config_roots():
+        if p not in roots:
+            roots.append(p)
+    return roots
 
 
 def _describe(repo: Path) -> dict:
@@ -112,13 +141,14 @@ def discover(paths: Optional[Sequence[str]] = None, depth: int = DEFAULT_DEPTH) 
         roots = [Path(p).expanduser() for p in paths]
         source = "paths"
     else:
-        roots = zone_roots()
-        source = "zones"
+        roots = default_roots()
+        source = "default"
     repos = find(roots, depth)
     hint = None
     if not roots:
-        hint = ("no identity zones configured: pass the folders to search, "
-                "e.g. `gwt repos ~/code`, or ask the user for the repo's path")
+        hint = ("no identity zones or repos_roots configured: pass the folders to search, "
+                "e.g. `gwt repos ~/code`, add them to repos_roots in "
+                "~/.config/grove/config.toml, or ask the user for the repo's path")
     elif not repos:
         hint = "no grove-managed repo found; try a larger depth or other folders"
     return {"roots": [str(r) for r in roots], "source": source, "depth": depth,

@@ -24,5 +24,10 @@ remove it (falls back to the repo's profile) with `unset_key` / `gwt config unse
   libgit2 < 1.9.4 tools (e.g. TortoiseGit) refuse the whole repo.** Enable it
   only when every git that touches the repo is new enough; `gwt config set
   relative_worktrees false` (with a new git) converts back.
+- **User-level settings** live in `~/.config/grove/config.toml`: custom
+  `[profiles.<name>]`, and `repos_roots = ["~/code", …]` — extra folders
+  `grove_repos` searches besides the identity zones (for repos outside any zone).
+- With `tickets = "off"` nothing is read as a ticket: `WORD-123` in a branch
+  name is just text, and `list`/`start` report no ticket.
 - A different base for one worktree doesn't need config: pass `base=` to
   `grove_start` / `grove_create`.

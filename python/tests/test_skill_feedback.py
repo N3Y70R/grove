@@ -140,7 +140,7 @@ def test_discover_uses_zones_by_default(repo, monkeypatch):
     git, ctx = repo
     monkeypatch.setattr(core_repos, "zone_roots", lambda: [ctx.root.parent])
     res = core_repos.discover()
-    assert res["source"] == "zones" and str(ctx.root) in [r["path"] for r in res["repos"]]
+    assert res["source"] == "default" and str(ctx.root) in [r["path"] for r in res["repos"]]
     monkeypatch.setattr(core_repos, "zone_roots", lambda: [])
     res = core_repos.discover()
     assert res["repos"] == [] and "ask the user" in res["hint"]

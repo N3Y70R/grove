@@ -2,6 +2,27 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.14.0
+
+### Added
+
+- **`repos_roots`** in `~/.config/grove/config.toml`: extra folders `gwt repos`
+  / `grove_repos` search besides the identity zones, so repos outside any zone
+  (e.g. personal repos reached through an SSH alias) are found without passing
+  their folder. `~` is expanded, missing folders are skipped, duplicates with
+  the zones dropped.
+
+### Changed
+
+- `gwt repos` / `grove_repos` report `source: "default"` (zones + `repos_roots`)
+  instead of `"zones"` when no folders are given.
+
+### Fixed
+
+- **`tickets = "off"` no longer reads tickets from names**, as the spec says:
+  `feature/abc-12-login` showed `ticket: "ABC-12"` in `list` and `start`. Now
+  the TICKET column and `start`'s `ticket` stay empty in that mode.
+
 ## python — 0.13.2
 
 ### Fixed

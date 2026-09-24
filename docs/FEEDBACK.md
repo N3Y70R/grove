@@ -265,8 +265,9 @@ findings written from the assistant can't be dated to a release.
 keys must end at a boundary). With `tickets = "optional"` and no prefixes, any
 `word-number` still passes as a ticket.
 
-**Proposed improvement.** Document `ticket_prefixes` as the recommended setting;
-consider not extracting tickets at all when `tickets = "off"`. → issue
+**Proposed improvement.** Document `ticket_prefixes` as the recommended setting
+(✅ 0.8.2); don't extract tickets at all when `tickets = "off"` (✅ 0.14.0 — the
+spec already said so; `list` and `start` still reported them).
 
 ## 17. Maintenance / tech debt
 
@@ -359,7 +360,7 @@ against the live MCP server: no technical errors) found gaps, not mistakes:
 
 ## 20. Agent Skill, second review (0.13.0)
 
-**Status:** ✅ R1–R3 done in 0.13.1; item 37 (`repos_roots`) open.
+**Status:** ✅ R1–R3 done in 0.13.1; item 37 (`repos_roots`) in 0.14.0.
 
 **Finding.** All of §19 verified live. Left, and small:
 
@@ -450,8 +451,10 @@ days, L more).
 | 34 | ~~R1: `repos` reports the effective origin (`remote get-url`) and profile, like `config`~~ ✅ 0.13.1 | §20 | S |
 | 35 | ~~R2: the `reset` gotcha points to the "origin moved" flow~~ ✅ 0.13.1 | §20 | S |
 | 36 | ~~R3: `publish` and `ssh_*` in the operation table; long gotchas moved to `references/`~~ ✅ 0.13.1 | §20 | S |
+| 37 | ~~`repos_roots` in `~/.config/grove/config.toml`: extra folders for `gwt repos` besides the identity zones~~ ✅ 0.14.0 | §20 | S |
 | 38 | ~~`skill install` refreshes an untouched outdated copy without `--force`~~ ✅ 0.13.2 | §20 | S |
-| 37 | `repos_roots` in `~/.config/grove/config.toml`: extra folders for `gwt repos` besides the identity zones | §20 | S |
+| 39 | ~~No ticket extraction when `tickets = "off"` (`list`, `start`)~~ ✅ 0.14.0 | §16 | S |
+| 40 | Trim workflow advice from the MCP tool descriptions (the skill covers it); each ends pointing to the skill | §18 | S–M |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -472,4 +475,5 @@ everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
 (0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0); skill feedback —
 `skill-outdated` in `doctor`, `gwt repos`, flow for a moved base, Spanish
 triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
-skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2).
+skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2); `repos_roots`, no tickets
+when `tickets = "off"` (0.14.0).

@@ -23,10 +23,11 @@ def cmd_repos(args, out: Output) -> int:
 def register_repos(sub) -> None:
     p = sub.add_parser(
         "repos",
-        help="list grove-managed repos under the given folders (default: your identity zones)")
+        help="list grove-managed repos under the given folders (default: identity zones + repos_roots)")
     _common(p)
     p.add_argument("paths", nargs="*", metavar="PATH",
-                   help="folders to search (default: the zones set up with 'gwt ssh add')")
+                   help="folders to search (default: the zones set up with 'gwt ssh add' plus repos_roots "
+                        "in ~/.config/grove/config.toml)")
     p.add_argument("--depth", type=int, default=core_repos.DEFAULT_DEPTH,
                    help=f"how deep to look under each folder (default {core_repos.DEFAULT_DEPTH})")
     p.set_defaults(func=cmd_repos)

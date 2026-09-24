@@ -430,7 +430,7 @@ Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo 
 
 ### 6.15c `gwt repos [<path>...] [--depth N]`
 
-Lists grove-managed repos (a folder with `.bare/HEAD`) under the given folders, or by default under the identity zones (`includeIf gitdir:` scopes written by `ssh add`, trailing `/**` stripped). Walks at most `N` levels (default 3), skips hidden folders, and does not descend into a repo once found. Each row: `path`, `name`, `origin` (`git remote get-url origin`: `url.insteadOf` rewrites applied, identical to `config`'s), `base` (`default_base` from `.bare/grove.toml`, else the bare `HEAD` unless it is the legacy parking branch), `profile` (effective: `default` when `grove.toml` names none). With no roots or no repos, a `hint` says what to do (pass folders, or ask the user for the path). Read-only; there is no repo registry. MCP: `grove_repos`.
+Lists grove-managed repos (a folder with `.bare/HEAD`) under the given folders, or by default under the identity zones (`includeIf gitdir:` scopes written by `ssh add`, trailing `/**` stripped) followed by the existing folders of `repos_roots` (a list of paths, `~` expanded, in the user config `~/.config/grove/config.toml`), without duplicates (`source: "default"`; `"paths"` when given explicitly). Walks at most `N` levels (default 3), skips hidden folders, and does not descend into a repo once found. Each row: `path`, `name`, `origin` (`git remote get-url origin`: `url.insteadOf` rewrites applied, identical to `config`'s), `base` (`default_base` from `.bare/grove.toml`, else the bare `HEAD` unless it is the legacy parking branch), `profile` (effective: `default` when `grove.toml` names none). With no roots or no repos, a `hint` says what to do (pass folders, or ask the user for the path). Read-only; there is no repo registry. MCP: `grove_repos`.
 
 ### 6.16 `gwt patch [<worktree>] [--base <ref>] [--format-patch] [--wip] [--output <path>] [--stdout]`
 
@@ -504,7 +504,7 @@ The `tickets` field defines how ticket worktrees are named and has three modes:
 - **`off`**: no key, only description (`gwt create feature "..."` → `feature/...`).
 - **`optional`**: accepts both; if the first argument matches the ticket pattern it is used as a ticket, if not, slug mode.
 
-Cascading effects depending on the mode: in `off`/no key, the TICKET column of `list` stays empty, the invariant "folder ticket = branch ticket" does not apply, and `doctor` does not report ticket mismatches.
+Cascading effects depending on the mode: in `off`/no key, no ticket is extracted from branch or folder names (a `WORD-123` in a description is plain text), so the TICKET column of `list` and `start`'s `ticket` stay empty, the invariant "folder ticket = branch ticket" does not apply, and `doctor` does not report ticket mismatches.
 
 **What counts as a ticket** is defined by the pattern, configurable in three ways (from highest to lowest priority): the env `GROVE_TICKET_PREFIX` (one or several keys separated by comma/space), `ticket_pattern` (explicit regex), or `ticket_prefixes` (list of keys, the recommended form; grove converts it into `(?:DROP|OPS)-\d+`). Unconfigured, the generic pattern accepts any Jira-style key. The pattern is used in `create` (validate/detect), `track` (parse), `list` (TICKET column), `doctor` (folder≠branch) and when resolving targets by ticket in `remove`/`publish`.
 

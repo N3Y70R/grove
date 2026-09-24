@@ -332,7 +332,7 @@ class RepoRow(TypedDict):
 
 class ReposResult(TypedDict):
     roots: Annotated[List[str], D("Folders searched.")]
-    source: Annotated[Literal["paths", "zones"], D("paths: given explicitly; zones: the identity zones from `gwt ssh add`.")]
+    source: Annotated[Literal["paths", "default"], D("paths: given explicitly; default: the identity zones from `gwt ssh add` plus repos_roots from ~/.config/grove/config.toml.")]
     depth: Annotated[int, D("Search depth under each root.")]
     repos: Annotated[List[RepoRow], D("Managed repos found, sorted by path.")]
     count: Annotated[int, D("Number of repos found.")]

@@ -20,8 +20,8 @@ Drive it with the grove MCP tools when they are available (always pass
 Every MCP tool's description ends with its `CLI:` equivalent.
 
 **Know the repo only by name?** `grove_repos` (`gwt repos`) lists the managed
-repos under the user's identity zones or the folders you pass. If it finds
-nothing, ask the user for the absolute path — never guess one.
+repos under the user's identity zones and `repos_roots`, or the folders you
+pass. If it finds nothing, ask the user for the absolute path — never guess one.
 
 ## Pick the operation
 

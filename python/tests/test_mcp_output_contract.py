@@ -152,4 +152,4 @@ def test_repos_honours_its_schema(repo, tmp_path):
     assert res["source"] == "paths" and res["count"] >= 1
     assert str(ctx.root) in [r["path"] for r in res["repos"]]
     empty = call("grove_repos")                    # no zones in the test home
-    assert empty["source"] == "zones" and empty["roots"] == [] and empty["hint"]
+    assert empty["source"] == "default" and empty["roots"] == [] and empty["hint"]

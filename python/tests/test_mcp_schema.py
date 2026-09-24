@@ -34,7 +34,7 @@ def test_all_tools_present():
 def test_every_parameter_has_a_description():
     missing = []
     for name, t in _tools().items():
-        for param, info in t.inputSchema.get("properties", {}).items():
+        for param, info in t.input_schema.get("properties", {}).items():
             if not info.get("description"):
                 missing.append(f"{name}.{param}")
     assert not missing, f"MCP params missing a description: {missing}"
@@ -42,15 +42,15 @@ def test_every_parameter_has_a_description():
 
 def test_create_kind_is_an_enum():
     t = _tools()["grove_create"]
-    assert t.inputSchema["properties"]["kind"].get("enum") == ["ticket", "release", "temp"]
+    assert t.input_schema["properties"]["kind"].get("enum") == ["ticket", "release", "temp"]
 
 
 def test_destructive_and_readonly_annotations():
     tools = _tools()
     for n in ("grove_remove", "grove_sync", "grove_reset", "grove_publish", "grove_ssh_remove"):
-        assert tools[n].annotations and tools[n].annotations.destructiveHint, n
+        assert tools[n].annotations and tools[n].annotations.destructive_hint, n
     for n in ("grove_list", "grove_compare", "grove_ssh_check", "grove_ssh_accounts"):
-        assert tools[n].annotations and tools[n].annotations.readOnlyHint, n
+        assert tools[n].annotations and tools[n].annotations.read_only_hint, n
 
 
 def test_every_tool_names_its_cli_equivalent():

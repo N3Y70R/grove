@@ -18,7 +18,7 @@ mcp/
 ├── __init__.py
 ├── __main__.py     # python -m grove.mcp
 ├── _ops.py         # pure operation layer: returns the structured result (no SDK import)
-└── server.py       # FastMCP tools over _ops; starts the server (stdio)
+└── server.py       # MCPServer (mcp 2.x) tools over _ops; starts the server (stdio)
 ```
 
 `_ops.py` has **no MCP SDK dependency**, so the operation logic is importable

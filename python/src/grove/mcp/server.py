@@ -21,7 +21,7 @@ this enrichment in sync whenever a tool or its parameters change.
 from typing import Annotated, List, Literal, Optional
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
     from mcp.types import ToolAnnotations
     from pydantic import Field
 except ModuleNotFoundError as exc:  # pragma: no cover
@@ -31,7 +31,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     except ModuleNotFoundError:
         _hint = "The MCP SDK is not installed."
     else:
-        _hint = "Incompatible MCP SDK version (grove requires mcp<2)."
+        _hint = "Incompatible MCP SDK version (grove requires mcp>=2.2,<3)."
     raise ImportError(
         f"{_hint} Install the optional extra:\n"
         '    pip install "grove-wt[mcp]"'
@@ -40,7 +40,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
 from . import _ops
 from ..core.errors import UsageError
 
-mcp = FastMCP("grove")
+mcp = MCPServer(name="grove")
 
 # Reusable parameter annotations -------------------------------------------- #
 
@@ -49,11 +49,11 @@ Cwd = Annotated[Optional[str], Field(
                 "Defaults to the process working directory; always pass it explicitly "
                 "when driving grove from chat.")]
 
-# Annotation presets (openWorldHint=False: grove is offline, pure-git).
+# Annotation presets (open_world_hint=False: grove is offline, pure-git).
 def _ann(title, *, read_only=False, destructive=False, idempotent=False):
-    return ToolAnnotations(title=title, readOnlyHint=read_only,
-                           destructiveHint=destructive, idempotentHint=idempotent,
-                           openWorldHint=False)
+    return ToolAnnotations(title=title, read_only_hint=read_only,
+                           destructive_hint=destructive, idempotent_hint=idempotent,
+                           open_world_hint=False)
 
 
 @mcp.tool(annotations=_ann("Set up a managed repo"))

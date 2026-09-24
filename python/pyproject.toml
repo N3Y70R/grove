@@ -30,8 +30,8 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
-# <2: mcp 2.x renamed FastMCP -> MCPServer; migrate before lifting the cap.
-mcp = ["mcp>=1.2,<2"]
+# mcp 2.x (MCPServer, snake_case models); 2.2 is the version grove is tested with.
+mcp = ["mcp>=2.2,<3"]
 
 [project.urls]
 Homepage = "https://github.com/N3Y70R/grove"

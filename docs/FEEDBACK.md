@@ -280,6 +280,43 @@ consider not extracting tickets at all when `tickets = "off"`. → issue
   then silently *downgrades*. Document: check `pipx runpip grove-wt index
   versions grove-wt` first, or install from the local `main` checkout. → issue
 
+## 18. Ship grove's know-how as an Agent Skill
+
+**Finding.** The MCP tells an agent *which tools exist*; it doesn't teach *how
+to work* with grove: the recommended flow, which tool fits which request, and
+the traps. Most dogfooding delays were exactly that (items 5, 8, 11): `adopt`
+already existed as `convert`, `sync` sounded safe but discarded work, the
+safe fetch hid inside `compare`, `grove` vs `gwt`. [Agent Skills](https://agentskills.io/specification)
+is an open format (a folder with a `SKILL.md`: `name` + `description`
+frontmatter and Markdown instructions, optional `scripts/`, `references/`,
+`assets/`) read by Claude/Claude Code, Codex, Gemini CLI, Cursor, Copilot, VS
+Code and others, loaded progressively (only name + description at startup; the
+body when a task matches; references on demand). The shared install location is
+`.agents/skills/` (project or user level); many clients also read
+`.claude/skills/`.
+
+**Impact.** Every agent rediscovers grove by trial and error; workflow
+guidance is squeezed into MCP tool descriptions, which load on every session.
+
+**Proposed improvement.**
+- Ship `skills/grove/SKILL.md` in the repo, following the spec: `name: grove`,
+  a keyword-rich `description` (worktrees, tickets, `gwt`, "start working on
+  ticket X"), body under 500 lines with the core flow (`start` → work → push →
+  `remove --merged`, `fetch` vs `reset`, `doctor --fix`) and a **gotchas**
+  section taken from real sessions (`reset` discards; never touch repos the
+  user didn't ask for; `relative_worktrees` breaks git < 2.48; sandbox locks →
+  `doctor --fix`; `GIT_DIR` from another mount; restart the MCP client after
+  upgrading; stale PyPI index). Detail goes to `references/` (one level deep,
+  loaded "when X happens"). → issue
+- Validate it in CI with `skills-ref validate skills/grove`, and document how
+  to install it (copy/symlink to `~/.agents/skills/grove` or
+  `~/.claude/skills/grove`). → issue
+- Later: `gwt skill install [--user|--project] [--path DIR]` copies the bundled
+  skill (packaged with the wheel) to the chosen skills directory, so it matches
+  the installed grove version. → issue
+- Once the skill exists, trim workflow advice from the MCP tool descriptions
+  where the skill covers it (keep descriptions about *what* each tool does).
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -288,6 +325,9 @@ consider not extracting tickets at all when `tickets = "off"`. → issue
   Y") would cut trial-and-error. → issue
 - **Onboarding a repo with a non-standard base** (dropi = production) should be a
   documented one-liner, not a discovery exercise.
+- **Agent-facing knowledge has three layers**: typed MCP schemas (what each
+  tool returns, ✅ 0.11.x), tool descriptions (what each tool does, with its
+  `CLI:` line) and an Agent Skill (how to work with grove, §18).
 - **Naming is the recurring root cause** (items 5, 8, 11): `convert` vs "adopt",
   `sync` vs "update", `gwt` vs "grove". Before adding features, check whether the
   capability exists under a name users don't search for.
@@ -323,6 +363,8 @@ days, L more).
 | 22 | ~~Structured MCP results so clients get `structured_content`, not only JSON text~~ ✅ 0.9.1 | §17 | S |
 | 23 | ~~Typed output schemas (fields, types, descriptions) for the everyday MCP tools~~ ✅ 0.11.1 | §17 | M |
 | 24 | ~~Typed output schemas for `grove_config`, `grove_publish` and `grove_ssh_*`~~ ✅ 0.11.2 | §17 | M |
+| 25 | Agent Skill `skills/grove/SKILL.md` (spec-compliant, gotchas from real sessions, `references/`), `skills-ref validate` in CI, install docs | §18 | M |
+| 26 | `gwt skill install [--user\|--project]`: install the bundled skill matching the grove version | §18 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,

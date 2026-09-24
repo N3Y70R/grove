@@ -436,10 +436,12 @@ grove is **remote agnostic at the repo level**: in `setup <url>` whatever URL is
 From lowest to highest priority:
 
 1. grove's internal defaults.
-2. User global config (`~/.config/grove/config.toml`), where the **profiles** are defined.
-3. Repo config (`.bare/grove.toml`), which `setup` writes upon initialization.
+2. The repo's **profile** — its name is recorded as `profile` in `.bare/grove.toml` (repos created before python 0.8.2 have none and use `default`); its values come from the built-in profiles or `[profiles.<name>]` in the user global config (`~/.config/grove/config.toml`).
+3. Repo config (`.bare/grove.toml`), which `setup`/`convert` write as a full snapshot of the policy.
 4. Environment variables (e.g. `GROVE_TICKET_PREFIX`).
 5. CLI flags.
+
+Consequence: a profile is a **template**. Editing it later does not change the keys already written in existing repos; only keys removed from `grove.toml` (`gwt config unset`) fall back to the repo's profile. If the recorded profile no longer exists, `default` is used.
 
 This way a work repo and a personal one coexist on the same machine with different policies without having to remember to export anything.
 
@@ -475,7 +477,7 @@ Cascading effects depending on the mode: in `off`/no key, the TICKET column of `
 
 ### 8.4 Profiles (global config)
 
-grove ships with built-in profiles (`default`, `personal`, `gitflow`). To avoid configuring each repo by hand, the global config can add or override profiles that `setup --profile <name>` materializes in the repo's `grove.toml`. Example of a custom work profile with required tickets and an integration branch:
+grove ships with built-in profiles (`default`, `personal`, `gitflow`). To avoid configuring each repo by hand, the global config can add or override profiles that `setup --profile <name>` (or `convert --profile <name>`) materializes in the repo's `grove.toml`, recording the profile's name. Example of a custom work profile with required tickets and an integration branch:
 
 ```toml
 [profiles.work]

@@ -2,6 +2,30 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.9.0
+
+### Changed
+
+- **MCP server migrated to mcp 2.x**: the `[mcp]` extra now requires
+  `mcp>=2.2,<3` (it was capped `<2` since 0.6.1). The server uses `MCPServer`
+  (FastMCP's new name) and snake_case annotation fields. **Nothing changes for
+  clients**: same tools, parameters, descriptions and annotations, and results
+  still arrive as JSON text (verified against mcp 1.30). Upgrade with
+  `pipx install --force "grove-wt[mcp]"` (or reinstall your environment) and
+  restart the MCP client.
+
+### Fixed
+
+- **A repo without `grove.toml` got grove's internal work-style defaults**
+  (base `production`, tickets `required`) in any new process. It now uses the
+  `default` profile, as documented in 0.8.2. Found by the new end-to-end test.
+
+### Tests
+
+- **End-to-end MCP test**: starts `python -m grove.mcp` over stdio (as Claude
+  Desktop does), initializes, lists the tools and calls `grove_config` on a real
+  repo.
+
 ## python — 0.8.4
 
 ### Changed

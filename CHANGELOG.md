@@ -2,6 +2,30 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.6.2
+
+### Added
+
+- **`doctor` cleans up leftover git locks and temp objects.** Orphaned `*.lock`
+  files anywhere in `.bare` (e.g. the `HEAD.lock` behind *"Another git process
+  seems to be running"*) and interrupted-write leftovers (`tmp_obj_*`,
+  `tmp_pack_*`, `tmp_idx_*`) are now reported and removed by `--fix` — only when
+  stale: ≥60 s old with no git process running on this machine, or ≥10 min old
+  regardless. Recent locks are reported for manual review and never touched.
+  Lock fixes run first, since a lock makes every other git-based fix fail.
+- **`doctor` reports missing author identity**: worktrees where
+  `git var GIT_AUTHOR_IDENT` fails (a commit would fail with *"Author identity
+  unknown"*). Manual; honours `includeIf` zones.
+- **`gitdir` in `list`** (`--json` and `grove_list`): each worktree's internal
+  admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`).
+  git names it after the last path component, so it can't be derived from the
+  folder; it lets tools on another mount build `GIT_DIR`.
+
+### Changed
+
+- CLI `list --json` and MCP `grove_list` now build their rows from one shared
+  function (`model.worktree_dict`), so both always expose the same fields.
+
 ## python — 0.6.1
 
 ### Fixed

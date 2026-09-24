@@ -290,8 +290,8 @@ days, L more).
 
 | # | Item | Source | Size |
 |---|---|---|---|
-| 1 | `doctor`: orphaned locks + `tmp_obj_*` (auto-fix), identity check | §6 | S |
-| 2 | `gitdir` field in `list` | §7 | S |
+| 1 | ~~`doctor`: orphaned locks + `tmp_obj_*` (auto-fix), identity check~~ ✅ 0.6.2 | §6 | S |
+| 2 | ~~`gitdir` field in `list`~~ ✅ 0.6.2 | §7 | S |
 | 3 | Rename `sync` (keep deprecated alias); fetch mentioned first in `compare` | §8 | S |
 | 4 | `merged` in `list`; `dry_run` in `grove_remove` | §9 | S |
 | 5 | Neutral cwd for machine-level git commands | §7 | S |
@@ -313,4 +313,5 @@ days, L more).
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
 `convert` (0.6.0); `convert` fixes + `--profile`, version-as-ticket fix,
-`mcp<2` pin, hermetic tests (0.6.1).
+`mcp<2` pin, hermetic tests (0.6.1); `doctor` locks/temp objects/identity,
+`gitdir` in `list` (0.6.2).

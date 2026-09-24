@@ -54,3 +54,14 @@ def test_classify_ticket():
 
 def test_classify_unknown():
     assert naming.classify("chore/cleanup", "chore/cleanup").kind == "unknown"
+
+
+def test_extract_ticket_ignores_version_numbers():
+    # 'python-0.6.1' is a version, not ticket PYTHON-0.
+    assert naming.extract_ticket("fix/python-0.6.1") is None
+    assert naming.extract_ticket("release/v1.2.0") is None
+
+
+def test_extract_ticket_still_matches_at_boundaries():
+    assert naming.extract_ticket("feature/PROJ-123") == "PROJ-123"
+    assert naming.extract_ticket("bugfix/PROJ-7-fix-login") == "PROJ-7"

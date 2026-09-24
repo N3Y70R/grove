@@ -54,5 +54,5 @@ def find_repo(start: Optional[Path] = None) -> RepoContext:
             return RepoContext(root=candidate, bare=bare, name=candidate.name)
     raise UsageError(
         "No managed repo (.bare/) found from this directory. "
-        "Use 'wt setup <url>' to create one, or move into a managed repo."
+        "Use 'gwt setup <url>' (or 'gwt convert' for an existing clone) to create one, or move into a managed repo."
     )

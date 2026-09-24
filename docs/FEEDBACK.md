@@ -312,7 +312,7 @@ days, L more).
 | 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
 | 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
 | 15 | Migrate to mcp 2.x | §17 | M |
-| 16 | Split `cli/main.py` | §17 | M |
+| 16 | ~~Split `cli/main.py`~~ ✅ 0.8.4 | §17 | M |
 | 17 | Composite MCP op "start ticket X from base Y" | meta | M |
 | 18 | ~~Docs: arbitrary-base recipe, profile editing & precedence, work-style profile, SSH key selection, ticket prefixes, release tagging~~ ✅ 0.8.2 | §1–4, §16, §17 | M |
 | 19 | ~~Suggest an existing base when the configured one is missing~~ ✅ 0.8.1 | §3 | S |
@@ -330,4 +330,4 @@ alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1
 orphans for `doctor` (0.8.0); neutral cwd for global git config, base
 suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1); `unset` falls back to the repo's profile, docs:
 recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
-(0.8.3).
+(0.8.3); `cli/main.py` split into `cli/commands/*` (0.8.4).

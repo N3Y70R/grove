@@ -2,6 +2,18 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.8.4
+
+### Changed
+
+- **`cli/main.py` split into one module per area** (no behavior change):
+  `grove/cli/commands/{repo,worktrees,remote,maintenance,ssh}.py`, each command
+  as a `cmd_<name>` handler + `register_<name>(sub)` subparser pair, shared
+  helpers in `cli/_shared.py`, and `cli/main.py` down from ~1,480 to ~110 lines.
+  Verified by the full test suite and a byte-for-byte comparison of the `--help`
+  output of all 30 commands and subcommands. The unused `_not_implemented`
+  stub was removed.
+
 ## python — 0.8.3
 
 ### Added

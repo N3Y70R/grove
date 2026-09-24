@@ -275,6 +275,11 @@ consider not extracting tickets at all when `tickets = "off"`. → issue
 - **`cli/main.py` is ~1,450 lines**: split into one module per command. → issue
 - **Releases:** document "tag after merge, never squash/rebase-merge a release
   branch" so the `python/vX.Y.Z` tag stays on `main`. → issue
+- **Releases, install side:** after publishing, some networks keep serving a
+  stale PyPI index for a long time (seen for 0.6.2 and 0.7.0: pypi.org already
+  listed the version, `pip` on the Mac did not). `pipx install --force grove-wt`
+  then silently *downgrades*. Document: check `pipx runpip grove-wt index
+  versions grove-wt` first, or install from the local `main` checkout. → issue
 
 ## Cross-cutting / meta
 

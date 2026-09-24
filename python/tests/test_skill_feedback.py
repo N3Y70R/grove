@@ -179,6 +179,8 @@ def _skill():
 def test_description_triggers_in_spanish_too():
     desc = re.search(r"^description: (.*)$", _skill(), re.M).group(1)
     assert "arranca" in desc.lower() or "empecemos" in desc.lower()
+    head = desc[:200]                            # clients may truncate from the end
+    assert all(t in head for t in ("arranca", "trae lo de origin", "limpia los worktrees", "gwt"))
     assert "origin" in desc and len(desc) <= 1024
 
 
@@ -276,3 +278,20 @@ def test_install_still_refuses_edited_or_unknown_copies(tmp_path):
     with pytest.raises(ValidationError, match="no install manifest"):
         core_skill.install(dest_root=root)
     assert core_skill.install(dest_root=root, force=True)["mode"] == "updated"
+
+
+# --- 0.14.2: third review ---------------------------------------------------- #
+
+def test_table_covers_temp_and_release():
+    table = _skill().split("## Pick the operation", 1)[1].split("\n\n", 2)[1]
+    assert 'kind="temp"' in table and 'kind="release"' in table
+
+
+def test_repos_is_a_catalog_not_a_permission():
+    para = _skill().split("**Know the repo only by name?**", 1)[1].split("\n\n", 1)[0]
+    assert "catalog, not permission" in para and "the user named" in para
+
+
+def test_doctor_checks_both_user_level_copies():
+    roots = core_skill.default_roots()
+    assert core_skill.target_root("agents") in roots and core_skill.target_root("claude") in roots

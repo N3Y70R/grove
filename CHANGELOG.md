@@ -2,6 +2,22 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.14.2
+
+Third review of the Agent Skill (FEEDBACK §22).
+
+### Changed
+
+- **Skill `description`**: the key triggers, Spanish included ("arranca el
+  TICKET-123", "trae lo de origin", "limpia los worktrees"), now sit in the
+  first ~200 characters — clients may truncate descriptions from the end, which
+  is where they were. A test keeps them there.
+- **Operation table**: rows for a throwaway worktree (`grove_create(kind="temp")`
+  / `gwt create temp`) and for a release (`kind="release"` / `gwt create release`).
+- **`grove_repos`**: the skill says its result is a catalog of paths, not
+  permission — act only on the repo the user named.
+- CONTRIBUTING: keep the description's key triggers up front.
+
 ## python — 0.14.1
 
 ### Fixed

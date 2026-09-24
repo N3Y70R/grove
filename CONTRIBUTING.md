@@ -57,6 +57,8 @@ facades and docs stay in sync**:
    (a new command, a new trap), update `skills/grove/` (keep `SKILL.md` under 500
    lines; details in `references/`) and copy it over
    `python/src/grove/_skill/grove` (CI diffs them and runs `agentskills validate`).
+   Keep the `description`'s key triggers — including the Spanish ones — in its
+   first ~200 characters: clients may truncate it from the end.
 
 ## Commit message convention
 

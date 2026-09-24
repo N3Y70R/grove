@@ -422,6 +422,31 @@ manifest existed, but only `doctor` consulted it. Fixed in 0.13.2 (item 38).
 - Later: decide whether `repos_roots`, when set, should *replace* the zones
   (search exactly what the user listed). → issue
 
+## 22. Agent Skill, third review (0.14.1)
+
+**Status:** ✅ done in 0.14.2.
+
+**Finding.** R1–R3 verified live (`grove_repos` agrees with `grove_config`; the
+`reset` gotcha points to the flow; `publish` / `ssh_*` rows). New:
+
+- **The description that decides activation got cut.** The one shown in the
+  client's skill list ended at "…fix locks. Also arranca el TICKET-123." — it
+  was the Claude-account copy of the skill, written shorter, but the lesson is
+  general: clients may truncate descriptions from the end, which is exactly
+  where the Spanish triggers (S4) were.
+- **Does `skill-outdated` check both installed copies?** Yes (`~/.agents/skills`
+  and `~/.claude/skills`, plus project copies); now pinned by a test.
+- **`temp` and `release` had no row** in the operation table, though the intro
+  shows `temp/spike/` and `grove_create` takes both kinds; with `publish` in the
+  table the gitflow flow was half there.
+- **"Only the repo you were asked for" sat far from where it matters:** since
+  `grove_repos`, the tool itself puts personal repos next to work ones.
+
+**Proposed improvement.** Key triggers (Spanish included) in the description's
+first ~200 characters (a test checks it); rows for `create temp` / `create
+release`; the `grove_repos` paragraph says its result is a catalog, not
+permission.
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -487,6 +512,9 @@ days, L more).
 | 41 | ~~Stale MCP server after an upgrade: clear "restart the client" error instead of an opaque one~~ ✅ 0.14.1 | §21 | S |
 | 42 | ~~`ssh add` with a reused key doesn't demand an upload; verify with the alias~~ ✅ 0.14.1 | §21 | S |
 | 43 | ~~`ssh accounts` column widths from the content~~ ✅ 0.14.1 | §21 | S |
+| 45 | ~~Skill description: key triggers (Spanish too) in the first ~200 characters~~ ✅ 0.14.2 | §22 | S |
+| 46 | ~~Skill table: `create temp` / `create release`~~ ✅ 0.14.2 | §22 | S |
+| 47 | ~~`grove_repos` paragraph: a catalog, not permission~~ ✅ 0.14.2 | §22 | S |
 | 44 | `repos_roots` semantics: replace the zones when set, instead of adding to them? | §21 | S |
 | 40 | Trim workflow advice from the MCP tool descriptions (the skill covers it); each ends pointing to the skill | §18 | S–M |
 
@@ -511,4 +539,5 @@ everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
 triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
 skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2); `repos_roots`, no tickets
 when `tickets = "off"` (0.14.0); stale-MCP detection, `ssh add`/`accounts`
-output (0.14.1).
+output (0.14.1); skill third review — front-loaded triggers, temp/release rows,
+catalog-not-permission (0.14.2).

@@ -1,6 +1,6 @@
 ---
 name: grove
-description: Work in git repos managed by grove (the `gwt` command and the grove_* MCP tools), where each branch lives in its own worktree folder next to a `.bare/` repository. Use to start or resume work on a ticket (e.g. PROJ-123), bring remote changes safely, clean up merged worktrees, adopt an existing clone, or diagnose repo hygiene (git locks, missing identity). Triggers on gwt, grove, worktrees, `.bare/`, "start working on ticket X", "update from origin", and in Spanish "arranca / empecemos el TICKET-123", "trae lo de origin", "limpia los worktrees".
+description: grove worktrees (gwt, grove_* MCP, .bare/) — start or resume a ticket ("arranca el TICKET-123"), bring origin changes ("trae lo de origin"), clean merged worktrees ("limpia los worktrees"), fix git locks. Also adopts existing clones, creates temp and release worktrees, finds a repo's path and diagnoses repo hygiene. Triggers on "start working on ticket X", "update from origin", gwt, worktrees.
 license: GPL-3.0-or-later
 compatibility: Requires grove (pipx install "grove-wt[mcp]") and git. Optional relative worktree paths need git >= 2.48.
 metadata:
@@ -22,6 +22,8 @@ Every MCP tool's description ends with its `CLI:` equivalent.
 **Know the repo only by name?** `grove_repos` (`gwt repos`) lists the managed
 repos under the user's identity zones and `repos_roots`, or the folders you
 pass. If it finds nothing, ask the user for the absolute path — never guess one.
+What it returns is a **catalog, not permission**: work and personal repos show
+up side by side; act only on the repo the user named.
 
 ## Pick the operation
 
@@ -32,6 +34,8 @@ pass. If it finds nothing, ask the user for the absolute path — never guess on
 | see the worktrees and their state | `grove_list` | `gwt list` |
 | how far is a worktree from `main` (or any branch) | `grove_compare(vs="main")` | `gwt compare --vs main` |
 | bring what's new on origin (safe) | `grove_fetch` | `gwt fetch` |
+| a throwaway worktree (spike, experiment) | `grove_create(kind="temp", name)` | `gwt create temp <name>` |
+| start a release, or bring one that exists on origin | `grove_create(kind="release", version)` | `gwt create release <v>` |
 | bring an existing branch into a folder | `grove_track(branch)` | `gwt track <branch>` |
 | remove finished work | `grove_remove(merged=true, dry_run=true)` first | `gwt remove --merged --dry-run` |
 | fix hygiene problems | `grove_doctor`, then `fix=true` | `gwt doctor --fix` |

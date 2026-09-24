@@ -165,6 +165,11 @@ in worktrees, and can destroy their registration by "cleaning up".
   the assisted environment has 2.34) and is **not backward compatible**:
   libgit2 < 1.9.4 tools (e.g. TortoiseGit) and older git can't read such repos.
   Off by default; `doctor` warns when enabled on an older git. → issue
+- `rel_path` is computed from the absolute path git recorded, so from another
+  mount it comes out as `../../../../Users/…` (seen 2026-09-23 while testing
+  `gitdir`). Derive it from the admin dir instead (the worktree's `.git` sits at
+  `<root>/<rel_path>`), or fall back to matching by the recorded path's suffix
+  under the repo root. → issue
 - Run machine-level git commands (`git config --global`, used by `ssh add`)
   with a neutral cwd (`$HOME`) so a broken repo in the cwd can't break them. →
   issue
@@ -309,6 +314,7 @@ days, L more).
 | 17 | Composite MCP op "start ticket X from base Y" | meta | M |
 | 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
 | 19 | Suggest an existing base when the configured one is missing | §3 | S |
+| 20 | `rel_path` correct from another mount | §7 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,

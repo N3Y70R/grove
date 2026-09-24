@@ -33,6 +33,7 @@ from ..core import (
     sync as core_sync,
     track as core_track,
 )
+from .. import __version__
 from ..core.errors import UsageError
 from ..core.gitrunner import GitRunner
 from ..core.model import Worktree, list_worktrees, worktree_dict
@@ -362,6 +363,7 @@ def op_doctor(
         "auto_fixable": len(auto),
         "manual": len(manual),
         "applied": applied,
+        "version": __version__,
     }
 
 
@@ -388,7 +390,8 @@ def op_compare(
 def op_config_show(*, cwd: Optional[str] = None) -> dict:
     repo = _enter(cwd)
     pol = core_config.effective_policy()
-    return {"repo": repo.name, "root": str(repo.root), "origin": _origin(repo), **pol}
+    return {"repo": repo.name, "root": str(repo.root), "origin": _origin(repo),
+            "version": __version__, **pol}
 
 
 def op_config_set_ssh_alias(*, value: str, cwd: Optional[str] = None) -> dict:

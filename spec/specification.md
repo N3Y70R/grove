@@ -121,11 +121,13 @@ Result: repo ready with `.bare/` + `production/`.
 
 **SSH alias.** The canonical URL copied from the remote does not carry local aliases. `setup` uses it as-is by default, but if `~/.ssh/config` has aliases whose `HostName` matches the URL's host, it detects them and lets you choose (interactive, or `--ssh-alias <alias>`; `none` forces the canonical one). When choosing an alias, it rewrites the `origin` URL to that alias so git uses the correct key in all commands.
 
+**Existing destination.** If the destination already exists, `setup` refuses. When it is already a normal git clone, the error suggests `gwt convert <path>` (adopting the clone without re-downloading it).
+
 **Transactional (cleanup on failure).** `setup` only creates the destination folder if it doesn't exist; if any step fails afterwards, the partial folder is removed so the next attempt starts clean (no leftover `.bare/` to trip over). `--keep-on-error` preserves the partial state for debugging.
 
 The `production/` worktree must end up **tracking** `origin/production` (upstream set and verified; see §6.8).
 
-### 6.1b `gwt convert [<path>] [--into <dir>] [--profile <name>] [--branches current|current+base|all] [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]`
+### 6.1b `gwt convert [<path>] [--into <dir>] [--profile <name>] [--branches current|current+base|all] [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]` (alias `gwt adopt`)
 
 Converts an **existing normal clone** into the grove model, without re-cloning
 from the network. Full design in [`../docs/DESIGN-convert.md`](../docs/DESIGN-convert.md).
@@ -769,7 +771,8 @@ Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `
 - **Typed** inputs (JSON schema) instead of text flags.
 - **No interaction**: confirmation of destructive actions goes as a boolean parameter.
 - Output always **structured** (the `result`), never human text.
-- Each tool carries a **description** that the agent uses to decide when to invoke it.
+- Each tool carries a **description** that the agent uses to decide when to invoke it, ending with a `CLI:` line with the equivalent command.
+- `grove_config` and `grove_doctor` (and their `--json` CLI counterparts) include the grove **`version`**.
 
 ### 13.3 Enrichment
 

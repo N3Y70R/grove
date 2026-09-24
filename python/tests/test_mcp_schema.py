@@ -51,3 +51,9 @@ def test_destructive_and_readonly_annotations():
         assert tools[n].annotations and tools[n].annotations.destructiveHint, n
     for n in ("grove_list", "grove_compare", "grove_ssh_check", "grove_ssh_accounts"):
         assert tools[n].annotations and tools[n].annotations.readOnlyHint, n
+
+
+def test_every_tool_names_its_cli_equivalent():
+    """Agents should be able to tell the user how to do the same without them."""
+    missing = [n for n, t in _tools().items() if "CLI: `gwt " not in (t.description or "")]
+    assert missing == [], f"tools without a 'CLI: `gwt …`' line: {missing}"

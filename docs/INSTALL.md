@@ -110,7 +110,7 @@ pipx install --python python3.12 ~/Downloads/grove-0.1.0-py3-none-any.whl
 gwt --version          # -> grove (gwt) 0.1.0
 ```
 
-If it says "command not found", run `pipx ensurepath` and reopen the terminal (see §8).
+If it says "command not found", run `pipx ensurepath` and reopen the terminal (see §8). Note the command is **`gwt`**; since 0.7.1 `grove` also works as an alias.
 
 **Alternative without pipx** (not recommended, but valid): `python3 -m pip install --user ~/Downloads/grove-0.1.0-py3-none-any.whl`. The `gwt` command will end up in the user's scripts directory; you may need to add it to the PATH.
 

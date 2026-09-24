@@ -315,6 +315,7 @@ def cmd_track(args, out: Output) -> int:
 
 
 def cmd_doctor(args, out: Output) -> int:
+    from .. import __version__
     from ..core import doctor as core_doctor
 
     git = _make_runner(args, out)
@@ -336,6 +337,7 @@ def cmd_doctor(args, out: Output) -> int:
             "auto_fixable": len(auto),
             "manual": len(manual),
             "applied": applied,
+            "version": __version__,
         })
         out.success(
             f"{len(issues)} problem(s); {len(auto)} auto-fixable, {len(manual)} manual"
@@ -1103,8 +1105,10 @@ def cmd_config(args, out: Output) -> int:
         return 0
 
     # show
+    from .. import __version__
     pol = core_config.effective_policy()
-    report = {"repo": repo.name, "root": str(repo.root), "origin": origin, **pol}
+    report = {"repo": repo.name, "root": str(repo.root), "origin": origin,
+              "version": __version__, **pol}
     out.set_result(report)
     if not out.json_mode:
         out.plain(f"Repo: {repo.name}")
@@ -1142,7 +1146,8 @@ def _common(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="gwt", description="grove — git worktree management with a convention.")
+    p = argparse.ArgumentParser(prog="gwt", description="grove — git worktree management with a convention. "
+                                "The command is `gwt` (also installed as `grove`).")
     p.add_argument("--version", action="store_true", help="show the version and exit")
     sub = p.add_subparsers(dest="command")
 
@@ -1161,8 +1166,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="~/.ssh/config alias to use for the remote (or 'none' for the URL as-is)")
     sp.set_defaults(func=cmd_setup)
 
-    cv = sub.add_parser("convert",
-                        help="convert an existing clone into the grove model")
+    cv = sub.add_parser("convert", aliases=["adopt"],
+                        help="adopt an existing clone: convert it into the grove model "
+                             "without re-cloning ('adopt' is an alias)")
     _common(cv)
     cv.add_argument("path", nargs="?", help="path of the existing clone (default: cwd)")
     cv.add_argument("--into", help="create a new grove repo here; leave the source intact")

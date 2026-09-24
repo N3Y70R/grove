@@ -47,6 +47,11 @@ def setup(
     bare = root / ".bare"
 
     if root.exists():
+        if (root / ".git").exists() and not (root / ".bare").exists():
+            raise UsageError(
+                f"The destination already exists and is a git clone: {root}. "
+                f"To manage it with grove without re-cloning, use: gwt convert {root}"
+            )
         raise UsageError(f"The destination already exists: {root}")
 
     try:

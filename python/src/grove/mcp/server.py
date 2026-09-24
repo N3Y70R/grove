@@ -73,6 +73,8 @@ def grove_setup(
     Applies a policy profile (default if omitted), auto-detects the base branch
     from the origin when the configured one is absent, and writes .bare/grove.toml.
     Transactional: on failure the partial folder is removed (unless keep_on_error).
+
+    CLI: `gwt setup <url> [--profile P] [--base B] [--ssh-alias A]`
     """
     return _ops.op_setup(url, name=name, into=into, profile=profile,
                          base=base, ssh_alias=ssh_alias, git_pointer=git_pointer,
@@ -92,7 +94,8 @@ def grove_convert(
     profile: Annotated[Optional[str], Field(description="Policy profile to apply and record in .bare/grove.toml: default | personal | gitflow | a custom one. Default: default.")] = None,
     cwd: Cwd = None,
 ) -> dict:
-    """Convert an existing normal clone into grove's bare + worktrees model.
+    """Adopt/convert an existing normal clone into grove's bare + worktrees model
+    (no re-clone). Use this when the user already has the repo cloned.
 
     In-place by default (reuses .git, auto-stashes and restores uncommitted work,
     moves ignored files — also those nested in tracked folders — into the current
@@ -100,6 +103,8 @@ def grove_convert(
     with the chosen profile and the detected base. `into` builds a fresh grove repo beside the source,
     leaving it untouched. Submodules/Git LFS are refused unless force=true.
     With `into`, a failed conversion cleans up the new folder (unless keep_on_error).
+
+    CLI: `gwt convert [path] [--into DIR] [--profile P]` (alias `gwt adopt`)
     """
     return _ops.op_convert(path=path, into=into, branches=branches, fetch=fetch,
                            force=force, git_pointer=git_pointer,
@@ -120,6 +125,8 @@ def grove_list(
     the repo root (e.g. .bare/worktrees/PROJ-1-login). Use it to build GIT_DIR
     when the repo is seen from another mount (the worktree's .git file holds an
     absolute path that may not exist there).
+
+    CLI: `gwt list [--type T] [--dirty] [--orphans] --json`
     """
     return _ops.op_list(cwd=cwd, type=type, dirty=dirty, orphans=orphans)
 
@@ -139,6 +146,8 @@ def grove_create(
 
     The ticket key and slug are supplied by the caller; grove does not query any
     ticket system. Use 'base' to branch off a specific branch.
+
+    CLI: `gwt create <TICKET> <type> "<name>" [--base B]` · `gwt create release <v>` · `gwt create temp <name>`
     """
     return _ops.op_create(kind=kind, type=type, name=name, ticket=ticket,
                           version=version, base=base, cwd=cwd)
@@ -150,7 +159,10 @@ def grove_track(
     as_: Annotated[Optional[str], Field(description="Explicit destination path, e.g. 'hotfix/PROJ-1-fix', to relocate/force a type.")] = None,
     cwd: Cwd = None,
 ) -> dict:
-    """Bring an existing branch (local or on origin) into the structure as a worktree."""
+    """Bring an existing branch (local or on origin) into the structure as a worktree.
+
+    CLI: `gwt track <branch> [--as <type>/<TICKET>-<slug>]`
+    """
     return _ops.op_track(branch=branch, as_=as_, cwd=cwd)
 
 
@@ -170,6 +182,8 @@ def grove_remove(
     ticket worktrees already merged into the base (see the `merged` field of
     grove_list; a brand-new branch with no commits also counts as merged).
     Special worktrees are protected. Empty type folders left behind are removed.
+
+    CLI: `gwt remove <target> [--delete-branch] [--force] [--dry-run]` · `gwt remove --merged [--dry-run]`
     """
     return _ops.op_remove(target=target, merged=merged, delete_branch=delete_branch,
                           force=force, confirm=confirm, dry_run=dry_run, cwd=cwd)
@@ -187,6 +201,8 @@ def grove_reset(
 
     For branches that are regenerated/force-pushed. To only BRING remote changes
     without losing anything, use grove_compare(fetch=true) instead.
+
+    CLI: `gwt reset [target] [--clean] [--yes]`
     """
     return _ops.op_reset(target=target, clean=clean, confirm=confirm, cwd=cwd)
 
@@ -199,7 +215,10 @@ def grove_sync(
     cwd: Cwd = None,
 ) -> dict:
     """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
-    to origin). To only bring remote changes, use grove_compare(fetch=true)."""
+    to origin). To only bring remote changes, use grove_compare(fetch=true).
+
+    CLI: `gwt sync` (deprecated) → `gwt reset`
+    """
     return _ops.op_sync(target=target, clean=clean, confirm=confirm, cwd=cwd)
 
 
@@ -220,6 +239,8 @@ def grove_publish(
     and if it does NOT exist grove creates it from 'base' with a normal push
     (no confirm needed). The result carries 'created' (bool) and 'mode'
     (created | regenerate | additive).
+
+    CLI: `gwt publish [targets…] [--into B] [--regenerate] [--base B]`
     """
     return _ops.op_publish(targets=targets, into=into, regenerate=regenerate,
                            base=base, no_sync=no_sync, confirm=confirm, cwd=cwd)
@@ -236,6 +257,8 @@ def grove_doctor(
     orphaned git locks (*.lock) and leftover temp objects in .bare — auto-fixable
     once stale (≥60s with no git running, or ≥10min) — and worktrees where git
     has no author identity (commits would fail; manual).
+
+    CLI: `gwt doctor [--fix] [--dry-run]`
     """
     return _ops.op_doctor(fix=fix, cwd=cwd)
 
@@ -250,7 +273,10 @@ def grove_compare(
 ) -> dict:
     """Ahead/behind between branches/worktrees. With fetch=true it first runs
     `git fetch origin` — the safe way to bring remote changes (it never modifies
-    your worktrees; unlike grove_reset, which discards local work)."""
+    your worktrees; unlike grove_reset, which discards local work).
+
+    CLI: `gwt compare [a] [b] [--vs REF] [--fetch]`
+    """
     return _ops.op_compare(a=a, b=b, vs=vs, fetch=fetch, cwd=cwd)
 
 
@@ -264,7 +290,10 @@ def grove_config(
 ) -> dict:
     """Show the repo configuration, or change it: set the SSH alias (rewrites
     origin), set an arbitrary grove.toml key, or unset one. Omit all of these to
-    just show the current config."""
+    just show the current config.
+
+    CLI: `gwt config show | set <key> <value> | unset <key> | edit | set-ssh-alias <alias>`
+    """
     if set_ssh_alias is not None:
         return _ops.op_config_set_ssh_alias(value=set_ssh_alias, cwd=cwd)
     if set_key is not None:
@@ -283,7 +312,10 @@ def grove_ssh_check(
     live: Annotated[bool, Field(description="Actually test authentication (ssh -T).")] = False,
     cwd: Cwd = None,
 ) -> dict:
-    """Diagnose SSH config for a git remote (keys, agent, permissions)."""
+    """Diagnose SSH config for a git remote (keys, agent, permissions).
+
+    CLI: `gwt ssh check [target] [--all] [--live]`
+    """
     return _ops.op_ssh_check(target=target, all=all, live=live, cwd=cwd)
 
 
@@ -293,7 +325,10 @@ def grove_ssh_aliases(
     cwd: Cwd = None,
 ) -> dict:
     """List the ~/.ssh/config aliases that resolve to a repo's host (the
-    repo↔alias map), marking which one is currently applied. Read-only."""
+    repo↔alias map), marking which one is currently applied. Read-only.
+
+    CLI: `gwt ssh aliases [url-or-host]`
+    """
     return _ops.op_ssh_aliases(target=target, cwd=cwd)
 
 
@@ -314,6 +349,8 @@ def grove_ssh_add(
 
     grove never uploads the key — the returned 'pubkey' must be uploaded to the
     host by you (e.g. via your GitHub/Bitbucket connector). Idempotent.
+
+    CLI: `gwt ssh add <name> --host <host> [--email E] [--scope-dir DIR]`
     """
     return _ops.op_ssh_add(name, host=host, email=email, scope_dir=scope_dir,
                            key=key, no_identity=no_identity, no_agent=no_agent,
@@ -322,7 +359,10 @@ def grove_ssh_add(
 
 @mcp.tool(annotations=_ann("List SSH accounts", read_only=True))
 def grove_ssh_accounts() -> dict:
-    """List grove-managed SSH accounts and zones (alias, host, key, routing coherence)."""
+    """List grove-managed SSH accounts and zones (alias, host, key, routing coherence).
+
+    CLI: `gwt ssh accounts`
+    """
     return _ops.op_ssh_accounts()
 
 
@@ -334,6 +374,8 @@ def grove_ssh_doctor(
 
     Reports the host-vs-alias trap, embedded secrets, missing IdentitiesOnly/insteadOf,
     bad key permissions, unset useConfigOnly, orphans, etc. (auto-fixes the safe ones).
+
+    CLI: `gwt ssh doctor [--fix]`
     """
     return _ops.op_ssh_doctor(fix=fix)
 
@@ -346,7 +388,10 @@ def grove_ssh_remove(
     confirm: Annotated[bool, Field(description="Required: set true to proceed (edits ~/.ssh/config and ~/.gitconfig).")] = False,
     dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
 ) -> dict:
-    """Remove a grove-managed SSH account (DESTRUCTIVE — requires confirm=true)."""
+    """Remove a grove-managed SSH account (DESTRUCTIVE — requires confirm=true).
+
+    CLI: `gwt ssh remove <name> [--delete-key]`
+    """
     return _ops.op_ssh_remove(name, delete_key=delete_key, keep_routing=keep_routing,
                               confirm=confirm, dry_run=dry_run)
 

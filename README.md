@@ -1,6 +1,6 @@
 # grove
 
-**grove** manages git worktrees with a consistent convention and structure. The command is called **`gwt`** (git worktree).
+**grove** manages git worktrees with a consistent convention and structure. The command is called **`gwt`** (git worktree); since python 0.7.1 it is also installed as **`grove`**, so typing the project's name works too.
 
 This repository is a **monorepo**: the same tool implemented in several languages, all following a single [specification](spec/specification.md).
 

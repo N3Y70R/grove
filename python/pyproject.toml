@@ -38,6 +38,7 @@ Documentation = "https://github.com/N3Y70R/grove/tree/main/docs"
 
 [project.scripts]
 gwt = "grove.cli.main:main"
+grove = "grove.cli.main:main"   # alias: the project is called grove, the short command is gwt
 grove-mcp = "grove.mcp.server:main"
 
 [tool.setuptools.packages.find]

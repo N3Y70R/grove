@@ -119,6 +119,11 @@ It speaks MCP over stdin/stdout. Point the client's "command" at `grove-mcp`
 
 ## 7. Available tools
 
+Every tool's description ends with a **`CLI:`** line naming the equivalent
+terminal command, so the agent can tell you how to do the same without it.
+`grove_config` and `grove_doctor` results include grove's **`version`**, so
+findings can be dated to a release.
+
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`.

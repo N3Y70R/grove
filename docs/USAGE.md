@@ -105,6 +105,8 @@ gwt setup <url> [--name <dir>] [--into <path>] [--profile <name>]
 
 What it does: clones the bare, configures the origin refspec, creates the parking branch, creates the base branch worktree (e.g. `production` or `main`) tracking the origin, and writes `.bare/grove.toml` with the profile's policy.
 
+**Already have the repo cloned?** Don't re-clone: use [`gwt convert`](#gwt-convert) (alias `gwt adopt`). If `setup`'s destination is already a git clone, it stops and suggests exactly that command.
+
 ```
 gwt setup git@github.com:acme/myrepo.git --profile personal
 ```
@@ -130,7 +132,7 @@ gwt setup git@github.com:neytor/proyecto.git --ssh-alias gh-personal      # pers
 
 ## `gwt convert`
 
-Converts an **existing normal clone** into the grove model, without re-cloning.
+Converts (adopts) an **existing normal clone** into the grove model, without re-cloning. Alias: **`gwt adopt`**.
 
 ```
 gwt convert [path] [--into <dir>] [--profile <name>] [--branches current|current+base|all]

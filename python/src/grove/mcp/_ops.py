@@ -384,6 +384,20 @@ def op_start(
                             base=base, fetch=fetch)
 
 
+def op_skill_install(
+    *,
+    target: str = "agents",
+    path: Optional[str] = None,
+    force: bool = False,
+    dry_run: bool = False,
+    cwd: Optional[str] = None,
+) -> dict:
+    from ..core import skill as core_skill
+    root = (Path(path).expanduser() if path
+            else core_skill.target_root(target, cwd=Path(cwd) if cwd else None))
+    return core_skill.install(dest_root=root, force=force, dry_run=dry_run)
+
+
 def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
     from ..core import fetch as core_fetch
     git = _git()

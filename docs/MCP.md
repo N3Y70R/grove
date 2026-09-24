@@ -119,6 +119,11 @@ It speaks MCP over stdin/stdout. Point the client's "command" at `grove-mcp`
 
 ## 7. Available tools
 
+**Pair the MCP with the Agent Skill.** The tools say *what* grove can do; the
+skill ([`skills/grove/`](../skills/grove/SKILL.md), installed with
+`gwt skill install` or `grove_skill_install`) teaches the agent *how* to work
+with it: which tool to pick, the everyday flow, and the gotchas.
+
 Every tool's description ends with a **`CLI:`** line naming the equivalent
 terminal command, so the agent can tell you how to do the same without it.
 `grove_config` and `grove_doctor` results include grove's **`version`**, so

@@ -46,6 +46,10 @@ grove-mcp = "grove.mcp.server:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# grove's Agent Skill (a copy of skills/grove, kept in sync by tests/test_skill.py)
+grove = ["_skill/grove/*.md", "_skill/grove/references/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

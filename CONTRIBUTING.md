@@ -53,6 +53,10 @@ facades and docs stay in sync**:
 4. **docs** — `USAGE.md` (reference), `TUTORIAL.md` (flow if relevant), and
    `MCP.md` §9 (conversational example: CLI + tool call + chat phrasing), plus a
    `CHANGELOG.md` entry.
+5. **Agent Skill** — if the change affects how an agent should work with grove
+   (a new command, a new trap), update `skills/grove/` (keep `SKILL.md` under 500
+   lines; details in `references/`) and copy it over
+   `python/src/grove/_skill/grove` (CI diffs them and runs `agentskills validate`).
 
 ## Commit message convention
 
@@ -114,7 +118,7 @@ So that commits are easy to find (grep, tools, AI), we use a **controlled but so
 
 - Structure: `python`, `go`, `rust`, `docs`, `spec`, `conformance`, `ci`, `build`, `repo`
 - Components: `cli`, `core`
-- Commands: `setup`, `create`, `track`, `remove`, `reset`, `fetch`, `start`, `publish`, `doctor`, `list`, `config`, `ssh`
+- Commands: `setup`, `create`, `track`, `remove`, `reset`, `fetch`, `start`, `skill`, `publish`, `doctor`, `list`, `config`, `ssh`
 
 **Tags** (`Tags:` in the footer; cross-cutting labels that don't fit as a scope, comma-separated):
 
@@ -202,7 +206,7 @@ Each implementation is versioned separately with language-prefixed tags: `python
 
 ### Release process (python)
 
-1. **Work in a worktree:** `gwt create feature "<topic>"` (tickets are optional in this repo; with a ticket: `gwt create <TICKET> feature "<topic>"`). Commit the change(s), then a **last** commit `chore(release): python X.Y.Z` that only bumps `version` in `python/pyproject.toml` and `__version__` in `python/src/grove/__init__.py`, adds the `CHANGELOG.md` entry, and updates the backlog in `docs/FEEDBACK.md`.
+1. **Work in a worktree:** `gwt create feature "<topic>"` (tickets are optional in this repo; with a ticket: `gwt create <TICKET> feature "<topic>"`). Commit the change(s), then a **last** commit `chore(release): python X.Y.Z` that only bumps `version` in `python/pyproject.toml`, `__version__` in `python/src/grove/__init__.py` and `metadata.grove-version` in both copies of the skill (`skills/grove/SKILL.md`, `python/src/grove/_skill/grove/SKILL.md`), adds the `CHANGELOG.md` entry, and updates the backlog in `docs/FEEDBACK.md`.
 2. **Push the branch and wait for CI** (all Python versions in the matrix) to pass.
 3. **Integrate without rewriting commits:** fast-forward `main` (`git merge --ff-only origin/<branch>`), or a merge commit. **Never** squash or rebase-merge a release branch: the tag must point at a commit that is on `main`.
 4. **Tag after the merge:** `git tag python/vX.Y.Z && git push origin python/vX.Y.Z`. The tag triggers `release.yml`, which publishes to PyPI and creates the GitHub Release.

@@ -578,6 +578,23 @@ gwt ssh aliases github.com --json
 
 ---
 
+## `gwt skill install`
+
+Installs grove's **Agent Skill** ([agentskills.io](https://agentskills.io)): instructions that teach an AI agent how to work with grove — `start` for tickets, `fetch` vs `reset`, previewing removals, `doctor` for locks — and the gotchas learned in real use. The skill ships inside grove, so the installed copy matches your grove version.
+
+```
+gwt skill install                  # ~/.agents/skills/grove  (cross-client convention)
+gwt skill install --claude         # ~/.claude/skills/grove
+gwt skill install --project        # <current worktree>/.agents/skills/grove
+gwt skill install --path DIR       # DIR/grove
+gwt skill install --force          # overwrite a copy that differs (edited or another version)
+gwt skill install --dry-run        # show what would be installed
+```
+
+Idempotent: if the installed copy is identical it reports `unchanged`; if it differs it refuses unless `--force`, so your edits are never lost silently. Re-run it after upgrading grove. MCP: `grove_skill_install`. The source is [`skills/grove/`](../skills/grove/SKILL.md) in the repo.
+
+---
+
 ## `gwt ssh add | accounts | doctor | remove`
 
 Provision and maintain a multi-account SSH + git-identity setup at the **machine level** (your `~/.ssh/config` and `~/.gitconfig`). Unlike `ssh check` (read-only), these commands **write**. The guiding idea: the folder a repo lives in decides everything — which SSH key authenticates and which git identity signs commits — so you clone with the canonical URL and never type an alias. None of these require being inside a managed repo. grove edits only its own marker-delimited blocks (`# >>> grove:… >>>`) and backs files up before the first change; it never goes to the network (you upload the public key yourself).

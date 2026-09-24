@@ -25,11 +25,16 @@ All implementations expose the same `gwt` command and must behave the same accor
 - **[docs/INSTALL.md](docs/INSTALL.md)** — installation, updating and troubleshooting.
 - **[spec/specification.md](spec/specification.md)** — design and behavior contract (source of truth).
 
+## Agent Skill
+
+grove ships an [Agent Skill](https://agentskills.io) — [`skills/grove/`](skills/grove/SKILL.md) — that teaches an AI agent (Claude, Codex, Gemini CLI, Cursor, Copilot…) how to work with grove: the recommended flow, which tool fits which request, and the gotchas. Install it with `gwt skill install` (to `~/.agents/skills`; `--claude` for `~/.claude/skills`, `--project` for the current worktree).
+
 ## Repository structure
 
 ```
 grove/
 ├── docs/           # shared documentation (tutorial, usage, install)
+├── skills/         # Agent Skill for AI agents (agentskills.io)
 ├── spec/           # the specification, language-agnostic
 ├── conformance/    # (future) black-box tests to validate any implementation
 ├── python/         # Python implementation

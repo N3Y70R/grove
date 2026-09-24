@@ -41,7 +41,8 @@ from . import _ops
 from .schemas import (
     CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
     ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
-    SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult, SshRemoveResult,
+    SkillInstallResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
+    SshRemoveResult,
     StartResult, TrackResult,
 )
 from ..core.errors import UsageError
@@ -449,6 +450,24 @@ def grove_ssh_remove(
     return _ops.op_ssh_remove(name, delete_key=delete_key, keep_routing=keep_routing,
                               confirm=confirm, dry_run=dry_run)
 
+
+
+@mcp.tool(annotations=_ann("Install grove's Agent Skill", idempotent=True))
+def grove_skill_install(
+    target: Annotated[Literal["agents", "claude", "project"], Field(description="agents: ~/.agents/skills (cross-client, default); claude: ~/.claude/skills; project: the cwd worktree's .agents/skills.")] = "agents",
+    path: Annotated[Optional[str], Field(description="Install into this directory instead (the skill goes to <path>/grove). Overrides target.")] = None,
+    force: Annotated[bool, Field(description="Overwrite an installed copy that differs (edited, or another grove version).")] = False,
+    dry_run: Annotated[bool, Field(description="Report what would be installed without writing.")] = False,
+    cwd: Cwd = None,
+) -> SkillInstallResult:
+    """Install grove's Agent Skill (agentskills.io): instructions that teach an
+    agent the grove workflow, which tool fits which request, and the gotchas.
+    Idempotent; never overwrites an edited copy without force.
+
+    CLI: `gwt skill install [--claude | --project | --path DIR] [--force] [--dry-run]`
+    """
+    return _ops.op_skill_install(target=target, path=path, force=force,
+                                 dry_run=dry_run, cwd=cwd)
 
 def main() -> None:
     """Entry point: start the MCP server over stdio."""

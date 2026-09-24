@@ -21,7 +21,7 @@ TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_tr
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
          "grove_doctor", "grove_compare", "grove_config", "grove_publish",
          "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
-         "grove_ssh_doctor", "grove_ssh_remove"}
+         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install"}
 
 
 def _git(args, cwd):
@@ -139,3 +139,8 @@ def test_ssh_tools_honour_their_schemas(ssh_home):
     assert "findings" in call("grove_ssh_doctor")
     assert call("grove_ssh_remove", name="t-gh", dry_run=True)["dry_run"] is True
     assert call("grove_ssh_remove", name="t-gh", confirm=True)["name"] == "t-gh"
+
+
+def test_skill_install_honours_its_schema(tmp_path):
+    res = call("grove_skill_install", path=str(tmp_path / "skills"), dry_run=True)
+    assert res["mode"] == "created" and res["dry_run"] is True

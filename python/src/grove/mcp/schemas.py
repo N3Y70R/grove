@@ -314,6 +314,14 @@ class SshDoctorResult(TypedDict):
     applied: Annotated[int, D("Fixes applied in this call.")]
 
 
+class SkillInstallResult(TypedDict):
+    skill: Annotated[str, D("Skill name (grove).")]
+    path: Annotated[str, D("Where the skill folder is (or would be) installed.")]
+    mode: Annotated[Literal["created", "updated", "unchanged"], D("created: new; updated: overwritten (force or missing files); unchanged: already identical.")]
+    files: Annotated[List[str], D("Files of the skill, relative to its folder.")]
+    dry_run: Annotated[bool, D("True when nothing was written (preview).")]
+
+
 class SshRemoveResult(TypedDict):
     name: Annotated[str, D("Account alias removed.")]
     deleted_key: Annotated[bool, D("Whether the key files were deleted.")]

@@ -422,6 +422,10 @@ It is not versioned, so it has no history; if history is wanted, it is the user'
 
 Each side is resolved flexibly: if the token matches a worktree (ticket/branch/path) it uses its branch; if not, it is treated as a git ref (`main`, `origin/main`, a SHA). It reports `↑ahead ↓behind` and a status: *in sync* / *ahead* / *behind* / *diverged*. With `--json`, structured.
 
+### 6.15b `gwt skill install [--claude | --project | --path <dir>] [--force] [--dry-run]`
+
+Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. MCP: `grove_skill_install`.
+
 ### 6.16 `gwt patch [<worktree>] [--base <ref>] [--format-patch] [--wip] [--output <path>] [--stdout]`
 
 Generates a patch of the worktree to **share or back up without pushing**.

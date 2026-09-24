@@ -283,7 +283,10 @@ Detects **and fixes** hygiene problems.
 - **Nested worktrees** inside another worktree: flags for relocation.
 - **Recent git lock:** a lock that is not stale yet (a git command may be using it) → re-run later.
 - **Missing author identity:** a worktree where `git var GIT_AUTHOR_IDENT` fails, i.e. a commit would fail with "Author identity unknown" → set `user.name`/`user.email` (or a zone with `gwt ssh add`).
+- **Edited Agent Skill** (`skill-edited`): a user-level copy of the current version whose files no longer match its install manifest → keep it, or restore with `skill install --force`.
 - **Outdated Agent Skill that was edited**, or has no install manifest (installed by python 0.12.0 or by hand), and any outdated **project** copy (`<worktree>/.agents/skills/grove`, committed with the repo) → reinstall with `skill install --force` after review.
+
+The report lists every Agent Skill copy it checked (`skills`: `path`, `scope` agents | claude | project, `installed_version`, `outdated`, `edited`).
 
 Behavior: by default it shows the plan and asks for confirmation; `--fix` applies the automatic fixes, `--dry-run` only reports. The "reports but does not fix" items are never touched automatically, not even with `--fix`.
 
@@ -426,7 +429,7 @@ Each side is resolved flexibly: if the token matches a worktree (ticket/branch/p
 
 ### 6.15b `gwt skill install [--claude | --project | --path <dir>] [--force] [--dry-run]`
 
-Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is refreshed when its install manifest proves it untouched (e.g. left by an older version), and otherwise — edited, or no manifest — only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. Every install writes `<skill>/.grove-install.json` (`{"grove_version", "files": {path: sha256}}`) so `doctor` can tell an untouched copy from an edited one (§6.7); the refusal message names the installed and the running version. MCP: `grove_skill_install`.
+Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is refreshed when its install manifest proves it untouched (e.g. left by an older version), and otherwise — edited, or no manifest — only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. Every install writes `<skill>/.grove-install.json` (`{"grove_version", "files": {path: sha256}}`) so `doctor` can tell an untouched copy from an edited one (§6.7); the refusal message names the installed and the running version. `--dry-run` never fails: for a copy a real install would refuse it reports `mode: edited` (manifest says edited) or `unverified` (no manifest), with `differs` listing the files. MCP: `grove_skill_install`.
 
 ### 6.15c `gwt repos [<path>...] [--depth N]`
 

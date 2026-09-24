@@ -16,6 +16,11 @@ def cmd_skill_install(args, out: Output) -> int:
         root = core_skill.target_root(args.target)
     res = core_skill.install(dest_root=root, force=args.force, dry_run=args.dry_run)
     out.set_result(res)
+    if res["mode"] in ("edited", "unverified"):
+        why = "was edited" if res["mode"] == "edited" else "has no install manifest (can't tell if it was edited)"
+        out.warn(f"{res['path']} {why}; differs: {', '.join(res['differs'])}. "
+                 f"A real install needs --force (dry-run)")
+        return 0
     verb = {"created": "Installed", "updated": "Updated", "unchanged": "Already up to date"}[res["mode"]]
     out.success(f"{verb}: {res['path']}" + (" (dry-run)" if args.dry_run else ""))
     return 0

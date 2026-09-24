@@ -447,6 +447,26 @@ first ~200 characters (a test checks it); rows for `create temp` / `create
 release`; the `grove_repos` paragraph says its result is a catalog, not
 permission.
 
+## 23. Agent Skill, fourth review (0.14.2)
+
+**Status:** ✅ done in 0.15.0.
+
+**Finding.** T1, T3, T4 verified from the client (the three Spanish triggers
+now show in the skill list). T2 was tested by editing
+`~/.agents/skills/grove/SKILL.md`, running the tools and restoring it (hash
+verified), which surfaced:
+
+- **U1 — `skill install --dry-run` failed on an edited copy** instead of
+  reporting: the refusal check ran before the dry-run check. It breaks in the
+  one case where a preview matters — when there is something to lose.
+- **U2 — `doctor` saw an outdated copy, not an edited one:** with the version
+  current it returned `issues: []`, although `.grove-install.json` holds the
+  hashes; and nothing said which install paths it checked.
+
+**Proposed improvement.** `--dry-run` returns `mode: edited` / `unverified`
+plus `differs`; `doctor` adds a manual `skill-edited` issue and a `skills`
+field listing every copy it checked (the CLI prints them).
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -515,6 +535,8 @@ days, L more).
 | 45 | ~~Skill description: key triggers (Spanish too) in the first ~200 characters~~ ✅ 0.14.2 | §22 | S |
 | 46 | ~~Skill table: `create temp` / `create release`~~ ✅ 0.14.2 | §22 | S |
 | 47 | ~~`grove_repos` paragraph: a catalog, not permission~~ ✅ 0.14.2 | §22 | S |
+| 48 | ~~`skill install --dry-run` reports `edited` / `unverified` + `differs` instead of failing~~ ✅ 0.15.0 | §23 | S |
+| 49 | ~~`doctor`: `skill-edited` issue and the list of skill copies it checked~~ ✅ 0.15.0 | §23 | S |
 | 44 | `repos_roots` semantics: replace the zones when set, instead of adding to them? | §21 | S |
 | 40 | Trim workflow advice from the MCP tool descriptions (the skill covers it); each ends pointing to the skill | §18 | S–M |
 
@@ -540,4 +562,5 @@ triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
 skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2); `repos_roots`, no tickets
 when `tickets = "off"` (0.14.0); stale-MCP detection, `ssh add`/`accounts`
 output (0.14.1); skill third review — front-loaded triggers, temp/release rows,
-catalog-not-permission (0.14.2).
+catalog-not-permission (0.14.2); `skill install --dry-run` never fails,
+`skill-edited` and checked copies in `doctor` (0.15.0).

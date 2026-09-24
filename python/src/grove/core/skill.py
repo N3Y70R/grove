@@ -137,7 +137,13 @@ def install(*, dest_root: Path, force: bool = False, dry_run: bool = False) -> d
         mode = "unchanged"
     else:
         st = status(dest) if differ else None
-        if differ and not force and st["edited"] is not False:
+        blocked = bool(differ) and not force and st["edited"] is not False
+        if blocked and dry_run:
+            # A preview never fails: say what a real install would refuse.
+            return {"skill": SKILL_NAME, "path": str(dest),
+                    "mode": "edited" if st["edited"] else "unverified",
+                    "files": files, "dry_run": True, "differs": differ}
+        if blocked:
             if st["installed_version"] != st["current_version"]:
                 why = (f"the installed copy is for grove {st['installed_version'] or '(unknown)'}, "
                        f"this grove is {st['current_version']}")
@@ -157,4 +163,4 @@ def install(*, dest_root: Path, force: bool = False, dry_run: bool = False) -> d
     if not dry_run and (mode != "unchanged" or _read_manifest(dest) is None):
         _write_manifest(dest, files)
     return {"skill": SKILL_NAME, "path": str(dest), "mode": mode, "files": files,
-            "dry_run": dry_run}
+            "dry_run": dry_run, "differs": differ}

@@ -2,6 +2,27 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.15.0
+
+Fourth review of the Agent Skill (FEEDBACK §23).
+
+### Added
+
+- **`doctor` reports an edited skill** (`skill-edited`, manual): a user-level
+  copy of the current version whose files no longer match its install manifest
+  — upgrades won't refresh it. Before, only an *outdated* copy was noticed.
+- **`doctor` says which skill copies it checked**: a `skills` field in the
+  result (path, scope `agents` / `claude` / `project`, version, `outdated`,
+  `edited`), and a closing line in the CLI.
+- `skill install` results carry `differs`: the files that differ from grove's.
+
+### Fixed
+
+- **`gwt skill install --dry-run` no longer fails on an edited copy**: it
+  reports `mode: "edited"` (or `"unverified"` when there is no install
+  manifest) with the files that differ, and writes nothing. A real install
+  still refuses without `--force`.
+
 ## python — 0.14.2
 
 Third review of the Agent Skill (FEEDBACK §22).

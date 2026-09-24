@@ -22,7 +22,7 @@ MANUAL = "manual"
 class Issue:
     kind: str                       # orphan | upstream | release-format | naming | ticket | nested
                                     # | git-pointer | stale-lock | lock | stale-tmp | identity
-                                    # | bare-head | parking-branch | worktree-paths | skill-outdated
+                                    # | bare-head | parking-branch | worktree-paths | skill-outdated | skill-edited
     severity: str                   # AUTO | MANUAL
     target: str                     # affected folder/branch
     message: str                    # description of the problem
@@ -174,12 +174,10 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
 # Installed Agent Skill copies that don't match the running grove
 # --------------------------------------------------------------------------- #
 
-def _skill_copies(existing: List[Worktree]) -> List[Issue]:
-    """A skill written for another grove version teaches outdated tools and
-    flags. User-level copies (~/.agents/skills, ~/.claude/skills) are refreshed
-    automatically when untouched; project copies are committed, so only reported."""
+def _skill_dirs(existing: List[Worktree]):
+    """(scope, skill dir, display path) of every installed copy: user level
+    (~/.agents/skills, ~/.claude/skills) and each worktree's project copy."""
     from . import skill as core_skill
-    issues: List[Issue] = []
     home = plat.paths().home
 
     def show(p: Path) -> str:
@@ -188,41 +186,70 @@ def _skill_copies(existing: List[Worktree]) -> List[Issue]:
         except ValueError:
             return p.as_posix()
 
+    found = []
     for root in core_skill.default_roots():
         d = root / core_skill.SKILL_NAME
-        if not (d / "SKILL.md").is_file():
-            continue
-        st = core_skill.status(d)
-        if not st["outdated"]:
-            continue
-        msg = (f"Agent Skill is for grove {st['installed_version'] or '(unknown)'}, "
-               f"this grove is {st['current_version']}")
-        flag = " --claude" if root.parent.name == ".claude" else ""
-        if st["edited"] is False:
-            issues.append(Issue(
-                kind="skill-outdated", severity=AUTO, target=show(d), message=msg,
-                action="reinstall the bundled skill (the copy was not edited)",
-                fix=(lambda r=root: core_skill.install(dest_root=r, force=True)),
-            ))
-        else:
-            why = "it was edited" if st["edited"] else "it may have been edited (no install manifest)"
-            issues.append(Issue(
-                kind="skill-outdated", severity=MANUAL, target=show(d),
-                message=f"{msg}; not refreshed automatically because {why}",
-                action=f"review it, then `gwt skill install{flag} --force`",
-            ))
+        if (d / "SKILL.md").is_file():
+            found.append(("claude" if root.parent.name == ".claude" else "agents", d, show(d)))
     for w in existing:
         d = w.path / ".agents" / "skills" / core_skill.SKILL_NAME
-        if not (d / "SKILL.md").is_file():
-            continue
+        if (d / "SKILL.md").is_file():
+            found.append(("project", d, f"{w.rel_path}/.agents/skills/{core_skill.SKILL_NAME}"))
+    return found
+
+
+def skill_report(git: GitRunner, repo: RepoContext) -> List[dict]:
+    """Every installed copy doctor checked, with its state (for the report)."""
+    from . import skill as core_skill
+    existing = [w for w in list_worktrees(git, repo) if not w.is_bare and w.exists]
+    rows = []
+    for scope, d, shown in _skill_dirs(existing):
         st = core_skill.status(d)
+        rows.append({"path": shown, "scope": scope, "installed_version": st["installed_version"],
+                     "outdated": st["outdated"], "edited": st["edited"]})
+    return rows
+
+
+def _skill_copies(existing: List[Worktree]) -> List[Issue]:
+    """A skill written for another grove version teaches outdated tools and
+    flags: user-level copies are refreshed automatically when untouched;
+    project copies are committed, so only reported. A user-level copy edited
+    since install is reported too: `skill install` won't update it without force."""
+    from . import skill as core_skill
+    issues: List[Issue] = []
+    for scope, d, shown in _skill_dirs(existing):
+        st = core_skill.status(d)
+        flag = {"claude": " --claude", "project": " --project"}.get(scope, "")
+        if scope == "project":
+            if st["outdated"]:
+                issues.append(Issue(
+                    kind="skill-outdated", severity=MANUAL, target=shown,
+                    message=(f"project Agent Skill is for grove {st['installed_version'] or '(unknown)'}, "
+                             f"this grove is {st['current_version']}"),
+                    action="`gwt skill install --project --force` in that worktree, then commit it",
+                ))
+            continue
         if st["outdated"]:
+            msg = (f"Agent Skill is for grove {st['installed_version'] or '(unknown)'}, "
+                   f"this grove is {st['current_version']}")
+            if st["edited"] is False:
+                issues.append(Issue(
+                    kind="skill-outdated", severity=AUTO, target=shown, message=msg,
+                    action="reinstall the bundled skill (the copy was not edited)",
+                    fix=(lambda r=d.parent: core_skill.install(dest_root=r, force=True)),
+                ))
+            else:
+                why = "it was edited" if st["edited"] else "it may have been edited (no install manifest)"
+                issues.append(Issue(
+                    kind="skill-outdated", severity=MANUAL, target=shown,
+                    message=f"{msg}; not refreshed automatically because {why}",
+                    action=f"review it, then `gwt skill install{flag} --force`",
+                ))
+        elif st["edited"]:
             issues.append(Issue(
-                kind="skill-outdated", severity=MANUAL,
-                target=f"{w.rel_path}/.agents/skills/{core_skill.SKILL_NAME}",
-                message=(f"project Agent Skill is for grove {st['installed_version'] or '(unknown)'}, "
-                         f"this grove is {st['current_version']}"),
-                action="`gwt skill install --project --force` in that worktree, then commit it",
+                kind="skill-edited", severity=MANUAL, target=shown,
+                message="Agent Skill was edited since it was installed; upgrades won't refresh it",
+                action=f"keep it, or restore grove's copy with `gwt skill install{flag} --force`",
             ))
     return issues
 

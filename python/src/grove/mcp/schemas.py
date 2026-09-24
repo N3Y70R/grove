@@ -153,12 +153,20 @@ class CompareResult(TypedDict):
 # --------------------------------------------------------------------------- #
 
 class DoctorIssue(TypedDict):
-    kind: Annotated[str, D("Problem type, e.g. orphan, upstream, naming, stale-lock, lock, stale-tmp, identity, bare-head, parking-branch, worktree-paths, skill-outdated.")]
+    kind: Annotated[str, D("Problem type, e.g. orphan, upstream, naming, stale-lock, lock, stale-tmp, identity, bare-head, parking-branch, worktree-paths, skill-outdated, skill-edited.")]
     severity: Annotated[Literal["auto", "manual"], D("auto: fixable with fix=true; manual: needs human judgment.")]
     target: Annotated[str, D("Affected worktree, branch or file.")]
     message: Annotated[str, D("What is wrong.")]
     action: Annotated[str, D("What the fix does (auto) or what to do (manual).")]
     fixable: Annotated[bool, D("True when fix=true would repair it.")]
+
+
+class SkillCopy(TypedDict):
+    path: Annotated[str, D("Installed copy checked (~/… or <worktree>/.agents/skills/grove).")]
+    scope: Annotated[Literal["agents", "claude", "project"], D("agents: ~/.agents/skills; claude: ~/.claude/skills; project: a worktree's .agents/skills.")]
+    installed_version: Annotated[Optional[str], D("metadata.grove-version of the copy, or null.")]
+    outdated: Annotated[bool, D("True when written for another grove version.")]
+    edited: Annotated[Optional[bool], D("True/false from the install manifest; null when it has none (installed by 0.12.0 or by hand).")]
 
 
 class DoctorResult(TypedDict):
@@ -167,6 +175,7 @@ class DoctorResult(TypedDict):
     manual: Annotated[int, D("How many need manual review.")]
     applied: Annotated[int, D("Fixes applied in this call (0 unless fix=true).")]
     version: Annotated[str, D("grove version that produced this report.")]
+    skills: Annotated[List[SkillCopy], D("Every installed Agent Skill copy doctor checked (empty: none installed).")]
 
 
 # --------------------------------------------------------------------------- #
@@ -317,9 +326,10 @@ class SshDoctorResult(TypedDict):
 class SkillInstallResult(TypedDict):
     skill: Annotated[str, D("Skill name (grove).")]
     path: Annotated[str, D("Where the skill folder is (or would be) installed.")]
-    mode: Annotated[Literal["created", "updated", "unchanged"], D("created: new; updated: overwritten (force or missing files); unchanged: already identical.")]
+    mode: Annotated[Literal["created", "updated", "unchanged", "edited", "unverified"], D("created: new; updated: refreshed or overwritten; unchanged: already identical. dry_run only: edited / unverified — the copy differs and was edited (or has no install manifest), so a real install needs force.")]
     files: Annotated[List[str], D("Files of the skill, relative to its folder.")]
     dry_run: Annotated[bool, D("True when nothing was written (preview).")]
+    differs: Annotated[List[str], D("Files of the installed copy that differ from grove's (empty when none).")]
 
 
 class RepoRow(TypedDict):

@@ -35,6 +35,7 @@ def cmd_doctor(args, out: Output) -> int:
             "manual": len(manual),
             "applied": applied,
             "version": __version__,
+            "skills": core_doctor.skill_report(git, repo),
         })
         out.success(
             f"{len(issues)} problem(s); {len(auto)} auto-fixable, {len(manual)} manual"
@@ -42,8 +43,13 @@ def cmd_doctor(args, out: Output) -> int:
         )
         return 0
 
+    skills = core_doctor.skill_report(git, repo)
+    checked = ", ".join(f"{s['path']} ({s['installed_version'] or '?'})" for s in skills)
+    skill_line = f"Agent Skill copies checked: {checked}" if skills else \
+        "Agent Skill: no installed copy (`gwt skill install`)"
     if not issues:
         out.success("No problems: all worktrees follow the convention.")
+        out.plain(skill_line)
         return 0
 
     out.plain(f"Problems found in {repo.name}:")
@@ -52,6 +58,7 @@ def cmd_doctor(args, out: Output) -> int:
         out.plain(f"  {mark} {i.kind:<14} {i.target}")
         out.plain(f"      {i.message}  ->  {i.action}")
     out.plain(f"{len(auto)} auto-fixable · {len(manual)} require manual review.")
+    out.plain(skill_line)
 
     if args.dry_run or not auto:
         if not auto and manual:

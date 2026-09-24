@@ -365,6 +365,7 @@ def op_doctor(
         "manual": len(manual),
         "applied": applied,
         "version": __version__,
+        "skills": core_doctor.skill_report(git, repo),
     }
 
 

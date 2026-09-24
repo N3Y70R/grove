@@ -57,3 +57,11 @@ def test_every_tool_names_its_cli_equivalent():
     """Agents should be able to tell the user how to do the same without them."""
     missing = [n for n, t in _tools().items() if "CLI: `gwt " not in (t.description or "")]
     assert missing == [], f"tools without a 'CLI: `gwt …`' line: {missing}"
+
+
+def test_every_tool_returns_structured_output():
+    """Clients should get `structured_content`, not only JSON text: every tool
+    declares an object output schema (return type `dict[str, Any]`)."""
+    missing = [n for n, t in _tools().items()
+               if not (t.output_schema and t.output_schema.get("type") == "object")]
+    assert missing == [], f"tools without a structured output schema: {missing}"

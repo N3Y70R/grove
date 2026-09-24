@@ -38,9 +38,12 @@ facades and docs stay in sync**:
    - every parameter has a **`Field(description=…)`**;
    - constrained choices use an **enum** (`Literal[...]`);
    - the tool has **`ToolAnnotations`** (read-only / destructive / idempotent,
-     `openWorldHint=False`).
-   `tests/test_mcp_schema.py` enforces this (it fails if any parameter lacks a
-   description). The MCP is the agent's only view of the tool, so poor schemas =
+     `open_world_hint=False`);
+   - it returns **`dict[str, Any]`** (not bare `dict`), so clients get
+     `structured_content` and an output schema;
+   - its description ends with a ``CLI: `gwt …` `` line.
+   `tests/test_mcp_schema.py` enforces all of this (it fails if any parameter
+   lacks a description, a tool lacks its output schema or its `CLI:` line). The MCP is the agent's only view of the tool, so poor schemas =
    poor discoverability.
 4. **docs** — `USAGE.md` (reference), `TUTORIAL.md` (flow if relevant), and
    `MCP.md` §9 (conversational example: CLI + tool call + chat phrasing), plus a

@@ -18,7 +18,7 @@ an agent can choose the right tool and arguments without trial and error. Keep
 this enrichment in sync whenever a tool or its parameters change.
 """
 
-from typing import Annotated, List, Literal, Optional
+from typing import Annotated, Any, List, Literal, Optional
 
 try:
     from mcp.server.mcpserver import MCPServer
@@ -49,6 +49,10 @@ Cwd = Annotated[Optional[str], Field(
                 "Defaults to the process working directory; always pass it explicitly "
                 "when driving grove from chat.")]
 
+# Every tool returns `dict[str, Any]` (not bare `dict`): with that type the SDK
+# sends `structured_content` plus the same data as JSON text, and publishes an
+# object output schema. A bare `dict` would only send text.
+
 # Annotation presets (open_world_hint=False: grove is offline, pure-git).
 def _ann(title, *, read_only=False, destructive=False, idempotent=False):
     return ToolAnnotations(title=title, read_only_hint=read_only,
@@ -67,7 +71,7 @@ def grove_setup(
     git_pointer: Annotated[bool, Field(description="Write the root .git pointer (gitdir: ./.bare) so plain git works from the repo root. Default true.")] = True,
     keep_on_error: Annotated[bool, Field(description="If setup fails midway, keep the partial folder instead of removing it. Default false (clean up so a retry starts fresh).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Initialize a managed repo (bare model + base worktree) from an origin URL.
 
     Applies a policy profile (default if omitted), auto-detects the base branch
@@ -93,7 +97,7 @@ def grove_convert(
     dry_run: Annotated[bool, Field(description="Return the plan without making changes.")] = False,
     profile: Annotated[Optional[str], Field(description="Policy profile to apply and record in .bare/grove.toml: default | personal | gitflow | a custom one. Default: default.")] = None,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Adopt/convert an existing normal clone into grove's bare + worktrees model
     (no re-clone). Use this when the user already has the repo cloned.
 
@@ -118,7 +122,7 @@ def grove_list(
     type: Annotated[Optional[str], Field(description="Filter by type/kind (feature, hotfix, release, special, temp…).")] = None,
     dirty: Annotated[bool, Field(description="Only worktrees with uncommitted changes.")] = False,
     orphans: Annotated[bool, Field(description="Only orphan/prunable worktrees.")] = False,
-) -> dict:
+) -> dict[str, Any]:
     """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty).
 
     `ahead`/`behind` are measured against `compared_to`: the upstream, or the
@@ -145,7 +149,7 @@ def grove_create(
     version: Annotated[Optional[str], Field(description="Version for kind=release, e.g. v1.2.0.")] = None,
     base: Annotated[Optional[str], Field(description="Branch to start from. Say 'from <branch>' → this. Works for all kinds, including temp. Omit for the repo's default base.")] = None,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create a worktree (ticket, release or temp).
 
     The ticket key and slug are supplied by the caller; grove does not query any
@@ -162,7 +166,7 @@ def grove_track(
     branch: Annotated[str, Field(description="Existing branch name (local or on origin) to bring in.")],
     as_: Annotated[Optional[str], Field(description="Explicit destination path, e.g. 'hotfix/PROJ-1-fix', to relocate/force a type.")] = None,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Bring an existing branch (local or on origin) into the structure as a worktree.
 
     CLI: `gwt track <branch> [--as <type>/<TICKET>-<slug>]`
@@ -179,7 +183,7 @@ def grove_remove(
     confirm: Annotated[bool, Field(description="Required: set true to actually remove (this is destructive). Not needed with dry_run.")] = False,
     dry_run: Annotated[bool, Field(description="Report what WOULD be removed without changing anything (no confirm needed). Use it before merged=true.")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Remove a worktree (DESTRUCTIVE — requires confirm=true, unless dry_run).
 
     Provide 'target' (ticket, branch or path), or merged=true to sweep all
@@ -199,7 +203,7 @@ def grove_reset(
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """DISCARDS local commits and changes: reset a worktree to its origin branch
     (fetch + reset --hard). Requires confirm=true.
 
@@ -217,7 +221,7 @@ def grove_sync(
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
     to origin). To only bring remote changes, use grove_fetch.
 
@@ -235,7 +239,7 @@ def grove_publish(
     no_sync: Annotated[bool, Field(description="Additive mode: don't sync the integration branch before merging.")] = False,
     confirm: Annotated[bool, Field(description="Required only when regenerating an EXISTING branch (force-push). Not needed for first-time creation.")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Merge branches into the shared integration branch, or create it from a base.
 
     Additive (default) requires the branch to exist. regenerate=true rebuilds it
@@ -254,7 +258,7 @@ def grove_publish(
 def grove_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable issues (otherwise report only).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones.
 
     Besides structure (orphans, naming, upstreams, root .git pointer) it finds
@@ -271,7 +275,7 @@ def grove_doctor(
 def grove_fetch(
     prune: Annotated[bool, Field(description="Also drop origin/* refs of branches deleted on the remote (git fetch --prune).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Bring what's new on origin and report each worktree's ahead/behind — the
     SAFE way to update from the remote: it only updates origin/* refs and never
     modifies any worktree (unlike grove_reset, which discards local work).
@@ -291,7 +295,7 @@ def grove_compare(
     vs: Annotated[Optional[str], Field(description="Compare ALL worktrees against this ref.")] = None,
     fetch: Annotated[bool, Field(description="git fetch origin first: the SAFE way to bring remote changes (updates origin/* refs, never touches worktrees).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Ahead/behind between branches/worktrees. With fetch=true it first runs
     `git fetch origin` — the safe way to bring remote changes (it never modifies
     your worktrees; unlike grove_reset, which discards local work).
@@ -308,7 +312,7 @@ def grove_config(
     set_value: Annotated[Optional[str], Field(description="Value for set_key. For list keys (allowed_types, special_worktrees, ticket_prefixes, known_git_hosts) use a comma-separated string.")] = None,
     unset_key: Annotated[Optional[str], Field(description="A grove.toml key to remove (reverts to the profile/default value).")] = None,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Show the repo configuration, or change it: set the SSH alias (rewrites
     origin), set an arbitrary grove.toml key, or unset one. Omit all of these to
     just show the current config.
@@ -332,7 +336,7 @@ def grove_ssh_check(
     all: Annotated[bool, Field(description="Diagnose every Host in ~/.ssh/config.")] = False,
     live: Annotated[bool, Field(description="Actually test authentication (ssh -T).")] = False,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """Diagnose SSH config for a git remote (keys, agent, permissions).
 
     CLI: `gwt ssh check [target] [--all] [--live]`
@@ -344,7 +348,7 @@ def grove_ssh_check(
 def grove_ssh_aliases(
     target: Annotated[Optional[str], Field(description="URL or host to map (default: the current repo's origin). Use this to discover which ~/.ssh/config alias a repo should use.")] = None,
     cwd: Cwd = None,
-) -> dict:
+) -> dict[str, Any]:
     """List the ~/.ssh/config aliases that resolve to a repo's host (the
     repo↔alias map), marking which one is currently applied. Read-only.
 
@@ -364,7 +368,7 @@ def grove_ssh_add(
     no_agent: Annotated[bool, Field(description="Don't load the key into the ssh-agent.")] = False,
     no_passphrase: Annotated[bool, Field(description="Generate the key without a passphrase (default true; no TTY here).")] = True,
     dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
-) -> dict:
+) -> dict[str, Any]:
     """Provision an SSH account (machine-level): generate an ed25519 key, write the
     ~/.ssh/config Host alias, and wire folder-scoped git identity.
 
@@ -379,7 +383,7 @@ def grove_ssh_add(
 
 
 @mcp.tool(annotations=_ann("List SSH accounts", read_only=True))
-def grove_ssh_accounts() -> dict:
+def grove_ssh_accounts() -> dict[str, Any]:
     """List grove-managed SSH accounts and zones (alias, host, key, routing coherence).
 
     CLI: `gwt ssh accounts`
@@ -390,7 +394,7 @@ def grove_ssh_accounts() -> dict:
 @mcp.tool(annotations=_ann("Diagnose/fix SSH multi-account setup", idempotent=True))
 def grove_ssh_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable items (otherwise report only).")] = False,
-) -> dict:
+) -> dict[str, Any]:
     """Diagnose the SSH/git multi-account setup; set fix=true to apply auto-fixable items.
 
     Reports the host-vs-alias trap, embedded secrets, missing IdentitiesOnly/insteadOf,
@@ -408,7 +412,7 @@ def grove_ssh_remove(
     keep_routing: Annotated[bool, Field(description="Keep the git identity routing for the zone.")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (edits ~/.ssh/config and ~/.gitconfig).")] = False,
     dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
-) -> dict:
+) -> dict[str, Any]:
     """Remove a grove-managed SSH account (DESTRUCTIVE — requires confirm=true).
 
     CLI: `gwt ssh remove <name> [--delete-key]`

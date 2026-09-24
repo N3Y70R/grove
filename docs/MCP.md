@@ -124,6 +124,10 @@ terminal command, so the agent can tell you how to do the same without it.
 `grove_config` and `grove_doctor` results include grove's **`version`**, so
 findings can be dated to a release.
 
+Results are **structured**: each call returns `structured_content` (the result
+object, described by the tool's output schema) and the same data as JSON text
+for clients that only read text.
+
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`.

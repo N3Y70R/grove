@@ -42,7 +42,8 @@ def test_server_speaks_mcp_over_stdio(repo):
     assert {"grove_list", "grove_fetch", "grove_reset", "grove_doctor", "grove_config"} <= names
 
     assert not result.is_error
-    # Tools return dicts; like mcp 1.x, they arrive as JSON in a text block.
-    data = json.loads(result.content[0].text)
+    # Structured result, plus the same data as JSON text for text-only clients.
+    data = result.structured_content
+    assert data == json.loads(result.content[0].text)
     assert data["version"] == grove.__version__
     assert data["default_base"] == "main"

@@ -2,6 +2,16 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.11.2
+
+### Added
+
+- **Typed output schemas for the remaining tools**: `grove_config` (one schema
+  for show / set / unset / ssh alias, mode-specific fields optional),
+  `grove_publish` and the six `grove_ssh_*` tools. All 20 MCP tools now publish
+  typed, described output schemas, and the output contract test covers every one
+  of them (the SSH tools against a temporary home).
+
 ## python — 0.11.1
 
 ### Added

@@ -104,6 +104,34 @@ def _run(args: Sequence[str], echo: Optional[Echo] = None):
         return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: not found")
 
 
+def git_process_running() -> Optional[bool]:
+    """Whether any git process is running on this machine.
+
+    True/False when it could be determined; None when it couldn't (no `ps` /
+    `tasklist`, or it failed). Used by doctor to decide whether a lock file is
+    orphaned. Only this machine is visible: a git running in another
+    environment that mounts the same repo is not detected.
+    """
+    try:
+        if is_windows():
+            r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq git.exe", "/NH"],
+                               capture_output=True, text=True, timeout=10)
+            if r.returncode != 0:
+                return None
+            return "git.exe" in r.stdout.lower()
+        r = subprocess.run(["ps", "-A", "-o", "comm="],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            return None
+        for line in r.stdout.splitlines():
+            name = os.path.basename(line.strip())
+            if name == "git" or name.startswith("git-"):
+                return True
+        return False
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def agent_running() -> bool:
     """Whether an ssh-agent is reachable. `ssh-add -l` returns 2 when it is not."""
     proc = _run(["ssh-add", "-l"])

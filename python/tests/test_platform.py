@@ -59,3 +59,33 @@ def test_perms_enforced_on_posix(tmp_path):
     assert plat.check_key_perms(f) is False
     assert plat.enforce_key_perms(f) is True
     assert plat.check_key_perms(f) is True
+
+
+def _fake_run(stdout, returncode=0):
+    import subprocess
+
+    def run(args, **kw):
+        return subprocess.CompletedProcess(args, returncode, stdout, "")
+    return run
+
+
+def test_git_process_running_detects_git(monkeypatch):
+    from grove.core import platform as plat
+    monkeypatch.setattr(plat, "is_windows", lambda: False)
+    monkeypatch.setattr(plat.subprocess, "run",
+                        _fake_run("launchd\n/usr/libexec/git-core/git\nzsh\n"))
+    assert plat.git_process_running() is True
+
+
+def test_git_process_running_ignores_lookalikes(monkeypatch):
+    from grove.core import platform as plat
+    monkeypatch.setattr(plat, "is_windows", lambda: False)
+    monkeypatch.setattr(plat.subprocess, "run", _fake_run("gitkraken\nzsh\n"))
+    assert plat.git_process_running() is False
+
+
+def test_git_process_running_unknown_when_ps_fails(monkeypatch):
+    from grove.core import platform as plat
+    monkeypatch.setattr(plat, "is_windows", lambda: False)
+    monkeypatch.setattr(plat.subprocess, "run", _fake_run("", returncode=1))
+    assert plat.git_process_running() is None

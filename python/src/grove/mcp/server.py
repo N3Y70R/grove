@@ -114,7 +114,13 @@ def grove_list(
     dirty: Annotated[bool, Field(description="Only worktrees with uncommitted changes.")] = False,
     orphans: Annotated[bool, Field(description="Only orphan/prunable worktrees.")] = False,
 ) -> dict:
-    """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty)."""
+    """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty).
+
+    Each row also carries `gitdir`: the worktree's internal admin dir relative to
+    the repo root (e.g. .bare/worktrees/PROJ-1-login). Use it to build GIT_DIR
+    when the repo is seen from another mount (the worktree's .git file holds an
+    absolute path that may not exist there).
+    """
     return _ops.op_list(cwd=cwd, type=type, dirty=dirty, orphans=orphans)
 
 
@@ -204,7 +210,13 @@ def grove_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable issues (otherwise report only).")] = False,
     cwd: Cwd = None,
 ) -> dict:
-    """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones."""
+    """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones.
+
+    Besides structure (orphans, naming, upstreams, root .git pointer) it finds
+    orphaned git locks (*.lock) and leftover temp objects in .bare — auto-fixable
+    once stale (≥60s with no git running, or ≥10min) — and worktrees where git
+    has no author identity (commits would fail; manual).
+    """
     return _ops.op_doctor(fix=fix, cwd=cwd)
 
 

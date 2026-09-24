@@ -35,7 +35,7 @@ from ..core import (
 )
 from ..core.errors import UsageError
 from ..core.gitrunner import GitRunner
-from ..core.model import Worktree, list_worktrees
+from ..core.model import Worktree, list_worktrees, worktree_dict
 from ..core.repo import find_repo, RepoContext
 
 
@@ -69,23 +69,7 @@ def _origin(repo: RepoContext) -> Optional[str]:
 
 
 def _wt_dict(wt: Worktree) -> dict:
-    cls = wt.classification
-    return {
-        "path": str(wt.path),
-        "rel_path": wt.rel_path,
-        "branch": wt.branch,
-        "bare": wt.is_bare,
-        "detached": wt.is_detached,
-        "prunable": wt.prunable,
-        "exists": wt.exists,
-        "ticket": cls.ticket if cls else None,
-        "kind": cls.kind if cls else None,
-        "type": cls.type if cls else None,
-        "dirty": wt.dirty,
-        "ahead": wt.ahead,
-        "behind": wt.behind,
-        "upstream": wt.upstream,
-    }
+    return worktree_dict(wt)
 
 
 def _target_worktree(git: GitRunner, repo: RepoContext, target: Optional[str]) -> Worktree:

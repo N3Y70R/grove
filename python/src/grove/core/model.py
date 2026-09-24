@@ -30,6 +30,10 @@ class Worktree:
     ahead: Optional[int] = None
     behind: Optional[int] = None
     upstream: Optional[str] = None
+    # Internal admin dir (.bare/worktrees/<name>), relative to the repo root.
+    # git names it after the LAST path component, so it can't be derived from
+    # rel_path; exposing it lets tools on another mount build GIT_DIR.
+    gitdir: Optional[str] = None
 
 
 def _parse_porcelain(text: str) -> List[Worktree]:
@@ -71,9 +75,57 @@ def _parse_porcelain(text: str) -> List[Worktree]:
 def list_worktrees(git: GitRunner, repo: RepoContext, *, with_status: bool = True) -> List[Worktree]:
     raw = git.out(["worktree", "list", "--porcelain"], cwd=repo.bare)
     wts = _parse_porcelain(raw)
+    admin = _admin_dirs(repo)
     for wt in wts:
         _enrich(git, repo, wt, with_status=with_status)
+        if not wt.is_bare:
+            wt.gitdir = admin.get(os.path.normpath(str(wt.path)))
     return wts
+
+
+def _admin_dirs(repo: RepoContext) -> dict:
+    """Map worktree path -> its admin dir (relative to the repo root).
+
+    Each `.bare/worktrees/<name>/gitdir` file holds the path of `<worktree>/.git`
+    as git recorded it — the same form `git worktree list` prints — so matching
+    works even when the repo is viewed from another mount.
+    """
+    out = {}
+    base = repo.bare / "worktrees"
+    if not base.is_dir():
+        return out
+    for d in base.iterdir():
+        try:
+            recorded = (d / "gitdir").read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if not recorded:
+            continue
+        wt_path = recorded if os.path.isabs(recorded) else os.path.join(str(d), recorded)
+        out[os.path.normpath(os.path.dirname(wt_path))] = _rel(repo.root, d)
+    return out
+
+
+def worktree_dict(wt: Worktree) -> dict:
+    """The JSON/MCP view of a worktree (single source for CLI and MCP)."""
+    cls = wt.classification
+    return {
+        "path": str(wt.path),
+        "rel_path": wt.rel_path,
+        "branch": wt.branch,
+        "bare": wt.is_bare,
+        "detached": wt.is_detached,
+        "prunable": wt.prunable,
+        "exists": wt.exists,
+        "ticket": cls.ticket if cls else None,
+        "kind": cls.kind if cls else None,
+        "type": cls.type if cls else None,
+        "dirty": wt.dirty,
+        "ahead": wt.ahead,
+        "behind": wt.behind,
+        "upstream": wt.upstream,
+        "gitdir": wt.gitdir,
+    }
 
 
 def _rel(repo_root: Path, path: Path) -> str:

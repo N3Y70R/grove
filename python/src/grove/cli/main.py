@@ -12,7 +12,7 @@ from ..core import config as core_config
 from ..core import setup as core_setup
 from ..core.errors import WtError, UsageError
 from ..core.gitrunner import GitRunner
-from ..core.model import Worktree, list_worktrees
+from ..core.model import Worktree, list_worktrees, worktree_dict
 from ..core.repo import find_repo, RepoContext
 from .output import Output
 
@@ -202,25 +202,7 @@ def cmd_list(args, out: Output) -> int:
     rows = [wt for wt in wts if keep(wt)]
 
     if out.json_mode:
-        out.set_result([
-            {
-                "path": str(wt.path),
-                "rel_path": wt.rel_path,
-                "branch": wt.branch,
-                "bare": wt.is_bare,
-                "detached": wt.is_detached,
-                "prunable": wt.prunable,
-                "exists": wt.exists,
-                "ticket": (wt.classification.ticket if wt.classification else None),
-                "kind": (wt.classification.kind if wt.classification else None),
-                "type": (wt.classification.type if wt.classification else None),
-                "dirty": wt.dirty,
-                "ahead": wt.ahead,
-                "behind": wt.behind,
-                "upstream": wt.upstream,
-            }
-            for wt in rows
-        ])
+        out.set_result([worktree_dict(wt) for wt in rows])
         out.success(f"{len(rows)} worktree(s)")
         return 0
 

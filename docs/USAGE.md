@@ -259,6 +259,8 @@ gwt list [--type <type>] [--dirty] [--orphans] [--json]
 
 Columns: **folder · branch · ticket · git status** (ahead/behind, clean/dirty, upstream). In repos with `tickets = off` the ticket column is empty.
 
+`--json` rows also include **`gitdir`**, the worktree's internal directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`; git names it after the last path component). Useful when the repo is mounted at another path (container, VM): `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git status`.
+
 ---
 
 ## `gwt doctor`
@@ -276,9 +278,9 @@ gwt doctor [--fix] [--dry-run] [--json]
 | `--dry-run` | Reports only, does not modify |
 | `--json` | Report in JSON |
 
-**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention).
+**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
 
-**Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees. In `tickets = off` mode it does not report ticket mismatches.
+**Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees; **recent locks** (maybe in use); worktrees with **no git author identity** (a commit would fail with *"Author identity unknown"*). In `tickets = off` mode it does not report ticket mismatches.
 
 ---
 

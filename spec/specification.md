@@ -236,6 +236,8 @@ Shows the repo's worktree inventory. Columns:
 | Ticket | `PROJ-XXXXX` extracted (or empty for special/temp) |
 | Git status | ahead/behind relative to upstream + clean/dirty |
 
+The JSON/MCP view also carries **`gitdir`**: the worktree's internal admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`). git names it after the *last* path component, so it cannot be derived from the folder; it lets a tool that sees the repo from another mount build `GIT_DIR` (the worktree's `.git` file holds an absolute path). `null` for the bare entry.
+
 `list` reports only what git knows; it does not query ticket systems (see Design principles). Any enrichment (issue/PR status) is done by the orchestration layer combining `list` with its own sources.
 
 ### 6.7 `gwt doctor`
@@ -249,12 +251,15 @@ Detects **and fixes** hygiene problems.
 - **Old release format:** `release-vX.Y.Z` (dash) → normalizes to `release/vX.Y.Z`.
 - **Incorrect or missing upstream:** worktrees fetched from the origin whose local branch does not track —or tracks wrongly— its origin branch → fixes with `git branch --set-upstream-to`.
 - **Missing root `.git` pointer:** the repo root has no `.git` file pointing at `.bare` → writes `gitdir: ./.bare` (heals repos made before this feature or by hand).
+- **Orphaned git locks** (`*.lock` anywhere in `.bare`, e.g. `HEAD.lock`, `index.lock`, `objects/maintenance.lock`) and **leftover temp objects** (`objects/**/tmp_obj_*`, `objects/pack/tmp_pack_*`, `tmp_idx_*`) → deletes them. Only when **stale**: at least 60 s old and no git process running on this machine, or at least 10 min old regardless. Locks are fixed before anything else (they would make other fixes fail).
 
 **Reports but does NOT fix** (requires human judgment):
 
 - **Type not in `allowed_types`:** a well-formed worktree (`<segment>/<key>-<slug>`) whose `<segment>` is not in `allowed_types` (e.g. `chore/PROJ-12345-...`, typically brought in with `track`). It **warns** that it does not adhere to the configuration, **without** moving or renaming it — grove does not force changes on branches the user did not create. (Consistent with the permissiveness of `track`, §6.5.)
 - **Folder ticket ≠ branch ticket:** flags the mismatch.
 - **Nested worktrees** inside another worktree: flags for relocation.
+- **Recent git lock:** a lock that is not stale yet (a git command may be using it) → re-run later.
+- **Missing author identity:** a worktree where `git var GIT_AUTHOR_IDENT` fails, i.e. a commit would fail with "Author identity unknown" → set `user.name`/`user.email` (or a zone with `gwt ssh add`).
 
 Behavior: by default it shows the plan and asks for confirmation; `--fix` applies the automatic fixes, `--dry-run` only reports. The "reports but does not fix" items are never touched automatically, not even with `--fix`.
 

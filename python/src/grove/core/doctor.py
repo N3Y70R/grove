@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, List, Optional
 
 from . import config, naming, ops
+from . import platform as plat
 from .gitrunner import GitRunner
 from .model import Worktree, list_worktrees
 from .repo import RepoContext, has_git_pointer, write_git_pointer
@@ -18,6 +21,7 @@ MANUAL = "manual"
 @dataclass
 class Issue:
     kind: str                       # orphan | upstream | release-format | naming | ticket | nested
+                                    # | git-pointer | stale-lock | lock | stale-tmp | identity
     severity: str                   # AUTO | MANUAL
     target: str                     # affected folder/branch
     message: str                    # description of the problem
@@ -158,6 +162,113 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
                 fix=_make_upstream_fix(git, repo, w.branch, expected),
             ))
 
+    issues.extend(_hygiene(git, repo, existing))
+    return issues
+
+
+# --------------------------------------------------------------------------- #
+# Repository hygiene: leftover locks / temp objects, author identity
+# --------------------------------------------------------------------------- #
+
+# A lock younger than this is assumed to be in use.
+LOCK_MIN_AGE = 60
+# A lock older than this is orphaned even if some git process is running
+# (no normal git operation holds a lock this long).
+LOCK_HARD_AGE = 600
+_TMP_OBJECT_GLOBS = ("tmp_obj_*", "??/tmp_obj_*", "pack/tmp_pack_*", "pack/tmp_idx_*")
+
+
+def _git_running() -> Optional[bool]:
+    """Indirection so tests can pin the process state."""
+    return plat.git_process_running()
+
+
+def _find_locks(bare: Path) -> List[Path]:
+    locks: List[Path] = []
+    objects = bare / "objects"
+    for dirpath, dirnames, filenames in os.walk(bare):
+        d = Path(dirpath)
+        if d == objects:
+            # skip the loose-object fan-out (00..ff): thousands of files, no locks
+            dirnames[:] = [n for n in dirnames if len(n) != 2]
+        locks.extend(d / f for f in filenames if f.endswith(".lock"))
+    return sorted(locks)
+
+
+def _find_tmp_objects(bare: Path) -> List[Path]:
+    objects = bare / "objects"
+    found = {p for g in _TMP_OBJECT_GLOBS for p in objects.glob(g) if p.is_file()}
+    return sorted(found)
+
+
+def _age(path: Path, now: float) -> Optional[float]:
+    try:
+        return now - path.stat().st_mtime
+    except OSError:
+        return None  # vanished meanwhile
+
+
+def _is_stale(age: float, running: Optional[bool]) -> bool:
+    if age >= LOCK_HARD_AGE:
+        return True
+    return age >= LOCK_MIN_AGE and running is False
+
+
+def _unlink_all(paths: List[Path]) -> Callable[[], None]:
+    def _fix():
+        for p in paths:
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                pass
+    return _fix
+
+
+def _hygiene(git: GitRunner, repo: RepoContext, existing: List[Worktree]) -> List[Issue]:
+    issues: List[Issue] = []
+    now = time.time()
+    locks = _find_locks(repo.bare)
+    tmps = _find_tmp_objects(repo.bare)
+    running = _git_running() if (locks or tmps) else None
+
+    def rel(p: Path) -> str:
+        return os.path.relpath(str(p), str(repo.root)).replace("\\", "/")
+
+    for lock in locks:
+        age = _age(lock, now)
+        if age is None:
+            continue
+        if _is_stale(age, running):
+            issues.append(Issue(
+                kind="stale-lock", severity=AUTO, target=rel(lock),
+                message=f"orphaned git lock ({int(age)}s old)",
+                action="delete the lock file", fix=_unlink_all([lock]),
+            ))
+        else:
+            issues.append(Issue(
+                kind="lock", severity=MANUAL, target=rel(lock),
+                message=f"git lock present ({int(age)}s old); a git command may be using it",
+                action="re-run doctor when no git command is running",
+            ))
+
+    stale_tmp = [p for p in tmps if (a := _age(p, now)) is not None and _is_stale(a, running)]
+    if stale_tmp:
+        issues.append(Issue(
+            kind="stale-tmp", severity=AUTO, target=rel(repo.bare / "objects"),
+            message=f"{len(stale_tmp)} leftover temporary object file(s) from an interrupted git command",
+            action="delete them", fix=_unlink_all(stale_tmp),
+        ))
+
+    # Author identity: `git var GIT_AUTHOR_IDENT` fails exactly when a commit
+    # would fail with "Author identity unknown" (honours includeIf/zones).
+    for w in existing:
+        r = git.run(["var", "GIT_AUTHOR_IDENT"], cwd=w.path, check=False, mutating=False)
+        if r.returncode != 0:
+            issues.append(Issue(
+                kind="identity", severity=MANUAL, target=w.rel_path,
+                message="no git author identity: commits here will fail ('Author identity unknown')",
+                action="set user.name/user.email (git config, or a zone with 'gwt ssh add')",
+            ))
     return issues
 
 
@@ -188,7 +299,9 @@ def _make_rename_fix(git: GitRunner, repo: RepoContext, w: Worktree, new_branch:
 
 
 # Application order: upstream before moving/renaming folders; prune last.
-_FIX_ORDER = {"upstream": 1, "naming": 2, "release-format": 3, "orphan": 4}
+# Leftover locks go first: they can make every other git-based fix fail.
+_FIX_ORDER = {"stale-lock": 0, "stale-tmp": 0, "upstream": 1, "naming": 2,
+              "release-format": 3, "orphan": 4}
 
 
 def apply(issues: List[Issue]) -> int:

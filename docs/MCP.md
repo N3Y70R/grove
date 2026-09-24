@@ -205,6 +205,13 @@ same `base` works for `kind="ticket"` and `kind="release"`.
 > "How far ahead/behind is `feature/PROJ-123` vs `production`?"
 > → `grove_compare(a="feature/PROJ-123", b="production", cwd=…)`
 
+> "Git says another process is running / commits fail." →
+> `grove_doctor(cwd=…)` then `grove_doctor(cwd=…, fix=true)` — clears orphaned
+> locks and temp objects, and reports missing author identity.
+
+> "I'm in a container and git doesn't work in the worktree." → `grove_list(cwd=…)`
+> and use each row's `gitdir` as `GIT_DIR` (relative to the repo root).
+
 ### Bring in an existing branch
 
 > "Track the existing branch `hotfix/PROJ-9-fix` in `/Users/me/code/app`."

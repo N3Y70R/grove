@@ -5,7 +5,7 @@ license: GPL-3.0-or-later
 compatibility: Requires grove (pipx install "grove-wt[mcp]") and git. Optional relative worktree paths need git >= 2.48.
 metadata:
   author: N3Y70R
-  grove-version: "0.14.2"
+  grove-version: "0.15.0"
 ---
 
 # grove

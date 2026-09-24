@@ -2,6 +2,34 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.6.1
+
+### Fixed
+
+- **`grove-mcp` failed to start with mcp 2.x.** The `mcp` extra was unbounded,
+  so fresh installs pulled mcp 2.x, where `FastMCP` was renamed. The extra is
+  now pinned to `mcp>=1.2,<2` until the server is migrated to the 2.x API.
+- **Clearer MCP import error**: it now distinguishes "SDK not installed" from
+  "incompatible SDK version", recommends the correct extra
+  (`pip install "grove-wt[mcp]"`), and raises `ImportError` instead of
+  `SystemExit` so importers (e.g. pytest) report it cleanly.
+- **`convert` left folders behind at the repo root.** A tracked folder that also
+  held ignored files (e.g. `python/.venv`) was classified only by its top-level
+  name and then silently skipped because the worktree already had that folder,
+  leaving tracked duplicates and ignored files orphaned at the root. The cleanup
+  now merges path by path: ignored files move into the current worktree, tracked
+  duplicates are dropped, and any conflict is kept at the root and reported.
+- **`convert` now writes `.bare/grove.toml`** (as the design required), with the
+  detected base; new `--profile` (CLI) / `profile` (MCP) chooses the policy.
+- **Versions were parsed as tickets**: `fix/python-0.6.1` yielded ticket
+  `PYTHON-0`. Ticket keys are now anchored at token boundaries (no digit or
+  `.<digit>` right after the key).
+- **Wrong command in the "no managed repo" error** (`wt setup` → `gwt setup`, and
+  it now mentions `gwt convert`).
+- **Tests no longer depend on the host environment**: the suite isolates the
+  global git config (pins `init.defaultBranch=main`) and hides the developer's
+  ssh-agent, which made SSH doctor tests fail locally while passing in CI.
+
 ## python — 0.6.0
 
 ### Changed

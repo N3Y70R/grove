@@ -305,11 +305,11 @@ days, L more).
 | 3 | ~~Rename `sync` (keep deprecated alias); fetch mentioned first in `compare`~~ ✅ 0.7.0 (`reset`) | §8 | S |
 | 4 | ~~`merged` in `list`; `dry_run` in `grove_remove`~~ ✅ 0.7.0 | §9 | S |
 | 5 | Neutral cwd for machine-level git commands | §7 | S |
-| 6 | `setup` error suggests `convert`; `adopt` alias | §5 | S |
-| 7 | `grove` entry point alias; CLI equivalent in MCP descriptions | §11 | S |
+| 6 | ~~`setup` error suggests `convert`; `adopt` alias~~ ✅ 0.7.1 | §5 | S |
+| 7 | ~~`grove` entry point alias; CLI equivalent in MCP descriptions~~ ✅ 0.7.1 | §11 | S |
 | 8 | `ahead`/`behind` vs base when no upstream | §10 | S |
 | 9 | ~~`remove` cleans empty parent folders~~ ✅ 0.7.0 | §14 | S |
-| 10 | `version` in `grove_config` / `grove_doctor` | §15 | S |
+| 10 | ~~`version` in `grove_config` / `grove_doctor`~~ ✅ 0.7.1 | §15 | S |
 | 11 | `kind: "base"` for the base worktree | §13 | S |
 | 12 | `gwt fetch` verb | §8 | S |
 | 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
@@ -327,4 +327,5 @@ base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
 `convert` (0.6.0); `convert` fixes + `--profile`, version-as-ticket fix,
 `mcp<2` pin, hermetic tests (0.6.1); `doctor` locks/temp objects/identity,
 `gitdir` in `list` (0.6.2); `sync` → `reset`, `merged` in `list`, MCP
-`remove` `dry_run`, empty folders cleaned (0.7.0).
+`remove` `dry_run`, empty folders cleaned (0.7.0); `grove` alias, `adopt`
+alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1).

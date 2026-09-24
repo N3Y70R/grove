@@ -2,6 +2,24 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.7.1
+
+Theme: **find what already exists** — the recurring root cause in the feedback
+was naming (users searched for `grove`, for "adopt", for "update").
+
+### Added
+
+- **`grove` command**: installed as an alias of `gwt`, so typing the project's
+  name works.
+- **`gwt adopt`**: alias of `gwt convert`, for users who think "adopt my clone".
+- **`setup` points at `convert`**: when the destination is already a git clone,
+  the error suggests `gwt convert <path>` instead of just "already exists".
+- **Version visible from the MCP**: `grove_config` and `grove_doctor` (and their
+  `--json` CLI counterparts) include `version`.
+- **CLI equivalent in every MCP tool**: each description ends with a
+  ``CLI: `gwt …` `` line (enforced by a schema test), so an agent can tell the user
+  how to do the same in the terminal.
+
 ## python — 0.7.0
 
 Theme: **don't lose work by accident** — every destructive operation can now be

@@ -5,9 +5,21 @@ Captured manually after a lost session; kept here so they aren't lost again.
 
 > Convention: each item has **Finding** (what happened), **Impact**, and
 > **Proposed improvement** (concrete change). Items marked `→ issue` are ready
-> to become GitHub issues.
+> to become GitHub issues. Each item carries a **Status** line; the prioritized
+> view is the [backlog table](#backlog-prioritized) at the end.
+
+**Sources.** Items 1–4: first dogfooding session on the dropi repos. Items 5–17
+(added 2026-09-23): onboarding `dropi-business-rules` with ticket worktrees
+(team notes, `grove-hallazgos.md`) and converting grove's own clone with
+`gwt convert`. Everything was re-checked against the code of **python 0.6.1**;
+claims of the form "grove can't do X" were verified before being written, since
+several first drafts turned out to be "we didn't find how to do X".
 
 ## 1. Creating a worktree from a specific base branch is hard to discover
+
+**Status:** mostly done — `create temp --base` and base-aware MCP descriptions
+shipped in 0.5.0. Open: a single "create from an arbitrary base" recipe in
+TUTORIAL.
 
 **Finding.** Needed the `temporary-unified-test` worktree to start from a
 *specific* branch. The agent (via the MCP) spent a while trying combinations of
@@ -27,6 +39,9 @@ surface.
 
 ## 2. No easy way to edit profiles / per-repo config
 
+**Status:** mostly done — `config set | unset | edit` shipped in 0.6.0 (CLI +
+MCP). Open: profile editing & precedence guide in the docs.
+
 **Finding.** Couldn't figure out how to edit the profile configuration (e.g.
 change the base branch for a repo). Editing meant hand-writing
 `.bare/grove.toml` or `~/.config/grove/config.toml`, which wasn't discoverable.
@@ -43,6 +58,11 @@ are `show` and `set-ssh-alias`.
   custom one in `~/.config/grove/config.toml`, and precedence. → issue
 
 ## 3. Default profile assumes base `main`, but dropi repos use `production`
+
+**Status:** partly done — `setup` auto-detects the origin base (0.5.0), and
+`convert` records the detected base in `grove.toml` (0.6.1). Open: dropi-style
+example profile in the docs; suggest an existing base when the configured one
+is missing.
 
 **Finding.** The `default` profile points the base branch to `main`. The dropi
 repos use `production` as their base, so setup/operations targeted the wrong
@@ -65,6 +85,10 @@ do use `main`, so the default itself is reasonable.)
 
 ## 4. Identifying the SSH aliases took a long time
 
+**Status:** mostly done — `gwt ssh aliases` / `grove_ssh_aliases` (repo↔alias
+map) shipped in 0.6.0; `setup --ssh-alias` persists the chosen alias in
+`grove.toml`. Open: short "how grove picks the key" note in the docs.
+
 **Finding.** It took the agent a while to figure out which `~/.ssh/config`
 aliases (`neytor-gh`, `dropi-bb`) were in play for the repos.
 
@@ -81,20 +105,212 @@ aliases (`neytor-gh`, `dropi-bb`) were in play for the repos.
 - Add a short "multi-account SSH: how grove picks the key" note to the docs that
   the agent can rely on. → issue
 
+## 5. `convert` exists but isn't found; it had two bugs (fixed in 0.6.1)
+
+**Finding.** A team onboarding an existing clone moved it aside and re-cloned
+with `setup`, then wrote down "grove needs an `adopt` command". `gwt convert`
+(0.6.0) already does exactly that. Using `convert` on grove's own clone then
+exposed two bugs: a tracked folder that also held ignored files
+(`python/.venv`) was classified by its top-level name and silently skipped,
+leaving 47 MB orphaned at the root; and `convert` never wrote `grove.toml`.
+
+**Impact.** Unnecessary re-clones; after conversion, the repo ran on built-in
+defaults (base `production`, tickets required) instead of a real policy.
+
+**Proposed improvement.**
+- ✅ 0.6.1: path-by-path relocation (conflicts kept and reported), `grove.toml`
+  written, `--profile` / `profile`.
+- When `setup`'s destination is already a clone, suggest `gwt convert` in the
+  error (the "no managed repo" error already does since 0.6.1). → issue
+- Consider `adopt` as an alias of `convert`. → issue
+
+## 6. `doctor` misses orphaned locks, temp objects and a missing identity
+
+**Finding.** With `.bare/objects/maintenance.lock`, a worktree `HEAD.lock` and
+`tmp_obj_*` files present, `doctor` returned `issues: []`; the next `git`
+command failed with "Another git process seems to be running". Seen twice (both
+left by an environment without delete permission). Separately, a first commit
+failed with "Author identity unknown" after onboarding.
+
+**Impact.** Hygiene problems surface at the worst moment (mid-commit), and
+nobody knows those files are safe to delete.
+
+**Proposed improvement.**
+- `doctor` reports orphaned `*.lock` (no running git) and
+  `objects/**/tmp_obj_*`; `--fix` removes them. → issue
+- `doctor` checks that `user.email` resolves for the repo and its worktrees. →
+  issue *(verify first whether the identity failure was grove's: the dropi zone
+  has grove identity routing `ok`, so it may have come from the assisted
+  environment, which doesn't see the Mac's global config.)*
+
+## 7. Worktree `.git` files use absolute paths
+
+**Finding.** `gitdir: /Users/…/.bare/worktrees/<wt>` is unusable when the repo
+is seen from another mount (container, VM, assisted session). The workaround is
+passing `GIT_DIR`/`GIT_WORK_TREE` by hand, and the internal name is the *last
+path component* (git's rule), so it can't be derived from the visible path
+(`feature/X` → `.bare/worktrees/X`). From the other mount, git even reports
+the worktrees as **prunable**: a `git worktree prune` there would unregister
+them. grove's own tests hit this (they run `git config --global` from a cwd
+inside a broken worktree).
+
+**Impact.** Any tool or agent working from a second filesystem can't use git
+in worktrees, and can destroy their registration by "cleaning up".
+
+**Proposed improvement.**
+- Cheap, do first: expose the internal `gitdir` path in `list` (CLI + MCP). →
+  issue
+- Opt-in relative paths: `relative_worktrees = true` in `grove.toml` →
+  `git worktree add --relative-paths`. Requires git ≥ 2.48 (the Mac has 2.54;
+  the assisted environment has 2.34) and is **not backward compatible**:
+  libgit2 < 1.9.4 tools (e.g. TortoiseGit) and older git can't read such repos.
+  Off by default; `doctor` warns when enabled on an older git. → issue
+- Run machine-level git commands (`git config --global`, used by `ssh add`)
+  with a neutral cwd (`$HOME`) so a broken repo in the cwd can't break them. →
+  issue
+
+## 8. The fetch is hidden; `sync` sounds like "update" but discards
+
+**Finding.** The most repeated operation with several worktrees — bring what's
+on the remote — only exists as `compare --vs <ref> --fetch`, whose description
+starts with "read-only". Meanwhile `sync` does `reset --hard` to origin: a
+worktree with 984 unpushed migrated rules was one `sync` away from losing them.
+(The MCP description of `grove_sync` does say DESTRUCTIVE; the CLI name is the
+trap.)
+
+**Impact.** Users don't find the safe operation and do find the dangerous one
+under the word they were looking for.
+
+**Proposed improvement.**
+- A `gwt fetch` verb (same as `compare --fetch` without the comparison), or at
+  least mention the fetch first in `compare`'s description. → issue
+- Rename `sync` to something that says what it does (`reset`/`discard`), keeping
+  `sync` as a deprecated alias; its help should start with "Discards". → issue
+
+## 9. `list` doesn't say whether a worktree is merged
+
+**Finding.** Before removing a worktree, the question is always "is this
+already in the base?". `list` doesn't answer it; we checked by hand with
+`git merge-base --is-ancestor`. `remove --merged` computes it, and the CLI has
+`remove --merged --dry-run` — but the MCP `grove_remove` has no `dry_run`.
+
+**Impact.** The data behind the only sweeping destructive action can't be seen
+beforehand from the assistant.
+
+**Proposed improvement.**
+- `merged` field in `list` (vs the repo base), also as a CLI column/flag. → issue
+- `dry_run` parameter in `grove_remove` (MCP parity with the CLI). → issue
+
+## 10. `ahead`/`behind` are `null` without an upstream
+
+**Finding.** A new branch six commits ahead of `main`, not pushed yet, showed
+`ahead: null, behind: null`. Technically right; useless in the most common case
+of a ticket-per-worktree repo.
+
+**Proposed improvement.** Without upstream, measure against the base and say so
+(`ahead: 6 (vs base)`; in JSON, add `compared_to: "base"`). → issue
+
+## 11. The project is "grove" everywhere; the command is `gwt`
+
+**Finding.** Package (`grove-wt`), repo, config file, MCP server and docs say
+grove; the binary is `gwt`. Typing `grove` gives "command not found" and the
+conclusion "it isn't installed". grove itself printed a third name (`wt setup`)
+until 0.6.1.
+
+**Proposed improvement.**
+- Install a `grove` entry point as an alias of `gwt`. → issue
+- MCP tool descriptions mention the equivalent CLI command. → issue
+
+## 12. `worktree-config-root` looks like a user branch
+
+**Finding.** The parking branch lives in `refs/heads`, next to real branches,
+pointing to an old commit. In a repo with many branches someone will sweep it.
+
+**Proposed improvement.** Point the bare `HEAD` at an **unborn** branch (never
+created) or move it to `refs/grove/*` — test first what git accepts as a bare
+`HEAD`. Meanwhile, `doctor` recognizes and explains it. → issue
+
+## 13. The base worktree shows `kind: "unknown"`
+
+**Finding.** With profiles whose `special_worktrees` doesn't list the base
+(`default`, `personal`), `main` is classified `unknown`, though `setup` created
+it.
+
+**Proposed improvement.** Classify the configured base as `kind: "base"`. → issue
+
+## 14. `remove` leaves empty type folders
+
+**Finding.** Removing the only `fix/…` worktree left an empty `fix/` folder at
+the root.
+
+**Proposed improvement.** Remove parent folders left empty, up to the repo root
+(never `.bare`, the base or `artifacts/`). → issue
+
+## 15. The version isn't visible from the MCP
+
+**Finding.** `gwt --version` exists, but no MCP tool returns the version, so
+findings written from the assistant can't be dated to a release.
+
+**Proposed improvement.** Include `version` in `grove_config` and
+`grove_doctor` results. → issue
+
+## 16. The generic ticket pattern is permissive
+
+**Finding.** `fix/python-0.6.1` was read as ticket `PYTHON-0` (fixed in 0.6.1:
+keys must end at a boundary). With `tickets = "optional"` and no prefixes, any
+`word-number` still passes as a ticket.
+
+**Proposed improvement.** Document `ticket_prefixes` as the recommended setting;
+consider not extracting tickets at all when `tickets = "off"`. → issue
+
+## 17. Maintenance / tech debt
+
+- **mcp 2.x:** the `mcp` extra is capped `<2` since 0.6.1 (FastMCP was renamed
+  to MCPServer). Migrate and lift the cap. → issue
+- **`cli/main.py` is ~1,450 lines**: split into one module per command. → issue
+- **Releases:** document "tag after merge, never squash/rebase-merge a release
+  branch" so the `python/vX.Y.Z` tag stays on `main`. → issue
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
-  right command combination. Richer tool descriptions + a couple of
+  right command combination. Richer tool descriptions (✅ 0.5.0) + a couple of
   higher-level composite operations (e.g. "start working on ticket X from base
   Y") would cut trial-and-error. → issue
 - **Onboarding a repo with a non-standard base** (dropi = production) should be a
   documented one-liner, not a discovery exercise.
+- **Naming is the recurring root cause** (items 5, 8, 11): `convert` vs "adopt",
+  `sync` vs "update", `gwt` vs "grove". Before adding features, check whether the
+  capability exists under a name users don't search for.
 
-## Candidate GitHub issues (ready to file)
+## Backlog (prioritized)
 
-1. feat(create): add `--base` to `temp` (and expose in MCP).
-2. feat(setup): auto-detect base branch from `origin/HEAD`.
-3. feat(config): `config set/unset/edit` for repo config keys.
-4. docs: profile editing & precedence guide; add a dropi-style example profile.
-5. feat(ssh): surface repo→alias mapping; persist chosen alias on setup.
-6. docs/mcp: improve tool descriptions; consider a composite "start ticket from base".
+Open items, most valuable first. "Size" is a rough guess (S ≤ half a day, M ≤ 2
+days, L more).
+
+| # | Item | Source | Size |
+|---|---|---|---|
+| 1 | `doctor`: orphaned locks + `tmp_obj_*` (auto-fix), identity check | §6 | S |
+| 2 | `gitdir` field in `list` | §7 | S |
+| 3 | Rename `sync` (keep deprecated alias); fetch mentioned first in `compare` | §8 | S |
+| 4 | `merged` in `list`; `dry_run` in `grove_remove` | §9 | S |
+| 5 | Neutral cwd for machine-level git commands | §7 | S |
+| 6 | `setup` error suggests `convert`; `adopt` alias | §5 | S |
+| 7 | `grove` entry point alias; CLI equivalent in MCP descriptions | §11 | S |
+| 8 | `ahead`/`behind` vs base when no upstream | §10 | S |
+| 9 | `remove` cleans empty parent folders | §14 | S |
+| 10 | `version` in `grove_config` / `grove_doctor` | §15 | S |
+| 11 | `kind: "base"` for the base worktree | §13 | S |
+| 12 | `gwt fetch` verb | §8 | S |
+| 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
+| 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
+| 15 | Migrate to mcp 2.x | §17 | M |
+| 16 | Split `cli/main.py` | §17 | M |
+| 17 | Composite MCP op "start ticket X from base Y" | meta | M |
+| 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
+| 19 | Suggest an existing base when the configured one is missing | §3 | S |
+
+**Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
+base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
+`convert` (0.6.0); `convert` fixes + `--profile`, version-as-ticket fix,
+`mcp<2` pin, hermetic tests (0.6.1).

@@ -234,8 +234,9 @@ def load(bare: Path) -> None:
         apply_policy(base_policy)
         apply_policy(data)
     else:
-        # No file: still respects the prefix env.
-        _compute_ticket_re(TICKET_PATTERN)
+        # No grove.toml (made by hand, or by an old convert): use the 'default'
+        # profile rather than grove's internal work-style defaults.
+        apply_policy(resolve_profile(DEFAULT_PROFILE))
 
 
 # --------------------------------------------------------------------------- #

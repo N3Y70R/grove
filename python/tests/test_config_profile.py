@@ -68,3 +68,14 @@ def test_unknown_profile_in_config_falls_back_without_crashing(tmp_path, pristin
     cfg.load(bare)
     assert cfg.DEFAULT_BASE == "trunk"
     assert cfg.TICKETS == "optional"             # from the 'default' profile
+
+
+def test_repo_without_grove_toml_uses_default_profile(tmp_path, pristine):
+    """A repo with no grove.toml (made by hand, or by an old convert) must get the
+    'default' profile, not grove's internal work-style defaults."""
+    bare = tmp_path / ".bare"
+    bare.mkdir()
+    pristine()
+    cfg.load(bare)
+    assert cfg.DEFAULT_BASE == "main"
+    assert cfg.TICKETS == "optional"

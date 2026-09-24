@@ -2,6 +2,28 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.8.1
+
+Theme: **robustness** — fail with a way out, not with a raw git error.
+
+### Fixed
+
+- **`git config --global` no longer depends on the current directory**: `ssh add`,
+  `ssh doctor` and the identity helpers run it from `$HOME`. Inside a folder whose
+  `.git` is broken (a worktree seen from another mount, a deleted repo) they used
+  to fail with "not a git repository".
+- **A missing base branch gets a suggestion**: `create` (ticket/release/temp)
+  used to fail with git's raw `Not a valid object name`; it now names the
+  existing candidates and the fix (`--base <candidate>`, or
+  `gwt config set default_base <candidate>` when the repo's configured base is
+  the one missing). `setup` lists the branches on origin when neither the
+  requested base nor origin's default branch exist.
+
+### Changed
+
+- **CI tests Python 3.11–3.14** (pipx installs grove with 3.14 on macOS); the
+  PyPI classifiers now list 3.13 and 3.14.
+
 ## python — 0.8.0
 
 Theme: **read `list` without guessing**.

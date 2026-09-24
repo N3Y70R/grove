@@ -304,7 +304,7 @@ days, L more).
 | 2 | ~~`gitdir` field in `list`~~ ✅ 0.6.2 | §7 | S |
 | 3 | ~~Rename `sync` (keep deprecated alias); fetch mentioned first in `compare`~~ ✅ 0.7.0 (`reset`) | §8 | S |
 | 4 | ~~`merged` in `list`; `dry_run` in `grove_remove`~~ ✅ 0.7.0 | §9 | S |
-| 5 | Neutral cwd for machine-level git commands | §7 | S |
+| 5 | ~~Neutral cwd for machine-level git commands~~ ✅ 0.8.1 | §7 | S |
 | 6 | ~~`setup` error suggests `convert`; `adopt` alias~~ ✅ 0.7.1 | §5 | S |
 | 7 | ~~`grove` entry point alias; CLI equivalent in MCP descriptions~~ ✅ 0.7.1 | §11 | S |
 | 8 | ~~`ahead`/`behind` vs base when no upstream~~ ✅ 0.8.0 | §10 | S |
@@ -318,9 +318,9 @@ days, L more).
 | 16 | Split `cli/main.py` | §17 | M |
 | 17 | Composite MCP op "start ticket X from base Y" | meta | M |
 | 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
-| 19 | Suggest an existing base when the configured one is missing | §3 | S |
+| 19 | ~~Suggest an existing base when the configured one is missing~~ ✅ 0.8.1 | §3 | S |
 | 20 | ~~`rel_path` correct from another mount~~ ✅ 0.8.0 (and never prunable/orphan there) | §7 | S |
-| 21 | CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14) | — | S |
+| 21 | ~~CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14)~~ ✅ 0.8.1 | — | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -330,4 +330,5 @@ base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
 `remove` `dry_run`, empty folders cleaned (0.7.0); `grove` alias, `adopt`
 alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1); `ahead`/`behind` vs base,
 `kind: base` (protected), correct paths from another mount — no more false
-orphans for `doctor` (0.8.0).
+orphans for `doctor` (0.8.0); neutral cwd for global git config, base
+suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1).

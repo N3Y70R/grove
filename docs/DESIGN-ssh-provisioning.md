@@ -291,7 +291,7 @@ Check sources (each a small function `_check_*(inv, paths, echo) -> Iterable[Fin
 `trap` reuses `sshcheck._ssh_g`/`check_host` and `sshalias.matching_aliases` to compare what the real
 host resolves to vs. where the key lives — the exact bug from the guide.
 
-## 7. CLI wiring (`cli/main.py`)
+## 7. CLI wiring (`cli/main.py`; since python 0.8.4, `cli/commands/ssh.py`)
 
 Extend the existing `ssh` subparser group:
 

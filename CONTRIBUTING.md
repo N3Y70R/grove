@@ -30,7 +30,10 @@ A change that adds or modifies a command/operation isn't done until **all four
 facades and docs stay in sync**:
 
 1. **core** — the logic, with unit/integration tests.
-2. **CLI** (`grove.cli`) — flags/args wired to the core.
+2. **CLI** (`grove.cli`) — flags/args wired to the core. Each command lives in
+   `grove/cli/commands/<area>.py` as a pair: `cmd_<name>(args, out)` (the handler)
+   and `register_<name>(sub)` (its subparser); `cli/main.py` only registers them,
+   in the order `gwt --help` shows. Shared helpers go in `cli/_shared.py`.
 3. **MCP** (`grove.mcp`) — the tool exposed *and enriched*:
    - every parameter has a **`Field(description=…)`**;
    - constrained choices use an **enum** (`Literal[...]`);

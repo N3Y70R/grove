@@ -450,6 +450,21 @@ If the zone still has other accounts (here `dropi-gh` stays under `~/dropi/`), o
 
 > The commands below (`ssh check`, `config set-ssh-alias`) are about *which existing account a given repo uses*; the ones above are about *provisioning the accounts themselves*. They compose: provision once with `ssh add`, then pick per repo.
 
+### How git picks the key (and where grove fits)
+
+git doesn't choose keys; **ssh** does, based on the **host in the remote URL**:
+
+1. The origin URL names a host: `git@github.com:acme/api.git` → `github.com`; `git@gh-work:acme/api.git` → `gh-work`.
+2. ssh looks that host up in `~/.ssh/config`. A block like `Host gh-work` with `HostName github.com`, `IdentityFile ~/.ssh/id_work` and `IdentitiesOnly yes` means: connect to github.com **offering only that key**.
+3. With the plain `github.com` host and several accounts, ssh offers whatever keys it has, in order. The first one the server accepts wins, and it may be the wrong account (typical symptom: *"Repository not found"* on a repo you do have access to).
+
+grove makes step 1 point at the right alias, in one of two ways:
+
+- **Per repo:** `setup --ssh-alias gh-work` or `gwt config set-ssh-alias gh-work` rewrites the repo's `origin` to `git@gh-work:…` and records `ssh_alias` in `grove.toml`.
+- **Per folder (zone):** `gwt ssh add work-gh --host github.com --email you@work.com --scope-dir ~/work` makes git (via `includeIf gitdir:`) use that account's identity **and** rewrite `github.com` URLs to the alias for every repo under `~/work`, even ones cloned with the canonical URL.
+
+To find out which alias a repo needs: `gwt ssh aliases`. To test it for real: `gwt ssh check --live`. To catch misconfigurations (such as a repo that uses the host when it should use the alias): `gwt ssh doctor`.
+
 ### Choose the account when setting up the repo
 
 The URL you copy from the remote is the **canonical** one (`git@github.com:org/repo.git`); it doesn't carry your local aliases. `setup` accepts it as-is, but if your `~/.ssh/config` has aliases for that host, it lets you choose:

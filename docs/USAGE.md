@@ -584,9 +584,94 @@ Removes the account's `Host` block and its `insteadOf` rewrites from the zone; i
 
 ---
 
+## Recipes
+
+Short answers to the questions that come up most. Each links to the full reference above.
+
+### Create a worktree from any base
+
+The **`--base <branch>`** option works for every kind of worktree (MCP: `base`):
+
+```
+gwt create PROJ-101 feature "login" --base release/v2.3    # ticket
+gwt create release v2.4.0 --base production                # release
+gwt create temp spike-cache --base develop                 # temp
+gwt create PROJ-102 bugfix "fix" --base origin/hotfix-x    # a branch that only exists on origin
+```
+
+Without `--base` it uses the repo's `default_base` (`gwt config` shows it; change it with `gwt config set default_base <branch>`). If the base doesn't exist, grove names the branches that do and the fix.
+
+### Start using grove on a repo you already cloned
+
+Don't re-clone: `gwt convert ~/code/api` (alias `gwt adopt`). Preview with `--dry-run`; choose the policy with `--profile`. See [`gwt convert`](#gwt-convert).
+
+### Bring what's new on the remote — without losing anything
+
+`gwt compare --vs main --fetch` fetches from origin and shows every worktree's ahead/behind against `main`. It never touches your worktrees.
+
+`gwt reset <worktree>` is different: it **discards** local commits and changes to match origin. Use it only for branches that get force-pushed (e.g. an integration branch).
+
+### Clean up merged work safely
+
+```
+gwt list                       # the status shows "merged" per worktree
+gwt remove --merged --dry-run  # what would be removed
+gwt remove --merged --delete-branch
+```
+
+"Merged" = no commits outside the base, which includes a brand-new branch with no commits yet.
+
+### Git complains about a lock ("Another git process seems to be running")
+
+`gwt doctor`, then `gwt doctor --fix` once the lock is stale (≥60 s with no git running, or ≥10 min).
+
+---
+
 ## Configuration and profiles
 
-Each repo stores its policy in `.bare/grove.toml`, which `setup` writes from the profile. Precedence: internal defaults < global profile/config < repo config < environment variables < flags.
+Each repo stores its policy in `.bare/grove.toml`, which `setup`/`convert` write from the profile (a full snapshot, plus `profile = "<name>"`).
+
+**How the effective policy is built** on every command, from lowest to highest priority:
+
+1. grove's internal defaults;
+2. the repo's **profile** (the `profile` key in `grove.toml`; repos created before 0.8.2 use `default`);
+3. the keys in `.bare/grove.toml`;
+4. environment variables (`GROVE_TICKET_PREFIX`, ticket keys only);
+5. command flags (e.g. `--base`).
+
+A profile is a **template**: editing it later does **not** change repos that already exist (their keys are written in `grove.toml`). Only a key you remove with `gwt config unset` falls back to the repo's profile.
+
+### Editing the configuration
+
+| I want to… | Do this |
+|---|---|
+| Change one value in **this repo** | `gwt config set default_base production` |
+| Go back to the profile's value | `gwt config unset default_base` |
+| Edit this repo's config freely | `gwt config edit` (opens `.bare/grove.toml`) |
+| See the effective values | `gwt config` (or `gwt config --json`) |
+| Reuse a policy across **many repos** | define a profile in `~/.config/grove/config.toml` and use `setup --profile <name>` / `convert --profile <name>` |
+
+A **work-style profile** (base `production`, required tickets with your project keys, a shared integration branch) looks like this in `~/.config/grove/config.toml`:
+
+```toml
+[profiles.work]
+default_base       = "production"
+allowed_types      = ["feature", "hotfix", "bugfix"]
+special_worktrees  = ["production", "temporary-unified-test"]
+tickets            = "required"
+ticket_prefixes    = ["PROJ"]
+integration_branch = "temporary-unified-test"
+
+[profiles.work.release]
+default_base = "production"
+```
+
+```
+gwt setup git@github.com:acme/api.git --profile work     # new clone
+gwt convert ~/code/api --profile work                     # clone you already have
+```
+
+A profile with the name of a built-in one (`default`, `personal`, `gitflow`) overrides it.
 
 ### Fields (`.bare/grove.toml`)
 
@@ -650,7 +735,7 @@ Defines **what string counts as a ticket key** within folder and branch names. F
 2. `ticket_pattern` in `grove.toml` — explicit regex for advanced cases: `ticket_pattern = "DROP-\\d+"`.
 3. `ticket_prefixes` in `grove.toml` — the recommended form: a list of keys, e.g. `ticket_prefixes = ["DROP", "OPS"]`. grove converts it into the pattern `(?:DROP|OPS)-\d+`.
 
-If you don't define any, the generic pattern that accepts any Jira-style key is used. For **multiple project keys** in the same repo, use `ticket_prefixes` (or the generic one, which already covers them all).
+If you don't define any, the generic pattern that accepts any Jira-style key is used. **Recommendation:** set `ticket_prefixes` whenever the repo uses tickets. With the generic pattern and `tickets = "optional"`, any `word-number` in a name (`api-2`, `python-0`) can be read as a ticket; version numbers are excluded since 0.6.1, but other words are not. For **multiple project keys** in the same repo, use `ticket_prefixes` (or the generic one, which already covers them all).
 
 > In repos with `tickets = off` the pattern is **not used**: worktrees are named only by description. It only comes into play in `required` or `optional` mode.
 

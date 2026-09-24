@@ -189,6 +189,17 @@ git config commit.template .gitmessage
 
 Each implementation is versioned separately with language-prefixed tags: `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`. Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
+### Release process (python)
+
+1. **Work in a worktree:** `gwt create feature "<topic>"` (tickets are optional in this repo; with a ticket: `gwt create <TICKET> feature "<topic>"`). Commit the change(s), then a **last** commit `chore(release): python X.Y.Z` that only bumps `version` in `python/pyproject.toml` and `__version__` in `python/src/grove/__init__.py`, adds the `CHANGELOG.md` entry, and updates the backlog in `docs/FEEDBACK.md`.
+2. **Push the branch and wait for CI** (all Python versions in the matrix) to pass.
+3. **Integrate without rewriting commits:** fast-forward `main` (`git merge --ff-only origin/<branch>`), or a merge commit. **Never** squash or rebase-merge a release branch: the tag must point at a commit that is on `main`.
+4. **Tag after the merge:** `git tag python/vX.Y.Z && git push origin python/vX.Y.Z`. The tag triggers `release.yml`, which publishes to PyPI and creates the GitHub Release.
+5. **Install and verify:** some networks serve a stale PyPI index for a while, and `pipx install --force grove-wt` then silently installs the **previous** version. Check first with `pipx runpip grove-wt index versions grove-wt`, or install from the local checkout (`pipx install --force <repo>/main/python`). Confirm with `gwt --version`, and **restart the MCP client** so `grove-mcp` reloads.
+6. **Clean up:** `gwt remove <branch> --delete-branch` and `git push origin --delete <branch>`.
+
+A version with `BREAKING CHANGE` in any commit bumps the minor number while grove is 0.x.
+
 ## License
 
 By contributing, you agree that your contribution is published under the [GPL-3.0](LICENSE).

@@ -200,6 +200,12 @@ pipx upgrade grove-wt
 That's it — pipx pulls the latest published version. (If you installed the MCP
 server, the `grove-mcp` command stays at the same path.)
 
+> **Just released?** Some networks keep serving an old copy of the PyPI index for
+> a while, and `pipx install --force grove-wt` then quietly installs the
+> *previous* version. Check what pip can see first:
+> `pipx runpip grove-wt index versions grove-wt`. Update when the new version is
+> listed, and confirm with `gwt --version`.
+
 ### 6.1 If you installed it from git (Option A)
 
 ```

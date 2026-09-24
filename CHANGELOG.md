@@ -2,6 +2,33 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.8.2
+
+Theme: **documentation for the questions that keep coming up** (and a bug it
+uncovered).
+
+### Fixed
+
+- **`gwt config unset` fell back to grove's internal work-style defaults**
+  (base `production`, tickets `required`) instead of the repo's profile: in a
+  `personal` repo, unsetting `default_base` made the base `production`. The repo
+  now records its profile (`profile = "<name>"` in `grove.toml`, written by
+  `setup`/`convert`), and every command layers that profile before the repo's
+  keys. Repos without the key use the `default` profile; an unknown profile
+  falls back to `default` too.
+
+### Documentation
+
+- **Recipes** in USAGE: create from any base, adopt an existing clone, bring
+  remote changes safely, clean up merged work, clear a git lock.
+- **Configuration**: how the effective policy is really built, "a profile is a
+  template", an editing cheat sheet and a work-style profile example; advice to
+  set `ticket_prefixes`.
+- **How git picks the SSH key** (TUTORIAL): host in the URL → `~/.ssh/config`,
+  and where grove's per-repo alias and per-folder zones fit.
+- **Release process** (CONTRIBUTING): release commit last, CI, fast-forward,
+  tag after merge, stale-PyPI-index check; the same check in INSTALL.
+
 ## python — 0.8.1
 
 Theme: **robustness** — fail with a way out, not with a raw git error.

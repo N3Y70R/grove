@@ -17,9 +17,8 @@ several first drafts turned out to be "we didn't find how to do X".
 
 ## 1. Creating a worktree from a specific base branch is hard to discover
 
-**Status:** mostly done — `create temp --base` and base-aware MCP descriptions
-shipped in 0.5.0. Open: a single "create from an arbitrary base" recipe in
-TUTORIAL.
+**Status:** ✅ done — `create temp --base` and base-aware MCP descriptions
+(0.5.0); "create a worktree from any base" recipe in USAGE (0.8.2).
 
 **Finding.** Needed the `temporary-unified-test` worktree to start from a
 *specific* branch. The agent (via the MCP) spent a while trying combinations of
@@ -39,8 +38,8 @@ surface.
 
 ## 2. No easy way to edit profiles / per-repo config
 
-**Status:** mostly done — `config set | unset | edit` shipped in 0.6.0 (CLI +
-MCP). Open: profile editing & precedence guide in the docs.
+**Status:** ✅ done — `config set | unset | edit` (0.6.0); editing guide and the
+real precedence in USAGE, and `unset` falling back to the repo's profile (0.8.2).
 
 **Finding.** Couldn't figure out how to edit the profile configuration (e.g.
 change the base branch for a repo). Editing meant hand-writing
@@ -59,10 +58,9 @@ are `show` and `set-ssh-alias`.
 
 ## 3. Default profile assumes base `main`, but dropi repos use `production`
 
-**Status:** partly done — `setup` auto-detects the origin base (0.5.0), and
-`convert` records the detected base in `grove.toml` (0.6.1). Open: dropi-style
-example profile in the docs; suggest an existing base when the configured one
-is missing.
+**Status:** ✅ done — `setup` auto-detects the origin base (0.5.0); `convert`
+records it (0.6.1); missing-base suggestions (0.8.1); work-style profile example
+in USAGE (0.8.2).
 
 **Finding.** The `default` profile points the base branch to `main`. The dropi
 repos use `production` as their base, so setup/operations targeted the wrong
@@ -85,9 +83,8 @@ do use `main`, so the default itself is reasonable.)
 
 ## 4. Identifying the SSH aliases took a long time
 
-**Status:** mostly done — `gwt ssh aliases` / `grove_ssh_aliases` (repo↔alias
-map) shipped in 0.6.0; `setup --ssh-alias` persists the chosen alias in
-`grove.toml`. Open: short "how grove picks the key" note in the docs.
+**Status:** ✅ done — `gwt ssh aliases` / `grove_ssh_aliases` (0.6.0); `setup
+--ssh-alias` persists the alias; "How git picks the key" in TUTORIAL (0.8.2).
 
 **Finding.** It took the agent a while to figure out which `~/.ssh/config`
 aliases (`neytor-gh`, `dropi-bb`) were in play for the repos.
@@ -317,7 +314,7 @@ days, L more).
 | 15 | Migrate to mcp 2.x | §17 | M |
 | 16 | Split `cli/main.py` | §17 | M |
 | 17 | Composite MCP op "start ticket X from base Y" | meta | M |
-| 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
+| 18 | ~~Docs: arbitrary-base recipe, profile editing & precedence, work-style profile, SSH key selection, ticket prefixes, release tagging~~ ✅ 0.8.2 | §1–4, §16, §17 | M |
 | 19 | ~~Suggest an existing base when the configured one is missing~~ ✅ 0.8.1 | §3 | S |
 | 20 | ~~`rel_path` correct from another mount~~ ✅ 0.8.0 (and never prunable/orphan there) | §7 | S |
 | 21 | ~~CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14)~~ ✅ 0.8.1 | — | S |
@@ -331,4 +328,5 @@ base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
 alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1); `ahead`/`behind` vs base,
 `kind: base` (protected), correct paths from another mount — no more false
 orphans for `doctor` (0.8.0); neutral cwd for global git config, base
-suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1).
+suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1); `unset` falls back to the repo's profile, docs:
+recipes, configuration, SSH key selection, release process (0.8.2).

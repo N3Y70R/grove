@@ -41,7 +41,7 @@ from . import _ops
 from .schemas import (
     CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
     ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
-    SkillInstallResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
+    ReposResult, SkillInstallResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
     SshRemoveResult,
     StartResult, TrackResult,
 )
@@ -468,6 +468,21 @@ def grove_skill_install(
     """
     return _ops.op_skill_install(target=target, path=path, force=force,
                                  dry_run=dry_run, cwd=cwd)
+
+@mcp.tool(annotations=_ann("Find grove-managed repos", read_only=True))
+def grove_repos(
+    paths: Annotated[Optional[List[str]], Field(description="Folders to search. Default: the identity zones set up with `gwt ssh add`.")] = None,
+    depth: Annotated[int, Field(description="How deep to look under each folder.", ge=1, le=6)] = 3,
+) -> ReposResult:
+    """Find grove-managed repos (folders with .bare/) on this machine, to turn
+    "the X repo" into the absolute path every other tool needs as cwd. grove
+    keeps no registry: it searches the given folders, else the identity zones.
+    If it finds nothing, ask the user for the path.
+
+    CLI: `gwt repos [PATH ...] [--depth N]`
+    """
+    return _ops.op_repos(paths=paths, depth=depth)
+
 
 def main() -> None:
     """Entry point: start the MCP server over stdio."""

@@ -27,7 +27,7 @@ All implementations expose the same `gwt` command and must behave the same accor
 
 ## Agent Skill
 
-grove ships an [Agent Skill](https://agentskills.io) — [`skills/grove/`](skills/grove/SKILL.md) — that teaches an AI agent (Claude, Codex, Gemini CLI, Cursor, Copilot…) how to work with grove: the recommended flow, which tool fits which request, and the gotchas. Install it with `gwt skill install` (to `~/.agents/skills`; `--claude` for `~/.claude/skills`, `--project` for the current worktree).
+grove ships an [Agent Skill](https://agentskills.io) — [`skills/grove/`](skills/grove/SKILL.md) — that teaches an AI agent (Claude, Codex, Gemini CLI, Cursor, Copilot…) how to work with grove: the recommended flow, which tool fits which request, and the gotchas. Install it with `gwt skill install` (to `~/.agents/skills`; `--claude` for `~/.claude/skills`, `--project` for the current worktree). `gwt doctor` tells you when an installed copy is older than your grove and refreshes it if you didn't edit it.
 
 ## Repository structure
 

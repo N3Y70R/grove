@@ -21,7 +21,7 @@ TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_tr
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
          "grove_doctor", "grove_compare", "grove_config", "grove_publish",
          "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
-         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install"}
+         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install", "grove_repos"}
 
 
 def _git(args, cwd):
@@ -144,3 +144,12 @@ def test_ssh_tools_honour_their_schemas(ssh_home):
 def test_skill_install_honours_its_schema(tmp_path):
     res = call("grove_skill_install", path=str(tmp_path / "skills"), dry_run=True)
     assert res["mode"] == "created" and res["dry_run"] is True
+
+
+def test_repos_honours_its_schema(repo, tmp_path):
+    git, ctx = repo
+    res = call("grove_repos", paths=[str(ctx.root.parent)])
+    assert res["source"] == "paths" and res["count"] >= 1
+    assert str(ctx.root) in [r["path"] for r in res["repos"]]
+    empty = call("grove_repos")                    # no zones in the test home
+    assert empty["source"] == "zones" and empty["roots"] == [] and empty["hint"]

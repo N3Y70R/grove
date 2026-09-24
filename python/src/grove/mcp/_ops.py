@@ -398,6 +398,11 @@ def op_skill_install(
     return core_skill.install(dest_root=root, force=force, dry_run=dry_run)
 
 
+def op_repos(*, paths: Optional[List[str]] = None, depth: int = 3) -> dict:
+    from ..core import repos as core_repos
+    return core_repos.discover(paths or None, depth=depth)
+
+
 def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
     from ..core import fetch as core_fetch
     git = _git()

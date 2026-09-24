@@ -153,7 +153,7 @@ class CompareResult(TypedDict):
 # --------------------------------------------------------------------------- #
 
 class DoctorIssue(TypedDict):
-    kind: Annotated[str, D("Problem type, e.g. orphan, upstream, naming, stale-lock, lock, stale-tmp, identity, bare-head, parking-branch, worktree-paths.")]
+    kind: Annotated[str, D("Problem type, e.g. orphan, upstream, naming, stale-lock, lock, stale-tmp, identity, bare-head, parking-branch, worktree-paths, skill-outdated.")]
     severity: Annotated[Literal["auto", "manual"], D("auto: fixable with fix=true; manual: needs human judgment.")]
     target: Annotated[str, D("Affected worktree, branch or file.")]
     message: Annotated[str, D("What is wrong.")]
@@ -320,6 +320,23 @@ class SkillInstallResult(TypedDict):
     mode: Annotated[Literal["created", "updated", "unchanged"], D("created: new; updated: overwritten (force or missing files); unchanged: already identical.")]
     files: Annotated[List[str], D("Files of the skill, relative to its folder.")]
     dry_run: Annotated[bool, D("True when nothing was written (preview).")]
+
+
+class RepoRow(TypedDict):
+    path: Annotated[str, D("Absolute path of the repo (the folder containing .bare/): pass it as cwd.")]
+    name: Annotated[str, D("Folder name.")]
+    origin: Annotated[Optional[str], D("remote.origin.url, or null.")]
+    base: Annotated[Optional[str], D("Base branch: default_base from .bare/grove.toml, else the bare HEAD; null if unknown.")]
+    profile: Annotated[Optional[str], D("Profile recorded in .bare/grove.toml, or null.")]
+
+
+class ReposResult(TypedDict):
+    roots: Annotated[List[str], D("Folders searched.")]
+    source: Annotated[Literal["paths", "zones"], D("paths: given explicitly; zones: the identity zones from `gwt ssh add`.")]
+    depth: Annotated[int, D("Search depth under each root.")]
+    repos: Annotated[List[RepoRow], D("Managed repos found, sorted by path.")]
+    count: Annotated[int, D("Number of repos found.")]
+    hint: Annotated[Optional[str], D("What to do when nothing (or no root) was found; null otherwise.")]
 
 
 class SshRemoveResult(TypedDict):

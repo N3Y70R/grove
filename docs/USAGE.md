@@ -308,9 +308,9 @@ gwt doctor [--fix] [--dry-run] [--json]
 | `--dry-run` | Reports only, does not modify |
 | `--json` | Report in JSON |
 
-**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, worktree paths that don't match `relative_worktrees`, a bare `HEAD` not pointing at the base and the legacy `worktree-config-root` branch (pre-0.10.0 repos; deleted only if it has no commits of its own), and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
+**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, worktree paths that don't match `relative_worktrees`, a bare `HEAD` not pointing at the base and the legacy `worktree-config-root` branch (pre-0.10.0 repos; deleted only if it has no commits of its own), **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*), and an **installed Agent Skill written for another grove version** (`skill-outdated`, in `~/.agents/skills` or `~/.claude/skills`) when the copy was not edited — it is reinstalled. A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
 
-**Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees; **recent locks** (maybe in use); worktrees with **no git author identity** (a commit would fail with *"Author identity unknown"*). In `tickets = off` mode it does not report ticket mismatches.
+**Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees; **recent locks** (maybe in use); worktrees with **no git author identity** (a commit would fail with *"Author identity unknown"*); an outdated Agent Skill that was **edited** (or installed by 0.12.0, which wrote no install manifest) — review it, then `gwt skill install --force` — and an outdated **project** copy (`<worktree>/.agents/skills/grove`, which is committed). In `tickets = off` mode it does not report ticket mismatches.
 
 ---
 
@@ -591,7 +591,21 @@ gwt skill install --force          # overwrite a copy that differs (edited or an
 gwt skill install --dry-run        # show what would be installed
 ```
 
-Idempotent: if the installed copy is identical it reports `unchanged`; if it differs it refuses unless `--force`, so your edits are never lost silently. Re-run it after upgrading grove. MCP: `grove_skill_install`. The source is [`skills/grove/`](../skills/grove/SKILL.md) in the repo.
+Idempotent: if the installed copy is identical it reports `unchanged`; if it differs it refuses unless `--force` (saying which grove version the copy is for), so your edits are never lost silently. Each install writes `.grove-install.json` next to the skill (grove version + a hash per file), which lets `gwt doctor` tell an untouched outdated copy — refreshed with `--fix` — from an edited one. Re-run it after upgrading grove. MCP: `grove_skill_install`. The source is [`skills/grove/`](../skills/grove/SKILL.md) in the repo.
+
+---
+
+## `gwt repos`
+
+Lists the grove-managed repos (folders with `.bare/`) on this machine — handy when you, or an agent, know a repo by name but need its path.
+
+```
+gwt repos                     # under your identity zones (set up with `gwt ssh add`)
+gwt repos ~/code ~/work       # under these folders
+gwt repos --depth 4 --json
+```
+
+grove keeps no registry of repos: it searches the given folders (default: the zone directories of `~/.gitconfig`'s `includeIf gitdir:` blocks), up to `--depth` levels (default 3), skipping hidden folders and never descending into a repo it found. Each row shows the path, the base (`default_base` from `.bare/grove.toml`, else the bare `HEAD`), the profile and `origin`. Read-only. MCP: `grove_repos`.
 
 ---
 

@@ -320,6 +320,43 @@ guidance is squeezed into MCP tool descriptions, which load on every session.
 - Once the skill exists, trim workflow advice from the MCP tool descriptions
   where the skill covers it (keep descriptions about *what* each tool does).
 
+## 19. Feedback on the Agent Skill (review of 0.12.0)
+
+**Status:** ✅ done in 0.13.0.
+
+**Finding.** A review of the 0.12.0 skill (every tool and parameter checked
+against the live MCP server: no technical errors) found gaps, not mistakes:
+
+- **S1 — no way to notice a stale skill or server.** The skill carries
+  `grove-version`, `grove_config` returns `version`, and nothing connects them.
+  During the review itself the MCP server kept running old code for twenty
+  minutes after an upgrade; a version mismatch was almost reported that didn't
+  exist. `skill install` also refuses an outdated edited copy without saying so.
+- **S2 — the flow stops where real work happens:** a multi-day ticket whose
+  base moved. The only advice (`fetch` + `git merge --ff-only`) fails exactly
+  when `grove_fetch` reports `diverged`.
+- **S3 — "the repo" can't be resolved to a path.** The skill demands `cwd` and
+  warns that several grove repos coexist, but there is no verb to list them.
+- **S4 — triggers only in English;** the team writes "arranquemos el
+  TECH-1400", "traigamos lo de origin".
+- **S5 — `troubleshooting` misses the first-push failures** that happen in the
+  step the skill tells the agent to run: signed commits required (`GH013`),
+  non-fast-forward after a rebase, force-push blocked by repository rules.
+- **S6 — `mode` is mentioned but never explained** (`resumed` may bring
+  someone else's commits).
+- **S7 — minor:** `grove_compare` missing from the operation table; no warning
+  against `git worktree add/remove` by hand; nothing says the config in
+  `.bare/config` is shared by every worktree.
+
+**Proposed improvement.**
+- S1: every install writes `.grove-install.json` (version + file hashes);
+  `doctor` reports `skill-outdated` for user-level copies, refreshes untouched
+  ones with `fix`, and only reports edited or project copies; the skill tells
+  the agent to compare `grove_config().version` with its `grove-version`.
+- S3: `gwt repos` / `grove_repos` — search the identity zones (or given folders)
+  for `.bare/`; the skill says to ask for the path when it finds nothing.
+- S2, S4–S7: skill text and `references/troubleshooting.md`.
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -330,7 +367,8 @@ guidance is squeezed into MCP tool descriptions, which load on every session.
   documented one-liner, not a discovery exercise.
 - **Agent-facing knowledge has three layers**: typed MCP schemas (what each
   tool returns, ✅ 0.11.x), tool descriptions (what each tool does, with its
-  `CLI:` line) and an Agent Skill (how to work with grove, §18).
+  `CLI:` line) and an Agent Skill (how to work with grove, §18), which must
+  stay in step with the running grove (§19).
 - **Naming is the recurring root cause** (items 5, 8, 11): `convert` vs "adopt",
   `sync` vs "update", `gwt` vs "grove". Before adding features, check whether the
   capability exists under a name users don't search for.
@@ -368,6 +406,13 @@ days, L more).
 | 24 | ~~Typed output schemas for `grove_config`, `grove_publish` and `grove_ssh_*`~~ ✅ 0.11.2 | §17 | M |
 | 25 | ~~Agent Skill `skills/grove/SKILL.md`, `skills-ref` validation in CI, install docs~~ ✅ 0.12.0 | §18 | M |
 | 26 | ~~`gwt skill install`: install the bundled skill matching the grove version~~ ✅ 0.12.0 (`--claude`, `--project`, `--path`) | §18 | S |
+| 27 | ~~S1: detect an outdated skill — install manifest, `doctor` `skill-outdated` (auto-refresh untouched copies), version check in the skill~~ ✅ 0.13.0 | §19 | S |
+| 28 | ~~S2: flow step "origin moved" — `behind` / `diverged` / base moved, never `reset`~~ ✅ 0.13.0 | §19 | S |
+| 29 | ~~S3: `gwt repos` / `grove_repos` to resolve a repo name to its path~~ ✅ 0.13.0 | §19 | S |
+| 30 | ~~S4: Spanish triggers in the skill description~~ ✅ 0.13.0 | §19 | S |
+| 31 | ~~S5: troubleshooting rows for `GH013` signatures, non-fast-forward after rebase, blocked force-push~~ ✅ 0.13.0 | §19 | S |
+| 32 | ~~S6: explain `grove_start`'s `mode` (`existing` / `resumed` / `created`)~~ ✅ 0.13.0 | §19 | S |
+| 33 | ~~S7: `grove_compare` in the table; no manual `git worktree add/remove`; shared `.bare/config`~~ ✅ 0.13.0 | §19 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -385,4 +430,6 @@ repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
 results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
 (0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0); opt-in `relative_worktrees` (0.11.0); typed MCP output schemas for the
 everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
-(0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0).
+(0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0); skill feedback —
+`skill-outdated` in `doctor`, `gwt repos`, flow for a moved base, Spanish
+triggers, first-push troubleshooting (0.13.0).

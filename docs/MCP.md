@@ -139,7 +139,9 @@ in which mode it appears.
 
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
-`grove_config`, `grove_ssh_check`.
+`grove_config`, `grove_ssh_check`, `grove_start`, `grove_fetch`, `grove_convert`,
+`grove_skill_install`, and `grove_repos` (read-only: finds the managed repos
+under your identity zones or given folders, to turn "the X repo" into a `cwd`).
 
 SSH discovery / account provisioning (machine-level; see USAGE §`gwt ssh …`):
 `grove_ssh_aliases` (read-only repo↔alias map), `grove_ssh_add`,
@@ -164,7 +166,11 @@ the public key; the **agent uploads it** to GitHub/Bitbucket via its own connect
 - **Tools don't appear:** restart the client after editing its config; check the
   client's MCP logs.
 - **"No managed repo (.bare/) found":** the tool needs the repo path — ask the
-  agent again including the absolute path so it passes `cwd`.
+  agent again including the absolute path so it passes `cwd`, or let it find the
+  repo with `grove_repos`.
+- **The agent follows outdated advice:** compare `grove_config().version` with
+  the skill's `metadata.grove-version`; `grove_doctor` reports `skill-outdated`
+  and `fix=true` refreshes an untouched copy. Restart the client after upgrading.
 
 ## 9. Conversational flows (chat → grove tools)
 

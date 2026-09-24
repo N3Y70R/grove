@@ -57,6 +57,12 @@ def _clean_env(monkeypatch, tmp_path):
     # a developer's running agent makes key-in-agent checks environment-dependent.
     monkeypatch.delenv("SSH_AUTH_SOCK", raising=False)
     monkeypatch.delenv("SSH_AGENT_PID", raising=False)
+    # A throwaway home: user-level state (installed Agent Skills, ~/.ssh,
+    # ~/.gitconfig zones) must never leak from the developer's machine.
+    home = tmp_path / "_grove_home"
+    home.mkdir(exist_ok=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
 
 
 def _git(args, cwd):

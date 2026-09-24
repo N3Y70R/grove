@@ -2,6 +2,38 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.13.0
+
+Feedback from reviewing the 0.12.0 Agent Skill in real use (FEEDBACK §19).
+
+### Added
+
+- **`gwt repos`** (MCP: `grove_repos`, read-only): lists the grove-managed repos
+  under your identity zones (from `gwt ssh add`) or the folders you pass, with
+  base, profile and origin — so an agent can turn "the X repo" into the `cwd`
+  every tool needs. The skill says to ask for the path when nothing is found.
+- **`doctor` detects an outdated Agent Skill** (`skill-outdated`): a copy in
+  `~/.agents/skills` or `~/.claude/skills` written for another grove version.
+  `skill install` now writes `.grove-install.json` (version + file hashes), so
+  `--fix` refreshes an untouched copy and only reports an edited one (or one
+  installed by 0.12.0). Outdated project copies are reported, never rewritten.
+
+### Changed
+
+- **The skill**: tells the agent to compare `grove_config().version` with its
+  `grove-version`; a new flow step for when origin or the base moved (`behind`
+  → `--ff-only`, `diverged` → `pull --rebase`, base moved → rebase or merge,
+  never `reset`); explains `grove_start`'s `mode`; adds `grove_compare` and
+  `grove_repos` to the operation table; warns against `git worktree add/remove`
+  by hand; notes that `.bare/config` is shared; triggers in Spanish too.
+- **`references/troubleshooting.md`**: rows for signed commits required
+  (`GH013`), non-fast-forward after a rebase, force-push blocked by repository
+  rules, and `skill-outdated`.
+- `skill install` refusing an edited copy now names the installed and the
+  running grove version.
+- Tests run with a throwaway `HOME`, so user-level state (installed skills,
+  SSH config) never leaks from the developer's machine.
+
 ## python — 0.12.0
 
 ### Added

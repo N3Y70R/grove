@@ -12,7 +12,7 @@ import sys
 from typing import List, Optional
 
 from ..core.errors import WtError
-from .commands import maintenance, remote, repo, skill, ssh, worktrees
+from .commands import maintenance, remote, repo, repos, skill, ssh, worktrees
 from .output import Output
 
 
@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     repo.register_config(sub)
     ssh.register_ssh(sub)
     skill.register_skill(sub)
+    repos.register_repos(sub)
 
     return p
 

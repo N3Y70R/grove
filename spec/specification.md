@@ -274,6 +274,7 @@ Detects **and fixes** hygiene problems.
 - **Bare `HEAD` not at the base** (a pre-0.10.0 repo pointing at `worktree-config-root`, or a dangling `HEAD`) → `symbolic-ref HEAD refs/heads/<base>`.
 - **Legacy parking branch** `worktree-config-root` with no commits outside the base and no worktree → deletes it. (With commits of its own, or a worktree, it is only reported.)
 - **Orphaned git locks** (`*.lock` anywhere in `.bare`, e.g. `HEAD.lock`, `index.lock`, `objects/maintenance.lock`) and **leftover temp objects** (`objects/**/tmp_obj_*`, `objects/pack/tmp_pack_*`, `tmp_idx_*`) → deletes them. Only when **stale**: at least 60 s old and no git process running on this machine, or at least 10 min old regardless. Locks are fixed before anything else (they would make other fixes fail).
+- **Outdated Agent Skill** (`skill-outdated`): a user-level copy (`~/.agents/skills/grove`, `~/.claude/skills/grove`) whose `metadata.grove-version` differs from the implementation's version, and whose files still match the install manifest (`.grove-install.json`) → reinstalls it.
 
 **Reports but does NOT fix** (requires human judgment):
 
@@ -282,6 +283,7 @@ Detects **and fixes** hygiene problems.
 - **Nested worktrees** inside another worktree: flags for relocation.
 - **Recent git lock:** a lock that is not stale yet (a git command may be using it) → re-run later.
 - **Missing author identity:** a worktree where `git var GIT_AUTHOR_IDENT` fails, i.e. a commit would fail with "Author identity unknown" → set `user.name`/`user.email` (or a zone with `gwt ssh add`).
+- **Outdated Agent Skill that was edited**, or has no install manifest (installed by python 0.12.0 or by hand), and any outdated **project** copy (`<worktree>/.agents/skills/grove`, committed with the repo) → reinstall with `skill install --force` after review.
 
 Behavior: by default it shows the plan and asks for confirmation; `--fix` applies the automatic fixes, `--dry-run` only reports. The "reports but does not fix" items are never touched automatically, not even with `--fix`.
 
@@ -424,7 +426,11 @@ Each side is resolved flexibly: if the token matches a worktree (ticket/branch/p
 
 ### 6.15b `gwt skill install [--claude | --project | --path <dir>] [--force] [--dry-run]`
 
-Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. MCP: `grove_skill_install`.
+Installs grove's Agent Skill (agentskills.io format; canonical copy in the repo at `skills/grove/`, an identical copy bundled in each implementation's package) into `~/.agents/skills` (default), `~/.claude/skills`, `<current worktree>/.agents/skills` or `<dir>`. Idempotent (`created` / `updated` / `unchanged`); a copy that differs is only overwritten with `--force`. The skill's `metadata.grove-version` equals the implementation's version. Every install writes `<skill>/.grove-install.json` (`{"grove_version", "files": {path: sha256}}`) so `doctor` can tell an untouched copy from an edited one (§6.7); the refusal message names the installed and the running version. MCP: `grove_skill_install`.
+
+### 6.15c `gwt repos [<path>...] [--depth N]`
+
+Lists grove-managed repos (a folder with `.bare/HEAD`) under the given folders, or by default under the identity zones (`includeIf gitdir:` scopes written by `ssh add`, trailing `/**` stripped). Walks at most `N` levels (default 3), skips hidden folders, and does not descend into a repo once found. Each row: `path`, `name`, `origin` (`remote.origin.url`), `base` (`default_base` from `.bare/grove.toml`, else the bare `HEAD` unless it is the legacy parking branch), `profile`. With no roots or no repos, a `hint` says what to do (pass folders, or ask the user for the path). Read-only; there is no repo registry. MCP: `grove_repos`.
 
 ### 6.16 `gwt patch [<worktree>] [--base <ref>] [--format-patch] [--wip] [--output <path>] [--stdout]`
 

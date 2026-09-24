@@ -62,7 +62,7 @@ flowchart LR
   W --> PR[push and Pull Request]
   PR --> M[merge to production]
   M --> R[gwt remove --merged]
-  P -. the branch is regenerated .-> SY[gwt sync]
+  P -. the branch is regenerated .-> SY[gwt reset]
 ```
 
 ---
@@ -280,29 +280,29 @@ flowchart TD
 
 ---
 
-## 6. Flow E — Re-sync a branch that gets regenerated
+## 6. Flow E — Reset a branch that gets regenerated
 
 **Goal:** the shared test branch was regenerated/force-pushed by another process and your local copy ended up diverged. A normal `git pull` would break.
 
 ```
-gwt sync temporary-unified-test
+gwt reset temporary-unified-test
 ```
 
 If you have local changes that would be lost, grove warns you beforehand:
 
 ```
-! sync will discard on temporary-unified-test: 1 local commit(s) not pushed, uncommitted changes.
+! reset will discard in temporary-unified-test: 1 local commit(s) not pushed, uncommitted changes.
 Continue? [y/N] y
 → Updating origin/temporary-unified-test
 → Resetting temporary-unified-test to origin/temporary-unified-test
-✓ Worktree synced: temporary-unified-test
+✓ Worktree reset to origin: temporary-unified-test
 ```
 
-`sync` does a `fetch` + `reset --hard` to the origin's version (with `--clean` it also deletes untracked files). When inside the worktree, you can omit the name: `gwt sync`.
+`reset` does a `fetch` + `reset --hard` to the origin's version (with `--clean` it also deletes untracked files). When inside the worktree, you can omit the name: `gwt reset`. *(Until 0.7.0 this command was `gwt sync`; the old name still works with a warning.)* If you only want to **see** what changed on the remote without discarding anything, use `gwt compare --fetch`.
 
 ```mermaid
 flowchart LR
-  R[origin regenerated<br/>force-push] -->|gwt sync| L[local worktree<br/>reset --hard]
+  R[origin regenerated<br/>force-push] -->|gwt reset| L[local worktree<br/>reset --hard]
   L -.discards local stuff.-> X[(local commits/changes<br/>lost)]
 ```
 
@@ -618,7 +618,7 @@ fi
 Two things to remember in `--json` mode:
 
 - The output on stdout is **only** the JSON (the steps go inside `log`).
-- There are no interactive confirmations: destructive operations (`sync`, `publish --regenerate`, `remove`) require `--yes`/`--force`; if they're missing, the command returns a `status: error` explaining it instead of hanging and waiting.
+- There are no interactive confirmations: destructive operations (`reset`, `publish --regenerate`, `remove`) require `--yes`/`--force`; if they're missing, the command returns a `status: error` explaining it instead of hanging and waiting.
 
 ---
 
@@ -634,7 +634,8 @@ Two things to remember in `--json` mode:
 | Bring a branch from origin | `gwt track <branch> [--as ...]` |
 | Publish to test (add) | `gwt publish PROJ-1` |
 | Publish to test (rebuild) | `gwt publish PROJ-1 PROJ-2 --regenerate` |
-| Re-sync a regenerated branch | `gwt sync <branch>` |
+| Reset a regenerated branch (discards local) | `gwt reset <branch>` |
+| Bring remote changes (safe) | `gwt compare --fetch` |
 | Remove a worktree | `gwt remove PROJ-1 [--delete-branch]` |
 | Clean up what's already merged | `gwt remove --merged --delete-branch` |
 | Review/fix hygiene | `gwt doctor [--fix]` |

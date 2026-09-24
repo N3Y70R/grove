@@ -160,26 +160,46 @@ def grove_remove(
     merged: Annotated[bool, Field(description="Sweep ALL ticket worktrees already merged into the base.")] = False,
     delete_branch: Annotated[bool, Field(description="Also delete the local branch (if merged/pushed).")] = False,
     force: Annotated[bool, Field(description="Remove even if dirty; delete the branch even if not merged.")] = False,
-    confirm: Annotated[bool, Field(description="Required: set true to actually remove (this is destructive).")] = False,
+    confirm: Annotated[bool, Field(description="Required: set true to actually remove (this is destructive). Not needed with dry_run.")] = False,
+    dry_run: Annotated[bool, Field(description="Report what WOULD be removed without changing anything (no confirm needed). Use it before merged=true.")] = False,
     cwd: Cwd = None,
 ) -> dict:
-    """Remove a worktree (DESTRUCTIVE — requires confirm=true).
+    """Remove a worktree (DESTRUCTIVE — requires confirm=true, unless dry_run).
 
     Provide 'target' (ticket, branch or path), or merged=true to sweep all
-    ticket worktrees already merged into the base. Special worktrees are protected.
+    ticket worktrees already merged into the base (see the `merged` field of
+    grove_list; a brand-new branch with no commits also counts as merged).
+    Special worktrees are protected. Empty type folders left behind are removed.
     """
     return _ops.op_remove(target=target, merged=merged, delete_branch=delete_branch,
-                          force=force, confirm=confirm, cwd=cwd)
+                          force=force, confirm=confirm, dry_run=dry_run, cwd=cwd)
 
 
-@mcp.tool(annotations=_ann("Re-sync a worktree (reset --hard)", destructive=True))
+@mcp.tool(annotations=_ann("Reset a worktree to origin (DISCARDS local work)", destructive=True))
+def grove_reset(
+    target: Annotated[Optional[str], Field(description="Ticket/branch/path of the worktree (default: current one).")] = None,
+    clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
+    confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
+    cwd: Cwd = None,
+) -> dict:
+    """DISCARDS local commits and changes: reset a worktree to its origin branch
+    (fetch + reset --hard). Requires confirm=true.
+
+    For branches that are regenerated/force-pushed. To only BRING remote changes
+    without losing anything, use grove_compare(fetch=true) instead.
+    """
+    return _ops.op_reset(target=target, clean=clean, confirm=confirm, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("DEPRECATED alias of grove_reset", destructive=True))
 def grove_sync(
     target: Annotated[Optional[str], Field(description="Ticket/branch/path of the worktree (default: current one).")] = None,
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
     cwd: Cwd = None,
 ) -> dict:
-    """Re-sync a worktree to its origin branch via reset --hard (DESTRUCTIVE — requires confirm=true)."""
+    """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
+    to origin). To only bring remote changes, use grove_compare(fetch=true)."""
     return _ops.op_sync(target=target, clean=clean, confirm=confirm, cwd=cwd)
 
 
@@ -225,10 +245,12 @@ def grove_compare(
     a: Annotated[Optional[str], Field(description="Worktree/branch A (default: current worktree).")] = None,
     b: Annotated[Optional[str], Field(description="Worktree/branch B (default: A's upstream).")] = None,
     vs: Annotated[Optional[str], Field(description="Compare ALL worktrees against this ref.")] = None,
-    fetch: Annotated[bool, Field(description="git fetch origin before comparing.")] = False,
+    fetch: Annotated[bool, Field(description="git fetch origin first: the SAFE way to bring remote changes (updates origin/* refs, never touches worktrees).")] = False,
     cwd: Cwd = None,
 ) -> dict:
-    """Read-only sync status between branches/worktrees (ahead/behind)."""
+    """Ahead/behind between branches/worktrees. With fetch=true it first runs
+    `git fetch origin` — the safe way to bring remote changes (it never modifies
+    your worktrees; unlike grove_reset, which discards local work)."""
     return _ops.op_compare(a=a, b=b, vs=vs, fetch=fetch, cwd=cwd)
 
 

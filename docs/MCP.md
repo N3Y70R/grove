@@ -120,14 +120,14 @@ It speaks MCP over stdin/stdout. Point the client's "command" at `grove-mcp`
 ## 7. Available tools
 
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
-`grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_compare`,
+`grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`.
 
 SSH discovery / account provisioning (machine-level; see USAGE §`gwt ssh …`):
 `grove_ssh_aliases` (read-only repo↔alias map), `grove_ssh_add`,
 `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove`.
 
-Destructive tools (`grove_remove`, `grove_sync`, `grove_publish` with
+Destructive tools (`grove_remove`, `grove_reset`, `grove_publish` with
 `regenerate`, and `grove_ssh_remove`) require a `confirm: true` argument; the
 agent must pass it explicitly, which is your safety gate.
 
@@ -242,10 +242,17 @@ exists). Say "from `<branch>`" → `base`, and name the branch with `into`.
 The result includes `created: true/false` and `mode` (`created` | `regenerate` |
 `additive`) so the agent can tell which happened.
 
-### Re-sync / clean up (destructive → need confirmation)
+### Reset / clean up (destructive → need confirmation)
 
-> "Re-sync the integration worktree with origin (discard local), in `…/app`."
-> → `grove_sync(target="temporary-unified-test", confirm=true, cwd=…)`
+> "Bring what's new on the remote (don't lose anything)." →
+> `grove_compare(vs="main", fetch=true, cwd=…)` — safe: only updates `origin/*`.
+
+> "Reset the integration worktree to origin (discard local), in `…/app`."
+> → `grove_reset(target="temporary-unified-test", confirm=true, cwd=…)`
+> (`grove_sync` is a deprecated alias.)
+
+> "What would a merged sweep remove?" → `grove_remove(merged=true, dry_run=true, cwd=…)`
+> — no `confirm` needed; `grove_list` also shows `merged` per worktree.
 > "Remove the `PROJ-123` worktree and its branch." →
 > `grove_remove(target="PROJ-123", delete_branch=true, confirm=true, cwd=…)`
 > "Sweep all worktrees already merged into the base." →

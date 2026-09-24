@@ -53,6 +53,26 @@ def _branch_pushed(wt: Worktree) -> bool:
     return wt.upstream is not None and (wt.ahead in (0, None))
 
 
+def _prune_empty_parents(repo: RepoContext, path: Path) -> None:
+    """Remove the folders left empty above a removed worktree (e.g. `feature/`),
+    stopping at the repo root. Never touches non-empty folders."""
+    root = repo.root.resolve()
+    parent = Path(path).parent
+    while True:
+        try:
+            p = parent.resolve()
+            p.relative_to(root)
+        except (OSError, ValueError):
+            return
+        if p == root or p == repo.bare.resolve():
+            return
+        try:
+            p.rmdir()                     # only succeeds when empty
+        except OSError:
+            return
+        parent = p.parent
+
+
 @dataclass
 class RemovalPlan:
     wt: Worktree
@@ -106,6 +126,8 @@ def remove_one(
         rm_args.append("--force")
     step(f"Removing worktree {wt.rel_path}")
     git.run(rm_args, cwd=repo.bare)
+    if not git.dry_run:
+        _prune_empty_parents(repo, wt.path)
 
     if will_delete_branch:
         step(f"Deleting branch {wt.branch}")

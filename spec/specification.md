@@ -236,7 +236,7 @@ Shows the repo's worktree inventory. Columns:
 | Ticket | `PROJ-XXXXX` extracted (or empty for special/temp) |
 | Git status | ahead/behind relative to upstream + clean/dirty |
 
-The JSON/MCP view also carries **`gitdir`**: the worktree's internal admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`). git names it after the *last* path component, so it cannot be derived from the folder; it lets a tool that sees the repo from another mount build `GIT_DIR` (the worktree's `.git` file holds an absolute path). `null` for the bare entry.
+The JSON/MCP view also carries **`merged`** (`true` when the branch has no commits outside the base — what `remove --merged` would sweep; `null` for the base itself) and **`gitdir`**: the worktree's internal admin directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`). git names it after the *last* path component, so it cannot be derived from the folder; it lets a tool that sees the repo from another mount build `GIT_DIR` (the worktree's `.git` file holds an absolute path). `null` for the bare entry.
 
 `list` reports only what git knows; it does not query ticket systems (see Design principles). Any enrichment (issue/PR status) is done by the orchestration layer combining `list` with its own sources.
 
@@ -322,20 +322,25 @@ Removes worktrees safely. Alias: `gwt rm`.
 - **`--delete-branch`:** additionally deletes the local branch, but **only if it is merged into the base or pushed** (upstream with no pending commits); if not, aborts and suggests `--force`.
 - **`--force`:** removes even if the worktree is dirty; with `--delete-branch`, deletes the branch even if it is not merged/pushed.
 - **`--merged`:** mass sweep — removes all **ticket** worktrees whose branch is merged into the base (combinable with `--delete-branch`). Does not touch special or temp.
-- **`--dry-run`:** shows what it would do without executing.
+- **`--dry-run`:** shows what it would do without executing. In the MCP (`grove_remove`), `dry_run=true` needs **no** `confirm`: it is the way to look before sweeping.
+- **Empty folders:** after removing a worktree, the parent folders left empty (e.g. `feature/`) are removed, up to the repo root. Non-empty folders are never touched.
+
+"Merged" means the branch has **no commits outside the base** (`git merge-base --is-ancestor <branch> <base>`); a brand-new branch with no commits of its own also qualifies. `list` exposes it as the `merged` field (§6.6) so the sweep can be previewed.
 
 Safeguards: special ones (`production`, `temporary-unified-test`) are protected and never removed with `remove`; a worktree with uncommitted changes requires `--force`.
 
-### 6.11 `gwt sync [<target>] [--clean] [--yes] [--dry-run]`
+### 6.11 `gwt reset [<target>] [--clean] [--yes] [--dry-run]`
 
-Re-synchronizes a worktree with the origin's state: `git fetch origin <branch>` + `git reset --hard origin/<branch>`. Intended for branches that are **regenerated/force-pushed** (e.g. the shared test integration branch), where a normal `pull` diverges.
+*(Formerly `gwt sync`, renamed in python 0.7.0 because "sync" reads as "update from the remote" while it **discards** local work. `sync` remains as a deprecated alias that prints a warning; MCP: `grove_reset`, with `grove_sync` as a deprecated alias.)* To only bring remote changes without touching worktrees, use `gwt compare --fetch` (§6.15).
+
+Resets a worktree to the origin's state: `git fetch origin <branch>` + `git reset --hard origin/<branch>`. Intended for branches that are **regenerated/force-pushed** (e.g. the shared test integration branch), where a normal `pull` diverges.
 
 - **Target:** ticket, branch or path; if omitted, uses the current directory's worktree.
 - **Destructive:** discards unpushed local commits and uncommitted changes. If there are any, it warns what will be lost and asks for confirmation; `--yes` skips it.
 - **`--clean`:** additionally runs `git clean -fd` (deletes untracked files).
 - **`--dry-run`:** shows what it would do without executing.
 
-> Note: `track` recognizes special branches (`production`, `temporary-unified-test`, `development`, ...) and `temp/*`, placing them in their convention path; this way the integration branch can be fetched and then `sync`ed.
+> Note: `track` recognizes special branches (`production`, `temporary-unified-test`, `development`, ...) and `temp/*`, placing them in their convention path; this way the integration branch can be fetched and then `reset`.
 
 ### 6.12 `gwt publish [<ticket|branch>...] [--into <branch>] [--regenerate] [--base <branch>] [--no-sync] [--yes] [--dry-run]`
 
@@ -759,7 +764,7 @@ Two pieces already built make it almost free:
 
 ### 13.2 Tools
 
-Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `grove_track`, `grove_remove`, `grove_sync`, `grove_publish`, `grove_doctor`, `grove_config`, `grove_ssh_check`, and the account-provisioning tools `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` (§14.9). Differences from the CLI:
+Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `grove_track`, `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_config`, `grove_ssh_check`, and the account-provisioning tools `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` (§14.9). Differences from the CLI:
 
 - **Typed** inputs (JSON schema) instead of text flags.
 - **No interaction**: confirmation of destructive actions goes as a boolean parameter.

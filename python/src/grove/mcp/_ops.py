@@ -235,24 +235,29 @@ def op_remove(
     delete_branch: bool = False,
     force: bool = False,
     confirm: bool = False,
+    dry_run: bool = False,
     cwd: Optional[str] = None,
 ) -> dict:
-    if not confirm:
-        raise UsageError("remove is destructive; set confirm=true to proceed.")
-    git = _git()
+    # dry_run is read-only, so it needs no confirmation: it is how you look first.
+    if not confirm and not dry_run:
+        raise UsageError("remove is destructive; set confirm=true to proceed "
+                         "(or dry_run=true to see what it would remove).")
+    git = GitRunner(dry_run=True) if dry_run else _git()
     repo = _enter(cwd)
 
     if merged:
         removed = core_remove.sweep_merged(
             git, repo, delete_branch=delete_branch, force=force
         )
-        return {"mode": "merged", "removed": [w.rel_path for w in removed]}
+        return {"mode": "merged", "removed": [w.rel_path for w in removed],
+                "dry_run": dry_run}
 
     if not target:
         raise UsageError("Specify 'target' (ticket, branch or path) or set merged=true.")
     wt = core_remove.resolve_target(git, repo, target)
     core_remove.remove_one(git, repo, wt, delete_branch=delete_branch, force=force)
-    return {"mode": "single", "removed": [wt.rel_path], "delete_branch": delete_branch}
+    return {"mode": "single", "removed": [wt.rel_path], "delete_branch": delete_branch,
+            "dry_run": dry_run}
 
 
 def op_sync(
@@ -262,8 +267,22 @@ def op_sync(
     confirm: bool = False,
     cwd: Optional[str] = None,
 ) -> dict:
+    """Deprecated alias of op_reset."""
+    res = op_reset(target=target, clean=clean, confirm=confirm, cwd=cwd)
+    res["deprecated"] = "use grove_reset"
+    return res
+
+
+def op_reset(
+    *,
+    target: Optional[str] = None,
+    clean: bool = False,
+    confirm: bool = False,
+    cwd: Optional[str] = None,
+) -> dict:
     if not confirm:
-        raise UsageError("sync resets the worktree (discards local changes); set confirm=true.")
+        raise UsageError("reset DISCARDS local commits and changes in the worktree; "
+                         "set confirm=true. To only bring remote changes use grove_compare(fetch=true).")
     git = _git()
     repo = _enter(cwd)
     wt = _target_worktree(git, repo, target)
@@ -272,7 +291,7 @@ def op_sync(
         losses.append(f"{wt.ahead} local commit(s) not pushed")
     if wt.dirty:
         losses.append("uncommitted changes")
-    upstream = core_sync.sync_worktree(git, repo, wt, clean=clean)
+    upstream = core_sync.reset_worktree(git, repo, wt, clean=clean)
     return {"worktree": wt.rel_path, "upstream": upstream, "discarded": losses}
 
 

@@ -52,9 +52,11 @@ def _status_str(wt: Worktree) -> str:
         return "missing"
     if wt.upstream is None:
         clean = "dirty" if wt.dirty else "clean"
-        return f"no-upstream {clean}"
+        merged = " merged" if wt.merged else ""
+        return f"no-upstream {clean}{merged}"
     clean = "dirty" if wt.dirty else "clean"
-    return f"↑{wt.ahead or 0} ↓{wt.behind or 0} {clean}"
+    merged = " merged" if wt.merged else ""
+    return f"↑{wt.ahead or 0} ↓{wt.behind or 0} {clean}{merged}"
 
 
 # --------------------------------------------------------------------------- #
@@ -407,10 +409,14 @@ def cmd_remove(args, out: Output) -> int:
     return 0
 
 
-def cmd_sync(args, out: Output) -> int:
+def cmd_reset(args, out: Output) -> int:
     from ..core import sync as core_sync
     from ..core.model import list_worktrees as _lw
 
+    if getattr(args, "command", None) == "sync":
+        out.warn("'gwt sync' is deprecated and will be removed; use 'gwt reset' "
+                 "(same behavior: it DISCARDS local commits and changes). "
+                 "To only bring remote changes, use 'gwt compare --fetch'.")
     git = _make_runner(args, out)
     repo = _enter_repo(args)
 
@@ -431,7 +437,7 @@ def cmd_sync(args, out: Output) -> int:
             except ValueError:
                 continue
         if wt is None:
-            raise UsageError("Specify the worktree to sync (not detected from the current directory).")
+            raise UsageError("Specify the worktree to reset (not detected from the current directory).")
 
     # Destructive warning.
     losses = []
@@ -442,10 +448,10 @@ def cmd_sync(args, out: Output) -> int:
     if losses and not args.yes and not getattr(args, "dry_run", False):
         if out.json_mode:
             raise UsageError(
-                f"sync would discard in {wt.rel_path}: {', '.join(losses)}. "
+                f"reset would discard in {wt.rel_path}: {', '.join(losses)}. "
                 f"In --json mode use --yes to confirm."
             )
-        out.warn(f"sync will discard in {wt.rel_path}: {', '.join(losses)}.")
+        out.warn(f"reset will discard in {wt.rel_path}: {', '.join(losses)}.")
         try:
             ans = input("Continue? [y/N] ").strip().lower()
         except EOFError:
@@ -454,11 +460,11 @@ def cmd_sync(args, out: Output) -> int:
             out.plain("Cancelled.")
             return 0
 
-    core_sync.sync_worktree(git, repo, wt, clean=args.clean, step=out.step)
+    core_sync.reset_worktree(git, repo, wt, clean=args.clean, step=out.step)
     suffix = " (dry-run)" if getattr(args, "dry_run", False) else ""
     out.set_result({"worktree": wt.rel_path, "discarded": losses,
                     "dry_run": getattr(args, "dry_run", False)})
-    out.success(f"Worktree synced{suffix}: {wt.rel_path}")
+    out.success(f"Worktree reset to origin{suffix}: {wt.rel_path}")
     return 0
 
 
@@ -1246,21 +1252,28 @@ def build_parser() -> argparse.ArgumentParser:
                     help="show what it would do without executing")
     pp.set_defaults(func=cmd_publish)
 
-    syp = sub.add_parser("sync", help="re-sync a worktree with the origin (reset --hard)")
+    syp = sub.add_parser(
+        "reset", aliases=["sync"],
+        help="DISCARD local commits/changes: reset a worktree to its origin branch "
+             "(reset --hard). 'sync' is a deprecated alias")
     _common(syp)
     syp.add_argument("target", nargs="?", help="ticket, branch or path (default: current worktree)")
     syp.add_argument("--clean", action="store_true", help="also delete untracked files")
     syp.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     syp.add_argument("--dry-run", dest="dry_run", action="store_true",
                      help="show what it would do without executing")
-    syp.set_defaults(func=cmd_sync)
+    syp.set_defaults(func=cmd_reset)
 
-    mp = sub.add_parser("compare", help="sync status between branches/worktrees (read-only)")
+    mp = sub.add_parser(
+        "compare",
+        help="ahead/behind between branches/worktrees; --fetch first brings remote "
+             "changes (safe: never touches your worktrees)")
     _common(mp)
     mp.add_argument("a", nargs="?", help="worktree/branch A (default: current worktree)")
     mp.add_argument("b", nargs="?", help="worktree/branch B (default: upstream of A)")
     mp.add_argument("--vs", metavar="REF", help="compare ALL worktrees against REF")
-    mp.add_argument("--fetch", action="store_true", help="git fetch before comparing")
+    mp.add_argument("--fetch", action="store_true",
+                    help="git fetch origin first (the safe way to bring remote changes)")
     mp.set_defaults(func=cmd_compare)
 
     pat = sub.add_parser("patch", help="generate a patch of the worktree (diff vs base or format-patch)")

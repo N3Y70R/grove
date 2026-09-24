@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-from . import naming
+from . import config, naming
 from .gitrunner import GitRunner
 from .repo import RepoContext
 
@@ -34,6 +34,10 @@ class Worktree:
     # git names it after the LAST path component, so it can't be derived from
     # rel_path; exposing it lets tools on another mount build GIT_DIR.
     gitdir: Optional[str] = None
+    # True when the branch has no commits outside the base (so `remove --merged`
+    # would sweep it). Note: a brand-new branch with no commits of its own also
+    # counts. None for the base itself, detached/bare, or when not computed.
+    merged: Optional[bool] = None
 
 
 def _parse_porcelain(text: str) -> List[Worktree]:
@@ -76,10 +80,15 @@ def list_worktrees(git: GitRunner, repo: RepoContext, *, with_status: bool = Tru
     raw = git.out(["worktree", "list", "--porcelain"], cwd=repo.bare)
     wts = _parse_porcelain(raw)
     admin = _admin_dirs(repo)
+    base = config.DEFAULT_BASE
+    base_ok = with_status and git.ok(["rev-parse", "--verify", "-q", f"refs/heads/{base}"],
+                                     cwd=repo.bare)
     for wt in wts:
         _enrich(git, repo, wt, with_status=with_status)
         if not wt.is_bare:
             wt.gitdir = admin.get(os.path.normpath(str(wt.path)))
+        if base_ok and wt.branch and wt.branch != base:
+            wt.merged = git.ok(["merge-base", "--is-ancestor", wt.branch, base], cwd=repo.bare)
     return wts
 
 
@@ -125,6 +134,7 @@ def worktree_dict(wt: Worktree) -> dict:
         "behind": wt.behind,
         "upstream": wt.upstream,
         "gitdir": wt.gitdir,
+        "merged": wt.merged,
     }
 
 

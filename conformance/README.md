@@ -134,7 +134,7 @@ This way each PR that touches `python/`, `go/` or `rust/` validates that the imp
   - [ ] `create` ticket in `required` / `optional` / `off` modes; new and existing release; temp
   - [ ] `track` conformant and with `--as`; special branches
   - [ ] `remove` individual, `--delete-branch`, `--merged`, protections, `--dry-run`
-  - [ ] `sync` (reset to origin; confirmation guards in `--json`)
+  - [ ] `reset` (formerly `sync`; reset to origin; confirmation guards in `--json`; `sync` alias warns)
   - [ ] `publish` additive and `--regenerate`; conflict that aborts cleanly
   - [ ] `doctor` detection + `--fix` (orphans, release-format, naming, upstream, ticket mismatch)
   - [ ] `list` (classification and state)

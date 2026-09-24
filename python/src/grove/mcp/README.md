@@ -34,8 +34,9 @@ and unit-testable on its own; `server.py` only wraps each function as a tool.
 | `grove_list` | filters: `type`, `dirty`, `orphans` |
 | `grove_create` | `kind` = `ticket` (default) \| `release` \| `temp` |
 | `grove_track` | `as_` for an explicit destination |
-| `grove_remove` | **destructive** → `confirm=true` (or `merged` sweep) |
-| `grove_sync` | **destructive** (reset --hard) → `confirm=true` |
+| `grove_remove` | **destructive** → `confirm=true` (or `merged` sweep); `dry_run=true` previews with no confirm |
+| `grove_reset` | **destructive** (discards local work: reset --hard to origin) → `confirm=true` |
+| `grove_sync` | deprecated alias of `grove_reset` |
 | `grove_publish` | additive; `regenerate` force-push → `confirm=true` |
 | `grove_doctor` | `fix=true` applies auto-fixable issues |
 | `grove_compare` | read-only ahead/behind (`a`/`b` or `vs`) |

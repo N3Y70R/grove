@@ -1,7 +1,9 @@
-"""Sync operation: re-syncs a worktree with the origin state.
+"""Reset operation (formerly "sync"): resets a worktree to its origin branch.
 
 Intended for branches that are regenerated/force-pushed (e.g. the test
-integration branch): fetches the remote version and resets the worktree, discarding local changes.
+integration branch): fetches the remote version and resets the worktree,
+DISCARDING local commits and changes. Exposed as `gwt reset` / `grove_reset`;
+the old `sync` names remain as deprecated aliases.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from .repo import RepoContext
 Step = lambda m: None  # noqa: E731
 
 
-def sync_worktree(
+def reset_worktree(
     git: GitRunner,
     repo: RepoContext,
     wt: Worktree,
@@ -27,13 +29,13 @@ def sync_worktree(
     """fetch + reset --hard of the worktree to its remote branch. Returns the upstream used."""
     if not wt.branch:
         raise ValidationError(
-            f"'{wt.rel_path}' is in detached HEAD; it cannot be synced."
+            f"'{wt.rel_path}' is in detached HEAD; it cannot be reset."
         )
 
     upstream = wt.upstream or f"origin/{wt.branch}"
     if not upstream.startswith("origin/"):
         raise ValidationError(
-            f"Branch '{wt.branch}' does not track an origin branch; there is nothing to sync with."
+            f"Branch '{wt.branch}' does not track an origin branch; there is nothing to reset to."
         )
     remote_branch = upstream[len("origin/"):]
 
@@ -48,3 +50,7 @@ def sync_worktree(
         git.run(["clean", "-fd"], cwd=wt.path)
 
     return upstream
+
+
+# Deprecated name, kept for backward compatibility.
+sync_worktree = reset_worktree

@@ -83,7 +83,7 @@ Error (the reason is in `message` and the type in `error_type`):
 }
 ```
 
-The `result` field changes per command (`list` → array of worktrees; `doctor` → `{issues, auto_fixable, manual, applied}`; `remove` → `{removed: [...]}`; `ssh check` → `{hosts: [...]}`; etc.). Destructive operations that normally ask for confirmation (`sync`, `publish --regenerate`, `remove`) require `--yes`/`--force` in `--json` mode; if missing, they return an error explaining it instead of blocking.
+The `result` field changes per command (`list` → array of worktrees; `doctor` → `{issues, auto_fixable, manual, applied}`; `remove` → `{removed: [...]}`; `ssh check` → `{hosts: [...]}`; etc.). Destructive operations that normally ask for confirmation (`reset`, `publish --regenerate`, `remove`) require `--yes`/`--force` in `--json` mode; if missing, they return an error explaining it instead of blocking.
 
 ---
 
@@ -257,9 +257,9 @@ gwt list [--type <type>] [--dirty] [--orphans] [--json]
 | `--orphans` | Only orphaned records |
 | `--json` | JSON output (for scripting) |
 
-Columns: **folder · branch · ticket · git status** (ahead/behind, clean/dirty, upstream). In repos with `tickets = off` the ticket column is empty.
+Columns: **folder · branch · ticket · git status** (ahead/behind, clean/dirty, upstream, and `merged` when the branch has no commits outside the base). In repos with `tickets = off` the ticket column is empty.
 
-`--json` rows also include **`gitdir`**, the worktree's internal directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`; git names it after the last path component). Useful when the repo is mounted at another path (container, VM): `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git status`.
+`--json` rows also include **`merged`** (see `remove --merged`) and **`gitdir`**, the worktree's internal directory relative to the repo root (e.g. `.bare/worktrees/PROJ-1-login`; git names it after the last path component). Useful when the repo is mounted at another path (container, VM): `GIT_DIR=<repo>/<gitdir> GIT_WORK_TREE=<repo>/<rel_path> git status`.
 
 ---
 
@@ -301,7 +301,9 @@ gwt remove --merged [--delete-branch] [--dry-run]
 | `--merged` | Sweep: removes all ticket worktrees merged to the base |
 | `--dry-run` | Shows what it would do without executing |
 
-By default it removes the worktree and **keeps** the branch. The special ones (`production`, `temporary-unified-test`) are protected; a dirty worktree requires `--force`.
+By default it removes the worktree and **keeps** the branch. The special ones (`production`, `temporary-unified-test`) are protected; a dirty worktree requires `--force`. Parent folders left empty (e.g. `feature/`) are removed.
+
+"Merged" = the branch has no commits outside the base (a brand-new branch with no commits also counts). Check it first with `gwt list` (the status shows `merged`) or `gwt remove --merged --dry-run`.
 
 ```
 gwt remove DROP-123                      # by ticket; keeps the branch
@@ -347,12 +349,14 @@ gwt publish DROP-123 --into temporary-unified-test --dry-run
 
 ---
 
-## `gwt sync`
+## `gwt reset` (formerly `gwt sync`)
 
-Re-syncs a worktree with the origin (`fetch` + `reset --hard`). Useful for branches that are regenerated/force-pushed, like a shared test integration branch, where a normal `pull` diverges.
+**Discards local work:** resets a worktree to its origin branch (`fetch` + `reset --hard`). Useful for branches that are regenerated/force-pushed, like a shared test integration branch, where a normal `pull` diverges.
+
+> Renamed in 0.7.0: `sync` sounded like "update from the remote". `gwt sync` still works but warns. To **only bring** remote changes without touching anything, use `gwt compare --fetch`.
 
 ```
-gwt sync [<target>] [--clean] [--yes] [--dry-run]
+gwt reset [<target>] [--clean] [--yes] [--dry-run]
 ```
 
 | Arg/Flag | Description |
@@ -365,9 +369,9 @@ gwt sync [<target>] [--clean] [--yes] [--dry-run]
 **Destructive:** discards local unpushed commits and uncommitted changes. If it detects them, it warns and asks for confirmation (unless `--yes`).
 
 ```
-gwt sync temporary-unified-test          # bring the regenerated version from the remote
-gwt sync                                  # syncs the current worktree
-gwt sync temporary-unified-test --clean --yes
+gwt reset temporary-unified-test         # take the regenerated version from the remote
+gwt reset                                 # resets the current worktree
+gwt reset temporary-unified-test --clean --yes
 ```
 
 ---

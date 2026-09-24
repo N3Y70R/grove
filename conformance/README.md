@@ -136,6 +136,7 @@ This way each PR that touches `python/`, `go/` or `rust/` validates that the imp
   - [ ] `remove` individual, `--delete-branch`, `--merged`, protections, `--dry-run`
   - [ ] `reset` (formerly `sync`; reset to origin; confirmation guards in `--json`; `sync` alias warns)
   - [ ] `fetch` (updates `origin/*` only; worktrees untouched; `--prune`)
+  - [ ] `start` (idempotent: existing / resumed / created from `origin/<base>`; ambiguity error; `--no-track`)
   - [ ] `publish` additive and `--regenerate`; conflict that aborts cleanly
   - [ ] `doctor` detection + `--fix` (orphans, release-format, naming, upstream, ticket mismatch)
   - [ ] `list` (classification and state)

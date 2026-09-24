@@ -119,6 +119,11 @@ main     main    —       ↑0 ↓0 clean
 
 **Goal:** open a worktree for ticket `PROJ-101`, work on it, and push it.
 
+> **Shortcut:** `gwt start PROJ-101 feature "login with SSO"` does this flow's first
+> step *and* covers the common variations: it fetches first, reuses the worktree if
+> you already have it, and brings the branch if a teammate already pushed it. This
+> flow uses `create` to show the pieces.
+
 ```
 gwt create PROJ-101 feature "login with SSO"
 ```
@@ -643,7 +648,8 @@ Two things to remember in `--json` mode:
 |---|---|
 | Set up a repo | `gwt setup <url> [--profile <p>]` |
 | See my worktrees | `gwt list` |
-| Open a ticket | `gwt create PROJ-1 feature "desc"` |
+| Start / resume a ticket | `gwt start PROJ-1 feature "desc"` |
+| Open a ticket (new only) | `gwt create PROJ-1 feature "desc"` |
 | Create a release | `gwt create release v1.2.0` |
 | Experiment without a ticket | `gwt create temp <name>` |
 | Bring a branch from origin | `gwt track <branch> [--as ...]` |

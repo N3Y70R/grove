@@ -26,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     repo.register_convert(sub)
     worktrees.register_list(sub)
     worktrees.register_create(sub)
+    worktrees.register_start(sub)
     worktrees.register_track(sub)
     maintenance.register_doctor(sub)
     worktrees.register_remove(sub)

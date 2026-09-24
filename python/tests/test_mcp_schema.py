@@ -24,7 +24,7 @@ def test_all_tools_present():
     names = set(_tools())
     expected = {
         "grove_setup", "grove_list", "grove_create", "grove_track", "grove_remove",
-        "grove_sync", "grove_reset", "grove_fetch", "grove_publish", "grove_doctor", "grove_compare", "grove_config",
+        "grove_sync", "grove_reset", "grove_fetch", "grove_start", "grove_publish", "grove_doctor", "grove_compare", "grove_config",
         "grove_ssh_check", "grove_ssh_add", "grove_ssh_accounts", "grove_ssh_doctor",
         "grove_ssh_remove",
     }

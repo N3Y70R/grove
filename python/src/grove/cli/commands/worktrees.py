@@ -208,6 +208,26 @@ def register_list(sub) -> None:
     lp.set_defaults(func=cmd_list)
 
 
+def cmd_start(args, out: Output) -> int:
+    from ...core import start as core_start
+
+    git = _make_runner(args, out)
+    repo = _enter_repo(args)
+    ticket, typ, name = _parse_ticket_form(args.params)
+    res = core_start.start(git, repo, type=typ, name=name, ticket=ticket, base=args.base,
+                           fetch=args.fetch, step=out.step, warn=out.warn)
+    out.set_result(res)
+    if getattr(args, "print_path", False) and not out.json_mode:
+        print(res["path"])            # for: cd "$(gwt start … --print-path)"
+        return 0
+    verb = {"created": "Created", "resumed": "Resumed", "existing": "Already there"}[res["mode"]]
+    out.success(f"{verb}: {res['rel_path']}" + (f" (from {res['base']})" if res["base"] else ""))
+    if not out.json_mode:
+        for s in res["next_steps"]:
+            out.plain(f"  {s}")
+    return 0
+
+
 def register_create(sub) -> None:
     cp = sub.add_parser(
         "create",
@@ -254,3 +274,26 @@ def register_remove(sub) -> None:
     rp.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="show what it would do without executing")
     rp.set_defaults(func=cmd_remove)
+
+
+def register_start(sub) -> None:
+    stp = sub.add_parser(
+        "start",
+        help="start or resume work on a ticket: fetch, then reuse its worktree, "
+             "bring its branch, or create it from the fresh base",
+        description=(
+            'gwt start <TICKET-ID> <type> "<name>" [--base B]\n'
+            'gwt start <type> "<name>"          (repos with optional/off tickets)\n\n'
+            "Idempotent: returns the existing worktree, resumes an existing branch\n"
+            "(local or origin), or creates it from origin/<base> after a fetch."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    _common(stp)
+    stp.add_argument("params", nargs="+", help='<TICKET-ID> <type> "<name>" (ticket optional per policy)')
+    stp.add_argument("--base", help="base branch for a new worktree (default: the repo's)")
+    stp.add_argument("--no-fetch", dest="fetch", action="store_false",
+                     help="don't fetch from origin first")
+    stp.add_argument("--print-path", dest="print_path", action="store_true",
+                     help="print only the worktree path")
+    stp.set_defaults(func=cmd_start)

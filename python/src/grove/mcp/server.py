@@ -161,6 +161,29 @@ def grove_create(
                           version=version, base=base, cwd=cwd)
 
 
+@mcp.tool(annotations=_ann("Start or resume work on a ticket", idempotent=True))
+def grove_start(
+    type: Annotated[str, Field(description="Ticket type (feature/hotfix/bugfix…, per the repo's allowed_types).")],
+    name: Annotated[str, Field(description="Human description; grove turns it into the slug. Only used when the worktree is created.")],
+    ticket: Annotated[Optional[str], Field(description="Ticket key e.g. PROJ-123 (required/optional per repo policy). Used to find an existing worktree or branch.")] = None,
+    base: Annotated[Optional[str], Field(description="Base for a NEW worktree (default: the repo's default base). Say 'from <branch>' → this. grove starts from origin/<base> after fetching.")] = None,
+    fetch: Annotated[bool, Field(description="Fetch from origin first so the base is current. Default true.")] = True,
+    cwd: Cwd = None,
+) -> dict[str, Any]:
+    """Start or resume work on a ticket in ONE call — prefer this over
+    grove_create/grove_track when the user says "start / work on ticket X".
+
+    Idempotent: fetches origin, then returns the ticket's existing worktree
+    (mode "existing"), brings its existing branch local or from origin
+    ("resumed"), or creates it from the freshly fetched origin/<base>
+    ("created"). Returns path, branch, base, upstream, gitdir and next_steps.
+
+    CLI: `gwt start <TICKET> <type> "<name>" [--base B] [--no-fetch]`
+    """
+    return _ops.op_start(type=type, name=name, ticket=ticket, base=base,
+                         fetch=fetch, cwd=cwd)
+
+
 @mcp.tool(annotations=_ann("Track an existing branch"))
 def grove_track(
     branch: Annotated[str, Field(description="Existing branch name (local or on origin) to bring in.")],

@@ -176,6 +176,19 @@ gwt create PROJ-23243 bugfix "fix devolution ownership"
 # -> branch bugfix/PROJ-23243-fix-devolution-ownership (base production)
 ```
 
+### 6.2b `gwt start <PROJ-XXXXX> <type> <name> [--base <branch>] [--no-fetch] [--print-path]`
+
+Composite, **idempotent** entry point for "start (or resume) work on ticket X from base Y":
+
+1. `git fetch origin` unless `--no-fetch`;
+2. a worktree whose branch is the computed `<type>/<KEY>-<slug>` or carries the same ticket key → return it (`mode: existing`);
+3. a local or origin branch with that name or key and no worktree → bring it as `track` does, with upstream (`mode: resumed`);
+4. otherwise create it as `create` does, from `origin/<base>` when the base exists on origin (else the local base) (`mode: created`).
+
+Several matches in step 2 or 3 → error listing them. Result: `mode`, `path`, `rel_path`, `branch`, `base` (the start point, only for `created`), `ticket`, `upstream`, `gitdir`, `next_steps`. MCP: `grove_start`.
+
+New branches are created with `--no-track` (by `create` and `start` alike): the base never becomes their upstream, even when it is a remote-tracking ref; the upstream is set on the first `git push -u`.
+
 ### 6.3 `gwt create release <version> [--base <branch>]`
 
 Creates or fetches a release version. The `<version>` is **mandatory**.

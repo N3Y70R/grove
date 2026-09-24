@@ -91,7 +91,10 @@ def add_new(
     _require_base(git, repo, base)
     path = _ensure_free(repo, rel_path)
     step(f"Creating worktree {rel_path}/ with new branch {branch} (base {base})")
-    git.run(["worktree", "add", "-b", branch, str(path), base], cwd=repo.bare)
+    # --no-track: a new branch must not adopt its base as upstream (git would do
+    # so when the base is a remote-tracking ref such as origin/main); the upstream
+    # is set on the first `git push -u`.
+    git.run(["worktree", "add", "--no-track", "-b", branch, str(path), base], cwd=repo.bare)
     return path
 
 
@@ -144,7 +147,7 @@ def bring(
                 cwd=repo.bare)
 
     step(f"Setting upstream {local_branch} -> {origin_ref}")
-    git.run([f"branch", f"--set-upstream-to={origin_ref}", local_branch], cwd=path)
+    git.run(["branch", f"--set-upstream-to={origin_ref}", local_branch], cwd=path)
 
     # Post-creation verification.
     actual = git.out(["rev-parse", "--abbrev-ref", f"{local_branch}@{{upstream}}"], cwd=path)

@@ -219,6 +219,34 @@ Creates an ephemeral worktree `temp/<name>` with a local branch of the same name
 
 ---
 
+## `gwt start`
+
+**Start or resume work on a ticket in one command.** Idempotent: you can run it every time you sit down to work on a ticket.
+
+```
+gwt start <TICKET-ID> <type> "<name>" [--base <branch>] [--no-fetch] [--print-path]
+gwt start <type> "<name>"            # repos with optional/off tickets
+```
+
+What it does, in order:
+
+1. `git fetch origin` (skip with `--no-fetch`), so the base is current;
+2. if the ticket already has a worktree → returns it (**existing**);
+3. if a branch for the ticket exists, locally or on origin, without a worktree → brings it like `gwt track` (**resumed**);
+4. otherwise → creates the worktree from **`origin/<base>`** (the base you just fetched; the local base if it isn't on origin) (**created**). The new branch doesn't track the base; `git push -u` sets its upstream.
+
+```
+✓ Created: feature/PROJ-101-login (from origin/main)
+  cd /Users/me/code/app/feature/PROJ-101-login
+  git push -u origin feature/PROJ-101-login   # first push creates the branch on origin
+```
+
+If the ticket matches several worktrees or branches, it stops and lists them. `cd "$(gwt start PROJ-101 feature login --print-path)"` jumps straight in. With `--json`: `{mode, path, rel_path, branch, base, ticket, upstream, gitdir, next_steps}`.
+
+**`start` or `create`?** `create` only makes new worktrees, from the base as it is locally, and fails if the branch exists. `start` is the everyday command: it fetches, reuses, resumes or creates.
+
+---
+
 ## `gwt track`
 
 Brings in a branch that **already exists** (local or in the origin) and places it in the structure. **The name is derived from the branch** (you don't pass a slug). `track` *accommodates* what already exists, which is why it is more permissive than `create`.
@@ -611,6 +639,10 @@ Removes the account's `Host` block and its `insteadOf` rewrites from the zone; i
 ## Recipes
 
 Short answers to the questions that come up most. Each links to the full reference above.
+
+### Start working on a ticket (the everyday command)
+
+`gwt start PROJ-101 feature "login"`: it fetches, then reuses the ticket's worktree, brings its branch if a teammate already pushed it, or creates it from the fresh `origin/<base>`. Add `--base <branch>` to start from something else. See [`gwt start`](#gwt-start).
 
 ### Create a worktree from any base
 

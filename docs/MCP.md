@@ -192,11 +192,19 @@ default. Tip: "use the `gitflow` profile" or "base branch is production".
 If the repo uses submodules or Git LFS, `convert` refuses unless you pass
 `force=true`.
 
-### Work a ticket (create a worktree)
+### Work a ticket (start, resume or create a worktree)
 
-> "Create a feature worktree for PROJ-123 'login bug' in `/Users/me/code/app`."
+> "Start working on PROJ-123 'login bug' in `/Users/me/code/app`." (or "from
+> release/v2")
 
-→ `grove_create(kind="ticket", type="feature", name="login bug", ticket="PROJ-123", cwd=…)`.
+→ `grove_start(type="feature", name="login bug", ticket="PROJ-123", cwd=…)`
+(add `base="release/v2"`). One idempotent call: fetch, then the existing
+worktree, the teammate's branch, or a new one from the fresh `origin/<base>`.
+The result's `mode` says which (`existing` / `resumed` / `created`) and
+`next_steps` what to do next.
+
+Only when you explicitly want a *new* worktree and nothing else:
+`grove_create(kind="ticket", type="feature", name="login bug", ticket="PROJ-123", cwd=…)`.
 
 ### Create a worktree from a SPECIFIC base branch
 

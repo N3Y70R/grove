@@ -109,7 +109,7 @@ So that commits are easy to find (grep, tools, AI), we use a **controlled but so
 
 - Structure: `python`, `go`, `rust`, `docs`, `spec`, `conformance`, `ci`, `build`, `repo`
 - Components: `cli`, `core`
-- Commands: `setup`, `create`, `track`, `remove`, `reset`, `fetch`, `publish`, `doctor`, `list`, `config`, `ssh`
+- Commands: `setup`, `create`, `track`, `remove`, `reset`, `fetch`, `start`, `publish`, `doctor`, `list`, `config`, `ssh`
 
 **Tags** (`Tags:` in the footer; cross-cutting labels that don't fit as a scope, comma-separated):
 

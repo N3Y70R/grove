@@ -366,6 +366,22 @@ def op_doctor(
     }
 
 
+def op_start(
+    *,
+    type: str,
+    name: str,
+    ticket: Optional[str] = None,
+    base: Optional[str] = None,
+    fetch: bool = True,
+    cwd: Optional[str] = None,
+) -> dict:
+    from ..core import start as core_start
+    git = _git()
+    repo = _enter(cwd)
+    return core_start.start(git, repo, type=type, name=name, ticket=ticket,
+                            base=base, fetch=fetch)
+
+
 def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
     from ..core import fetch as core_fetch
     git = _git()

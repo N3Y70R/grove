@@ -13,16 +13,11 @@ from .repo import RepoContext
 Step = ops.Step
 
 
-def create_ticket(
-    git: GitRunner,
-    repo: RepoContext,
-    *,
-    type: str,
-    name: str,
-    ticket: Optional[str] = None,
-    base: Optional[str] = None,
-    step: Step = lambda m: None,
-) -> Path:
+def plan_ticket(*, type: str, name: str, ticket: Optional[str] = None):
+    """Validate a ticket worktree request and return (rel_path, norm_ticket, slug).
+
+    rel_path is also the branch name (folder ↔ branch). Shared by create and start.
+    """
     if type not in config.TICKET_TYPES:
         raise ValidationError(
             f"Type '{type}' not allowed. Valid types: {', '.join(config.TICKET_TYPES)}."
@@ -54,6 +49,20 @@ def create_ticket(
         rel_path = f"{type}/{norm_ticket}-{slug}"
     else:
         rel_path = f"{type}/{slug}"
+    return rel_path, norm_ticket, slug
+
+
+def create_ticket(
+    git: GitRunner,
+    repo: RepoContext,
+    *,
+    type: str,
+    name: str,
+    ticket: Optional[str] = None,
+    base: Optional[str] = None,
+    step: Step = lambda m: None,
+) -> Path:
+    rel_path, norm_ticket, slug = plan_ticket(type=type, name=name, ticket=ticket)
     branch = rel_path  # folder ↔ branch
     base = base or config.DEFAULT_BASE
 

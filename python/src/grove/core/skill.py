@@ -98,6 +98,40 @@ def status(skill_dir: Path) -> dict:
             "current_version": current, "outdated": installed != current, "edited": edited}
 
 
+def user_dirs() -> List[tuple]:
+    """(scope, skill dir, display path) of each installed user-level copy."""
+    home = plat.paths().home
+    found = []
+    for scope in ("agents", "claude"):
+        d = target_root(scope) / SKILL_NAME
+        if (d / "SKILL.md").is_file():
+            try:
+                shown = "~/" + d.relative_to(home).as_posix()
+            except ValueError:
+                shown = d.as_posix()
+            found.append((scope, d, shown))
+    return found
+
+
+def copy_row(scope: str, skill_dir: Path, shown: str) -> dict:
+    st = status(skill_dir)
+    return {"path": shown, "scope": scope, "installed_version": st["installed_version"],
+            "outdated": st["outdated"], "edited": st["edited"]}
+
+
+def machine_status() -> dict:
+    """The user-level copies and their state — no repo needed."""
+    rows = [copy_row(*t) for t in user_dirs()]
+    hint = None
+    if not rows:
+        hint = "no installed copy: `gwt skill install` (and `--claude` for ~/.claude/skills)"
+    elif any(r["outdated"] and r["edited"] is False for r in rows):
+        hint = "outdated untouched copies: `gwt skill install` refreshes them"
+    elif any(r["outdated"] or r["edited"] for r in rows):
+        hint = "edited or unverified copies: review, then `gwt skill install [--claude] --force`"
+    return {"version": current_version(), "skills": rows, "hint": hint}
+
+
 def default_roots() -> List[Path]:
     """User-level skills directories grove installs into (checked by doctor)."""
     return [target_root("agents"), target_root("claude")]

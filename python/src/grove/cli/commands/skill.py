@@ -26,8 +26,23 @@ def cmd_skill_install(args, out: Output) -> int:
     return 0
 
 
+def cmd_skill_status(args, out: Output) -> int:
+    res = core_skill.machine_status()
+    out.set_result(res)
+    for r in res["skills"]:
+        state = ("outdated" if r["outdated"] else "current") + \
+            {True: ", edited", False: "", None: ", no manifest"}[r["edited"]]
+        out.plain(f"  {r['path']:<26} {r['installed_version'] or '?':<9} {state}")
+    if res["hint"]:
+        out.warn(res["hint"])
+    else:
+        out.success(f"All copies match grove {res['version']}")
+    return 0
+
+
 def cmd_skill_help(args, out: Output) -> int:
-    out.plain("usage: gwt skill install [--claude | --project | --path DIR] [--force] [--dry-run]")
+    out.plain("usage: gwt skill install [--claude | --project | --path DIR] [--force] [--dry-run]\n"
+              "       gwt skill status")
     return 0
 
 
@@ -50,3 +65,6 @@ def register_skill(sub) -> None:
     ip.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="show what would be installed without writing")
     ip.set_defaults(func=cmd_skill_install, target="agents")
+    stp = ssub.add_parser("status", help="state of the installed copies vs this grove (no repo needed)")
+    _common(stp)
+    stp.set_defaults(func=cmd_skill_status)

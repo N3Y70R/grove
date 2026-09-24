@@ -385,6 +385,11 @@ def op_start(
                             base=base, fetch=fetch)
 
 
+def op_skill_status() -> dict:
+    from ..core import skill as core_skill
+    return core_skill.machine_status()
+
+
 def op_skill_install(
     *,
     target: str = "agents",

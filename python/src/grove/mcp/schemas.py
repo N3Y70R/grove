@@ -349,6 +349,12 @@ class ReposResult(TypedDict):
     hint: Annotated[Optional[str], D("What to do when nothing (or no root) was found; null otherwise.")]
 
 
+class SkillStatusResult(TypedDict):
+    version: Annotated[str, D("Running grove version (what the copies should say).")]
+    skills: Annotated[List[SkillCopy], D("User-level installed copies (~/.agents/skills, ~/.claude/skills); empty if none.")]
+    hint: Annotated[Optional[str], D("What to do next, or null when every copy is current and untouched.")]
+
+
 class SshRemoveResult(TypedDict):
     name: Annotated[str, D("Account alias removed.")]
     deleted_key: Annotated[bool, D("Whether the key files were deleted.")]

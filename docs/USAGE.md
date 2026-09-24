@@ -617,6 +617,12 @@ repos_roots = ["~/neytor/workspace", "~/code"]
 
 ---
 
+## `gwt skill status`
+
+State of the installed Agent Skill copies (`~/.agents/skills/grove`, `~/.claude/skills/grove`) against the grove you are running: version, `outdated`, `edited` (from the install manifest; `no manifest` for copies installed by 0.12.0). **Needs no repo**, so you can check right after installing grove. Ends with what to do next, if anything. MCP: `grove_skill_status`. (`gwt doctor` reports the same, plus project copies, inside a repo.)
+
+---
+
 ## `gwt ssh add | accounts | doctor | remove`
 
 Provision and maintain a multi-account SSH + git-identity setup at the **machine level** (your `~/.ssh/config` and `~/.gitconfig`). Unlike `ssh check` (read-only), these commands **write**. The guiding idea: the folder a repo lives in decides everything — which SSH key authenticates and which git identity signs commits — so you clone with the canonical URL and never type an alias. None of these require being inside a managed repo. grove edits only its own marker-delimited blocks (`# >>> grove:… >>>`) and backs files up before the first change; it never goes to the network (you upload the public key yourself).

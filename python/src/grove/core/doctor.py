@@ -178,19 +178,7 @@ def _skill_dirs(existing: List[Worktree]):
     """(scope, skill dir, display path) of every installed copy: user level
     (~/.agents/skills, ~/.claude/skills) and each worktree's project copy."""
     from . import skill as core_skill
-    home = plat.paths().home
-
-    def show(p: Path) -> str:
-        try:
-            return "~/" + p.relative_to(home).as_posix()
-        except ValueError:
-            return p.as_posix()
-
-    found = []
-    for root in core_skill.default_roots():
-        d = root / core_skill.SKILL_NAME
-        if (d / "SKILL.md").is_file():
-            found.append(("claude" if root.parent.name == ".claude" else "agents", d, show(d)))
+    found = list(core_skill.user_dirs())
     for w in existing:
         d = w.path / ".agents" / "skills" / core_skill.SKILL_NAME
         if (d / "SKILL.md").is_file():
@@ -202,12 +190,7 @@ def skill_report(git: GitRunner, repo: RepoContext) -> List[dict]:
     """Every installed copy doctor checked, with its state (for the report)."""
     from . import skill as core_skill
     existing = [w for w in list_worktrees(git, repo) if not w.is_bare and w.exists]
-    rows = []
-    for scope, d, shown in _skill_dirs(existing):
-        st = core_skill.status(d)
-        rows.append({"path": shown, "scope": scope, "installed_version": st["installed_version"],
-                     "outdated": st["outdated"], "edited": st["edited"]})
-    return rows
+    return [core_skill.copy_row(*t) for t in _skill_dirs(existing)]
 
 
 def _skill_copies(existing: List[Worktree]) -> List[Issue]:

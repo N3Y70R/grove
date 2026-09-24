@@ -140,7 +140,8 @@ in which mode it appears.
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`, `grove_start`, `grove_fetch`, `grove_convert`,
-`grove_skill_install`, and `grove_repos` (read-only: finds the managed repos
+`grove_skill_install`, `grove_skill_status` (installed skill copies vs the
+running grove; no repo needed), and `grove_repos` (read-only: finds the managed repos
 under your identity zones, the `repos_roots` of `~/.config/grove/config.toml`
 or given folders, to turn "the X repo" into a `cwd`).
 
@@ -173,6 +174,9 @@ the public key; the **agent uploads it** to GitHub/Bitbucket via its own connect
   upgraded grove while the client kept the old server running. Restart the
   client (and refresh its tools). Before 0.14.1 this showed up as a bare
   "Error executing tool" on some calls.
+- **Error messages:** tool errors carry grove's own message — the same text the
+  CLI prints (e.g. "No managed repo (.bare/) found… Use 'gwt setup <url>'…").
+  Before 0.16.0 they reached the client as a bare "Error executing tool X".
 - **The agent follows outdated advice:** compare `grove_config().version` with
   the skill's `metadata.grove-version`; `grove_doctor` reports `skill-outdated`
   and `fix=true` refreshes an untouched copy. Restart the client after upgrading.

@@ -22,7 +22,7 @@ from typing import Annotated, List, Literal, Optional
 
 try:
     from mcp.server.mcpserver import MCPServer
-    from mcp.server.mcpserver.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
     from mcp.types import ToolAnnotations
     from pydantic import Field
 except ModuleNotFoundError as exc:  # pragma: no cover
@@ -42,12 +42,12 @@ from . import _ops
 from .schemas import (
     CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
     ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
-    ReposResult, SkillInstallResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
+    ReposResult, SkillInstallResult, SkillStatusResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
     SshRemoveResult,
     StartResult, TrackResult,
 )
 from .. import __version__ as _LOADED_VERSION
-from ..core.errors import UsageError
+from ..core.errors import UsageError, WtError
 
 
 def _installed_version() -> Optional[str]:
@@ -76,7 +76,15 @@ class _GroveServer(MCPServer):
                 f"grove was upgraded to {on_disk}, but this MCP server is still running "
                 f"{_LOADED_VERSION}: restart the MCP client (and refresh its tool list) "
                 f"before using grove.")
-        return await super().call_tool(name, arguments, context)
+        try:
+            return await super().call_tool(name, arguments, context)
+        except UnexpectedToolError as exc:
+            # The SDK masks every non-ToolError exception as "Error executing
+            # tool X". grove's own errors are meant for the user (the same text
+            # the CLI prints): pass them through; keep masking anything else.
+            if isinstance(exc.__cause__, WtError):
+                raise ToolError(str(exc.__cause__)) from exc.__cause__
+            raise
 
 
 mcp = _GroveServer(name="grove")
@@ -516,6 +524,17 @@ def grove_repos(
     CLI: `gwt repos [PATH ...] [--depth N]`
     """
     return _ops.op_repos(paths=paths, depth=depth)
+
+
+@mcp.tool(annotations=_ann("Check installed Agent Skill copies", read_only=True))
+def grove_skill_status() -> SkillStatusResult:
+    """State of the installed Agent Skill copies (~/.agents/skills,
+    ~/.claude/skills) against the running grove: version, outdated, edited.
+    Machine-level: needs no repo (grove_doctor also checks project copies).
+
+    CLI: `gwt skill status`
+    """
+    return _ops.op_skill_status()
 
 
 def main() -> None:

@@ -104,8 +104,9 @@ freshly fetched `origin/<base>`.
   MCP client after upgrading grove; new tools may need a tool-list refresh) or
   this skill is: `grove_doctor` reports `skill-outdated` and `fix=true`
   refreshes an untouched copy (`skill-edited`: the user changed it; upgrades
-  skip it). Its `skills` field lists every copy it checked. Don't trust tool
-  names here until they match.
+  skip it). Its `skills` field lists every copy it checked; without a repo,
+  `grove_skill_status` reports the user-level copies. Don't trust tool names
+  here until they match.
 - Create and remove worktrees **only through grove** — never
   `git worktree add` / `git worktree remove` by hand: the folder would miss the
   naming convention, the upstream rules and `doctor`'s checks.

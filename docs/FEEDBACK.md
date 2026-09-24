@@ -467,6 +467,29 @@ verified), which surfaced:
 plus `differs`; `doctor` adds a manual `skill-edited` issue and a `skills`
 field listing every copy it checked (the CLI prints them).
 
+## 24. Agent Skill, fifth review (0.15.0)
+
+**Status:** ✅ done in 0.16.0.
+
+**Finding.** U1 and U2 verified with the same edit-and-restore experiment
+(`--dry-run` → `mode: "edited"`, `differs: ["SKILL.md"]`; `doctor` →
+`skill-edited`, manual; `skills` lists both copies). New:
+
+- **V1 — the skill-copy check lives behind a repo-scoped command.**
+  `grove_doctor` fails outside a managed repo, but the user-level copies are
+  machine state: someone who just installed grove, or only wants to know if
+  their skill is current, has nowhere to ask.
+- **V2 — MCP errors arrive without their text.** Every failing tool returned a
+  bare "Error executing tool grove_<x>", while the CLI prints a precise message
+  and other tools over the same bridge carry theirs. Cause: the MCP 2.x SDK
+  masks every exception that isn't a `ToolError` (the message survives only in
+  `__cause__`); grove raised its own `UsageError` / `ValidationError`.
+
+**Proposed improvement.** `gwt skill status` / `grove_skill_status`
+(machine-level, the same rows as `doctor`'s `skills`, plus a hint); the MCP
+server re-raises grove's errors as `ToolError` with their message and keeps
+masking unexpected exceptions.
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -537,6 +560,8 @@ days, L more).
 | 47 | ~~`grove_repos` paragraph: a catalog, not permission~~ ✅ 0.14.2 | §22 | S |
 | 48 | ~~`skill install --dry-run` reports `edited` / `unverified` + `differs` instead of failing~~ ✅ 0.15.0 | §23 | S |
 | 49 | ~~`doctor`: `skill-edited` issue and the list of skill copies it checked~~ ✅ 0.15.0 | §23 | S |
+| 50 | ~~`gwt skill status` / `grove_skill_status`: check the installed copies without a repo~~ ✅ 0.16.0 | §24 | S |
+| 51 | ~~MCP tool errors carry grove's message instead of "Error executing tool X"~~ ✅ 0.16.0 | §24 | S |
 | 44 | `repos_roots` semantics: replace the zones when set, instead of adding to them? | §21 | S |
 | 40 | Trim workflow advice from the MCP tool descriptions (the skill covers it); each ends pointing to the skill | §18 | S–M |
 
@@ -563,4 +588,5 @@ skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.
 when `tickets = "off"` (0.14.0); stale-MCP detection, `ssh add`/`accounts`
 output (0.14.1); skill third review — front-loaded triggers, temp/release rows,
 catalog-not-permission (0.14.2); `skill install --dry-run` never fails,
-`skill-edited` and checked copies in `doctor` (0.15.0).
+`skill-edited` and checked copies in `doctor` (0.15.0); `gwt skill status`,
+MCP errors with their message (0.16.0).

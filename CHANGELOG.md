@@ -2,6 +2,25 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.16.0
+
+Fifth review of the Agent Skill (FEEDBACK §24).
+
+### Added
+
+- **`gwt skill status`** (MCP: `grove_skill_status`): the state of the
+  installed Agent Skill copies (`~/.agents/skills`, `~/.claude/skills`) against
+  the running grove — version, `outdated`, `edited` — plus the next step.
+  Machine-level: it needs no repo, unlike `doctor`.
+
+### Fixed
+
+- **MCP tool errors now carry grove's message** — the same text the CLI prints
+  (e.g. "No managed repo (.bare/) found… Use 'gwt setup <url>'…"). The MCP 2.x
+  SDK masks every exception that isn't a `ToolError` as "Error executing tool
+  X"; grove's own errors are now passed through as `ToolError`, while
+  unexpected exceptions stay masked.
+
 ## python — 0.15.0
 
 Fourth review of the Agent Skill (FEEDBACK §23).

@@ -21,7 +21,7 @@ TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_tr
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
          "grove_doctor", "grove_compare", "grove_config", "grove_publish",
          "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
-         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install", "grove_repos"}
+         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install", "grove_repos", "grove_skill_status"}
 
 
 def _git(args, cwd):
@@ -153,3 +153,8 @@ def test_repos_honours_its_schema(repo, tmp_path):
     assert str(ctx.root) in [r["path"] for r in res["repos"]]
     empty = call("grove_repos")                    # no zones in the test home
     assert empty["source"] == "default" and empty["roots"] == [] and empty["hint"]
+
+
+def test_skill_status_honours_its_schema():
+    res = call("grove_skill_status")
+    assert res["skills"] == [] and res["hint"]

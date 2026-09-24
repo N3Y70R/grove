@@ -41,13 +41,22 @@ def _reset_config():
 
 
 @pytest.fixture(autouse=True)
-def _clean_env(monkeypatch):
-    """Deterministic git identity and no ambient ticket-prefix override."""
+def _clean_env(monkeypatch, tmp_path):
+    """Deterministic git identity/config and no ambient ticket-prefix override."""
     monkeypatch.setenv("GIT_AUTHOR_NAME", "Test")
     monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@example.com")
     monkeypatch.setenv("GIT_COMMITTER_NAME", "Test")
     monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@example.com")
     monkeypatch.delenv("GROVE_TICKET_PREFIX", raising=False)
+    # Isolate from the host git config and pin the default branch to 'main', so
+    # tests never depend on the runner's init.defaultBranch (CI often = 'master').
+    gitconfig = tmp_path / "gitconfig"
+    gitconfig.write_text("[init]\n\tdefaultBranch = main\n", encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
+    # Hide the host's ssh-agent: tests must see "no agent" (as in CI), otherwise
+    # a developer's running agent makes key-in-agent checks environment-dependent.
+    monkeypatch.delenv("SSH_AUTH_SOCK", raising=False)
+    monkeypatch.delenv("SSH_AGENT_PID", raising=False)
 
 
 def _git(args, cwd):

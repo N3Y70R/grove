@@ -8,4 +8,4 @@ Structure:
     grove.mcp   -> MCP server facade (grove-mcp)
 """
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"

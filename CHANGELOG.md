@@ -2,6 +2,17 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.9.1
+
+### Added
+
+- **Structured MCP results**: every tool now returns `structured_content` (the
+  result object) with an object output schema, besides the same data as JSON
+  text — so clients can read the result directly instead of parsing text. It
+  only took typing the tools' return as `dict[str, Any]` (with a bare `dict`
+  the SDK sends text only). Text-only clients see no difference. Enforced by the
+  schema test and checked end to end over stdio.
+
 ## python — 0.9.0
 
 ### Changed

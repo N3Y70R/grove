@@ -307,10 +307,10 @@ days, L more).
 | 5 | Neutral cwd for machine-level git commands | §7 | S |
 | 6 | ~~`setup` error suggests `convert`; `adopt` alias~~ ✅ 0.7.1 | §5 | S |
 | 7 | ~~`grove` entry point alias; CLI equivalent in MCP descriptions~~ ✅ 0.7.1 | §11 | S |
-| 8 | `ahead`/`behind` vs base when no upstream | §10 | S |
+| 8 | ~~`ahead`/`behind` vs base when no upstream~~ ✅ 0.8.0 | §10 | S |
 | 9 | ~~`remove` cleans empty parent folders~~ ✅ 0.7.0 | §14 | S |
 | 10 | ~~`version` in `grove_config` / `grove_doctor`~~ ✅ 0.7.1 | §15 | S |
-| 11 | `kind: "base"` for the base worktree | §13 | S |
+| 11 | ~~`kind: "base"` for the base worktree~~ ✅ 0.8.0 (also protected from `remove`) | §13 | S |
 | 12 | `gwt fetch` verb | §8 | S |
 | 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
 | 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
@@ -319,7 +319,7 @@ days, L more).
 | 17 | Composite MCP op "start ticket X from base Y" | meta | M |
 | 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
 | 19 | Suggest an existing base when the configured one is missing | §3 | S |
-| 20 | `rel_path` correct from another mount | §7 | S |
+| 20 | ~~`rel_path` correct from another mount~~ ✅ 0.8.0 (and never prunable/orphan there) | §7 | S |
 | 21 | CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14) | — | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
@@ -328,4 +328,6 @@ base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
 `mcp<2` pin, hermetic tests (0.6.1); `doctor` locks/temp objects/identity,
 `gitdir` in `list` (0.6.2); `sync` → `reset`, `merged` in `list`, MCP
 `remove` `dry_run`, empty folders cleaned (0.7.0); `grove` alias, `adopt`
-alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1).
+alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1); `ahead`/`behind` vs base,
+`kind: base` (protected), correct paths from another mount — no more false
+orphans for `doctor` (0.8.0).

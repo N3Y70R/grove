@@ -2,6 +2,30 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.8.0
+
+Theme: **read `list` without guessing**.
+
+### Changed
+
+- **`ahead`/`behind` are measured against the base when there is no upstream**
+  (they used to be `null`, which hid the pending work of every new branch). A new
+  `compared_to` field says what they are measured against (`origin/main` vs
+  `main`); the table shows `↑3 ↓0 vs main (no upstream)`. The `reset` warning
+  words those commits accordingly instead of calling them "not pushed".
+- **The base worktree is `kind: "base"`** (it was `unknown` with the
+  `default`/`personal` profiles and `special` when the base is also a special
+  worktree). It is **protected from `remove`** like the special ones — before,
+  with `default`/`personal`, `remove main` was allowed.
+
+### Fixed
+
+- **Worktrees seen from another mount are no longer orphans.** git records
+  absolute paths, so from a container/VM `list` reported them as missing and
+  prunable, and `doctor --fix` would run `git worktree prune`, unregistering
+  them. `list` now finds the local folder and reports correct `path`/`rel_path`
+  with `exists: true`, `prunable: false`.
+
 ## python — 0.7.1
 
 Theme: **find what already exists** — the recurring root cause in the feedback

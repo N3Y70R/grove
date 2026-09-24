@@ -2,6 +2,33 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.7.0
+
+Theme: **don't lose work by accident** — every destructive operation can now be
+previewed, and the command that discards work says so in its name.
+
+### Changed
+
+- **`gwt sync` is now `gwt reset`** (MCP: `grove_reset`). "sync" read as "update
+  from the remote", but the command does `fetch` + `reset --hard` and **discards**
+  local commits and changes. `gwt sync` / `grove_sync` still work as deprecated
+  aliases (the CLI prints a warning; the MCP result carries
+  `"deprecated": "use grove_reset"`) and will be removed in a future release.
+- **`compare` says it can fetch**: its help and MCP description now lead with
+  `--fetch` / `fetch=true` as the *safe* way to bring remote changes.
+- **`remove` cleans up empty folders**: parent folders left empty after removing
+  a worktree (e.g. `feature/`) are removed, up to the repo root.
+
+### Added
+
+- **`merged` in `list`** (`--json`, `grove_list`, and a `merged` marker in the
+  table status): `true` when the branch has no commits outside the base — exactly
+  what `remove --merged` would sweep. Note that a brand-new branch with no commits
+  of its own also counts as merged.
+- **`dry_run` in `grove_remove`** (MCP parity with the CLI's `--dry-run`):
+  reports what would be removed without changing anything, and needs no
+  `confirm`.
+
 ## python — 0.6.2
 
 ### Added

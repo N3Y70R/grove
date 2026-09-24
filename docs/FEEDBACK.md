@@ -282,6 +282,9 @@ consider not extracting tickets at all when `tickets = "off"`. → issue
 
 ## 18. Ship grove's know-how as an Agent Skill
 
+**Status:** ✅ done in 0.12.0 — `skills/grove/` + `gwt skill install`. Open: trim
+workflow advice from the MCP tool descriptions once the skill is widely installed.
+
 **Finding.** The MCP tells an agent *which tools exist*; it doesn't teach *how
 to work* with grove: the recommended flow, which tool fits which request, and
 the traps. Most dogfooding delays were exactly that (items 5, 8, 11): `adopt`
@@ -363,8 +366,8 @@ days, L more).
 | 22 | ~~Structured MCP results so clients get `structured_content`, not only JSON text~~ ✅ 0.9.1 | §17 | S |
 | 23 | ~~Typed output schemas (fields, types, descriptions) for the everyday MCP tools~~ ✅ 0.11.1 | §17 | M |
 | 24 | ~~Typed output schemas for `grove_config`, `grove_publish` and `grove_ssh_*`~~ ✅ 0.11.2 | §17 | M |
-| 25 | Agent Skill `skills/grove/SKILL.md` (spec-compliant, gotchas from real sessions, `references/`), `skills-ref validate` in CI, install docs | §18 | M |
-| 26 | `gwt skill install [--user\|--project]`: install the bundled skill matching the grove version | §18 | S |
+| 25 | ~~Agent Skill `skills/grove/SKILL.md`, `skills-ref` validation in CI, install docs~~ ✅ 0.12.0 | §18 | M |
+| 26 | ~~`gwt skill install`: install the bundled skill matching the grove version~~ ✅ 0.12.0 (`--claude`, `--project`, `--path`) | §18 | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,
@@ -382,4 +385,4 @@ repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
 results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
 (0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0); opt-in `relative_worktrees` (0.11.0); typed MCP output schemas for the
 everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
-(0.11.2).
+(0.11.2); Agent Skill `skills/grove` + `gwt skill install` (0.12.0).

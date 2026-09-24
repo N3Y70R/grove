@@ -2,6 +2,23 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.12.0
+
+### Added
+
+- **grove's Agent Skill** ([agentskills.io](https://agentskills.io)) in
+  [`skills/grove/`](skills/grove/SKILL.md): teaches an AI agent how to work with
+  grove — which tool fits which request (`start` for tickets, `fetch` vs
+  `reset`, preview before `remove --merged`, `doctor` for locks), the everyday
+  flow, and a gotchas section drawn from real sessions; troubleshooting and
+  configuration details load on demand from `references/`. Spec-compliant
+  (validated with `agentskills validate` in CI; 86-line `SKILL.md`).
+- **`gwt skill install`** (MCP: `grove_skill_install`): installs the skill
+  bundled with grove into `~/.agents/skills` (default), `~/.claude/skills`
+  (`--claude`), the current worktree (`--project`) or `--path DIR`. Idempotent;
+  never overwrites an edited copy without `--force`, so the installed skill
+  matches the installed grove version.
+
 ## python — 0.11.2
 
 ### Added

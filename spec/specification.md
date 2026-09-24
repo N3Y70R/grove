@@ -125,7 +125,7 @@ Result: repo ready with `.bare/` + `production/`.
 
 The `production/` worktree must end up **tracking** `origin/production` (upstream set and verified; see §6.8).
 
-### 6.1b `gwt convert [<path>] [--into <dir>] [--branches current|current+base|all] [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]`
+### 6.1b `gwt convert [<path>] [--into <dir>] [--profile <name>] [--branches current|current+base|all] [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]`
 
 Converts an **existing normal clone** into the grove model, without re-cloning
 from the network. Full design in [`../docs/DESIGN-convert.md`](../docs/DESIGN-convert.md).
@@ -133,8 +133,13 @@ from the network. Full design in [`../docs/DESIGN-convert.md`](../docs/DESIGN-co
 - **In-place (default):** reuses the existing `.git` (moves it to `.bare/`,
   marks it bare), auto-stashes uncommitted work (`git stash -u`) and restores it
   in the current worktree, preserves ignored files (moves them into the current
-  worktree), then creates the parking branch, the worktrees and the root `.git`
-  pointer. Keeps all local branches, stashes and config.
+  worktree, merging folder by folder so ignored files nested in tracked folders
+  are moved too; an ignored file that already exists in the worktree with other
+  content is kept at the root and reported, never overwritten), then creates the
+  parking branch, the worktrees and the root `.git` pointer. Keeps all local
+  branches, stashes and config.
+- **Config:** applies `--profile` (default: `default`) and writes
+  `.bare/grove.toml` with that policy and the detected base, like `setup`.
 - **`--into <dir>`:** builds a fresh grove repo there from the local objects and
   leaves the source clone untouched (uncommitted/stashed work stays in the source).
 - **`--branches`:** which worktrees to materialize — the current branch, the

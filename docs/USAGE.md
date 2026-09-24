@@ -133,7 +133,7 @@ gwt setup git@github.com:neytor/proyecto.git --ssh-alias gh-personal      # pers
 Converts an **existing normal clone** into the grove model, without re-cloning.
 
 ```
-gwt convert [path] [--into <dir>] [--branches current|current+base|all]
+gwt convert [path] [--into <dir>] [--profile <name>] [--branches current|current+base|all]
                    [--no-fetch] [--force] [--no-git-pointer] [--keep-on-error] [--dry-run]
 ```
 
@@ -141,6 +141,7 @@ gwt convert [path] [--into <dir>] [--branches current|current+base|all]
 |---|---|
 | `[path]` | The existing clone (default: current directory) |
 | `--into <dir>` | Build a new grove repo there; leave the source clone untouched |
+| `--profile <name>` | Policy profile to apply and record in `.bare/grove.toml` (default: `default`) |
 | `--branches` | Worktrees to materialize (default: `current+base`) |
 | `--no-fetch` | Don't contact origin (offline) |
 | `--force` | Proceed even if submodules or Git LFS are detected (blocked by default) |
@@ -148,7 +149,8 @@ gwt convert [path] [--into <dir>] [--branches current|current+base|all]
 | `--keep-on-error` | On failure, keep partial output (default: clean it up) |
 | `--dry-run` | Print the plan without changing anything |
 
-- **In-place (default):** reuses `.git` (→ `.bare/`), **auto-stashes and restores** your uncommitted work in the current worktree, and **preserves ignored files** (moved into the current worktree). Keeps all local branches/stashes/config.
+- **In-place (default):** reuses `.git` (→ `.bare/`), **auto-stashes and restores** your uncommitted work in the current worktree, and **preserves ignored files** (moved into the current worktree — also those nested inside tracked folders, like `python/.venv`). If an ignored file already exists in the worktree with other content, it is **kept at the root and reported**, never overwritten. Keeps all local branches/stashes/config.
+- **Config:** writes `.bare/grove.toml` with the chosen profile and the detected base, like `setup`.
 - **`--into`:** safest; the source is left intact (your WIP stays there).
 - **Cleanup on failure:** with `--into`, a failed conversion removes the new folder (the source is never touched) so retries are clean. In-place never auto-deletes (it could discard files already moved into a worktree): it restores the auto-stash if it fails before any change, otherwise it stops and reports for manual inspection. `--keep-on-error` preserves partial `--into` output.
 
@@ -157,6 +159,7 @@ gwt convert                                   # convert the repo in the current 
 gwt convert ~/dropi/api-backend --branches all
 gwt convert ~/dropi/api-backend --into ~/dropi/api-backend-grove   # keep the original
 gwt convert --dry-run                         # preview only
+gwt convert --profile personal                # personal repo: record the personal profile
 ```
 
 ---

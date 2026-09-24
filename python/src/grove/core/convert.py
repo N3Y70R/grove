@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from . import config
 from .errors import UsageError, ValidationError
@@ -132,9 +132,12 @@ def convert(
     git_pointer: bool = True,
     keep_on_error: bool = False,
     dry_run: bool = False,
+    profile: Optional[str] = None,
     step: Step = lambda m: None,
 ) -> RepoContext:
     src = Path(path).resolve()
+    profile_name = _apply_profile(profile)
+    step(f"Profile: {profile_name}")
     cur, base, origin_url = _preflight(git, src, force)
 
     if dry_run:
@@ -148,10 +151,32 @@ def convert(
         return RepoContext(root=root, bare=root / ".bare", name=root.name, base=base)
 
     if into is not None:
-        return _convert_into(git, src, Path(into).resolve(), cur, base, origin_url,
-                             branches, fetch, git_pointer, keep_on_error, step)
-    return _convert_in_place(git, src, cur, base, origin_url, branches, fetch,
-                             git_pointer, keep_on_error, step)
+        ctx = _convert_into(git, src, Path(into).resolve(), cur, base, origin_url,
+                            branches, fetch, git_pointer, keep_on_error, step)
+    else:
+        ctx = _convert_in_place(git, src, cur, base, origin_url, branches, fetch,
+                                git_pointer, keep_on_error, step)
+    _write_repo_config(ctx, step)
+    return ctx
+
+
+def _apply_profile(profile: Optional[str]) -> str:
+    """Resolve and apply the policy profile (same semantics as setup)."""
+    name = profile or config.DEFAULT_PROFILE
+    try:
+        policy = config.resolve_profile(name)
+    except KeyError:
+        raise UsageError(f"Unknown profile: '{name}'.")
+    config.apply_policy(policy)
+    return name
+
+
+def _write_repo_config(ctx: RepoContext, step) -> None:
+    """Persist the effective policy (with the detected base) as .bare/grove.toml,
+    exactly like setup does, so later commands see the right base/types."""
+    config.DEFAULT_BASE = ctx.base
+    cfg = config.write_repo_config(ctx.bare, config.effective_policy())
+    step(f"Writing {cfg.name} (base {ctx.base})")
 
 
 def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_pointer,
@@ -168,17 +193,13 @@ def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_poi
     # Up to (and including) the stash, nothing destructive has happened. If the
     # pre-rename inspection fails, restore the stash and leave the repo intact.
     try:
-        # Names to preserve (ignored) vs safe-to-drop (tracked) at the root.
-        ignored_top = set()
-        raw = git.run(["ls-files", "-o", "-i", "--exclude-standard", "--directory"],
-                      cwd=root, check=False, mutating=False).stdout.splitlines()
-        for e in raw:
-            e = e.strip().strip("/")
-            if e:
-                ignored_top.add(e.split("/", 1)[0])
-        tracked_top = {t.split("/", 1)[0] for t in
-                       git.out(["ls-tree", "--name-only", f"refs/heads/{cur}"], cwd=root).splitlines()
-                       if t.strip()}
+        # Every tracked path of the current branch: after the stash the root
+        # checkout equals that commit, so these are exact duplicates of what the
+        # new worktree will contain and are safe to drop. Anything else left at
+        # the root (ignored files) must be preserved.
+        tracked = {t for t in git.out(
+            ["ls-tree", "-r", "--name-only", "-z", f"refs/heads/{cur}"], cwd=root
+        ).split("\0") if t}
     except BaseException:
         if not keep_on_error and stashed and (root / ".git").is_dir():
             step("Convert failed before any change — restoring stashed work")
@@ -209,19 +230,17 @@ def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_poi
     #    worktree (preserve), drop tracked duplicates (safe — they're in git),
     #    and move anything unexpected into the worktree rather than deleting it.
     cur_wt = root / cur
-    for entry in list(root.iterdir()):
+    moved: List[str] = []
+    kept: List[str] = []
+    for entry in sorted(root.iterdir()):
         nm = entry.name
         if nm == ".bare" or nm in worktree_top:
             continue
-        dest = cur_wt / nm
-        if nm in ignored_top or nm not in tracked_top:
-            if not dest.exists():
-                shutil.move(str(entry), str(dest))
-        else:  # tracked duplicate, reproduced in the worktree
-            if entry.is_dir() and not entry.is_symlink():
-                shutil.rmtree(entry)
-            else:
-                entry.unlink()
+        _relocate(entry, cur_wt / nm, nm, tracked, moved, kept)
+    if moved:
+        step(f"Moved {len(moved)} ignored item(s) into {cur}/")
+    for rel in kept:
+        step(f"! Kept at root (already exists in {cur}/ with other content): {rel}")
 
     # 6) Restore stashed work in the current worktree.
     if stashed:
@@ -234,6 +253,39 @@ def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_poi
         step("Writing root .git pointer (gitdir: ./.bare)")
 
     return RepoContext(root=root, bare=bare, name=root.name, base=base)
+
+
+def _is_real_dir(p: Path) -> bool:
+    return p.is_dir() and not p.is_symlink()
+
+
+def _relocate(src: Path, dest: Path, rel: str, tracked: Set[str],
+              moved: List[str], kept: List[str]) -> None:
+    """Merge a leftover root entry into the current worktree, recursively.
+
+    - dest missing          -> move it (ignored/untracked content is preserved);
+    - both real directories -> descend and merge child by child, then drop the
+                               source dir if it ended up empty;
+    - tracked file present  -> drop the root copy (the worktree has it from git);
+    - anything else         -> conflict: keep it at the root and report it.
+    Never overwrites or deletes something that is not a tracked duplicate.
+    """
+    if not dest.exists() and not dest.is_symlink():
+        shutil.move(str(src), str(dest))
+        moved.append(rel)
+        return
+    if _is_real_dir(src) and _is_real_dir(dest):
+        for child in sorted(src.iterdir()):
+            _relocate(child, dest / child.name, f"{rel}/{child.name}", tracked, moved, kept)
+        try:
+            src.rmdir()
+        except OSError:
+            pass  # still holds kept conflicts
+        return
+    if rel in tracked and not _is_real_dir(src):
+        src.unlink()
+        return
+    kept.append(rel)
 
 
 def _convert_into(git, src, dest, cur, base, origin_url, branches, fetch, git_pointer,

@@ -156,6 +156,7 @@ def op_convert(
     git_pointer: bool = True,
     keep_on_error: bool = False,
     dry_run: bool = False,
+    profile: Optional[str] = None,
     cwd: Optional[str] = None,
 ) -> dict:
     from ..core import convert as core_convert
@@ -166,8 +167,10 @@ def op_convert(
         into=(Path(into).resolve() if into else None),
         branches=branches, fetch=fetch, force=force,
         git_pointer=git_pointer, keep_on_error=keep_on_error, dry_run=dry_run,
+        profile=profile,
     )
     return {"name": ctx.name, "root": str(ctx.root), "base": ctx.base,
+            "profile": profile or core_config.DEFAULT_PROFILE,
             "into": bool(into), "dry_run": dry_run}
 
 

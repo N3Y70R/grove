@@ -169,9 +169,11 @@ def cmd_convert(args, out: Output) -> int:
         git_pointer=getattr(args, "git_pointer", True),
         keep_on_error=getattr(args, "keep_on_error", False),
         dry_run=getattr(args, "dry_run", False),
+        profile=getattr(args, "profile", None),
         step=out.step,
     )
     out.set_result({"name": ctx.name, "root": str(ctx.root), "base": ctx.base,
+                    "profile": getattr(args, "profile", None) or core_config.DEFAULT_PROFILE,
                     "into": bool(args.into), "dry_run": getattr(args, "dry_run", False)})
     suffix = " (dry-run)" if getattr(args, "dry_run", False) else ""
     out.success(f"Converted{suffix}: {ctx.root} (base {ctx.base})")
@@ -1176,6 +1178,7 @@ def build_parser() -> argparse.ArgumentParser:
     _common(cv)
     cv.add_argument("path", nargs="?", help="path of the existing clone (default: cwd)")
     cv.add_argument("--into", help="create a new grove repo here; leave the source intact")
+    cv.add_argument("--profile", help="policy profile to apply and record in grove.toml (default: default)")
     cv.add_argument("--branches", choices=["current", "current+base", "all"],
                     default="current+base", help="which worktrees to materialize")
     cv.add_argument("--no-fetch", dest="fetch", action="store_false",

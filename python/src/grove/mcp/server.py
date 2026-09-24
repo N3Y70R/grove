@@ -89,18 +89,22 @@ def grove_convert(
     git_pointer: Annotated[bool, Field(description="Write the root .git pointer (gitdir: ./.bare). Default true.")] = True,
     keep_on_error: Annotated[bool, Field(description="If conversion fails midway, keep partial output. Default false: with --into the new folder is removed; in-place stops and reports (never auto-deletes user files).")] = False,
     dry_run: Annotated[bool, Field(description="Return the plan without making changes.")] = False,
+    profile: Annotated[Optional[str], Field(description="Policy profile to apply and record in .bare/grove.toml: default | personal | gitflow | a custom one. Default: default.")] = None,
     cwd: Cwd = None,
 ) -> dict:
     """Convert an existing normal clone into grove's bare + worktrees model.
 
     In-place by default (reuses .git, auto-stashes and restores uncommitted work,
-    keeps ignored files). `into` builds a fresh grove repo beside the source,
+    moves ignored files — also those nested in tracked folders — into the current
+    worktree; conflicts are kept at the root and reported). Writes .bare/grove.toml
+    with the chosen profile and the detected base. `into` builds a fresh grove repo beside the source,
     leaving it untouched. Submodules/Git LFS are refused unless force=true.
     With `into`, a failed conversion cleans up the new folder (unless keep_on_error).
     """
     return _ops.op_convert(path=path, into=into, branches=branches, fetch=fetch,
                            force=force, git_pointer=git_pointer,
-                           keep_on_error=keep_on_error, dry_run=dry_run, cwd=cwd)
+                           keep_on_error=keep_on_error, dry_run=dry_run,
+                           profile=profile, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("List worktrees", read_only=True))

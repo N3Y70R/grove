@@ -59,7 +59,9 @@ Reuses the existing `.git` (offline, fast, keeps all refs/branches/stashes/confi
    `--no-fetch`.)
 4. **Parking branch:** create `worktree-config-root` from the base and point
    `HEAD` at it (`symbolic-ref`).
-5. **Clean the orphaned root checkout:** the old working-tree files now sit
+5. **Clean the orphaned root checkout** (merged recursively, path by path — a
+   tracked folder can also hold ignored files, e.g. `python/.venv`; a conflict is
+   kept at the root and reported)**:** the old working-tree files now sit
    loose at the repo root; tracked ones are safe in git (they'll be recreated in
    a worktree) and untracked ones already traveled in the stash, so they are
    removed. `.bare/` and the restore manifest are never touched.

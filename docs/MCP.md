@@ -168,7 +168,11 @@ default. Tip: "use the `gitflow` profile" or "base branch is production".
 > "Convert my existing clone at `/Users/me/code/api` to grove (keep all local
 > branches)." →
 > `grove_convert(path="/Users/me/code/api", branches="all")`
-> — in-place: auto-stashes/restores your WIP, preserves ignored files.
+> — in-place: auto-stashes/restores your WIP, preserves ignored files (also
+> nested ones like `python/.venv`), and writes `.bare/grove.toml`.
+
+> "Convert my personal repo at `/Users/me/code/tool`." →
+> `grove_convert(path="/Users/me/code/tool", profile="personal")`
 
 > "Convert `/Users/me/code/api` into `/Users/me/code/api-grove` but leave the
 > original alone." → `grove_convert(path="/Users/me/code/api", into="/Users/me/code/api-grove")`

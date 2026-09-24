@@ -177,6 +177,9 @@ def _write_repo_config(ctx: RepoContext, step) -> None:
     config.DEFAULT_BASE = ctx.base
     cfg = config.write_repo_config(ctx.bare, config.effective_policy())
     step(f"Writing {cfg.name} (base {ctx.base})")
+    from . import worktree_paths as wp
+    if wp.apply_if_configured(GitRunner(), ctx, warn=step):
+        step("Worktrees use relative paths (relative_worktrees = true)")
 
 
 def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_pointer,

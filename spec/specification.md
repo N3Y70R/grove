@@ -270,6 +270,7 @@ Detects **and fixes** hygiene problems.
 - **Old release format:** `release-vX.Y.Z` (dash) → normalizes to `release/vX.Y.Z`.
 - **Incorrect or missing upstream:** worktrees fetched from the origin whose local branch does not track —or tracks wrongly— its origin branch → fixes with `git branch --set-upstream-to`.
 - **Missing root `.git` pointer:** the repo root has no `.git` file pointing at `.bare` → writes `gitdir: ./.bare` (heals repos made before this feature or by hand).
+- **Worktree paths don't match `relative_worktrees`** (§8.2) → converts them (`worktree.useRelativePaths` + `git worktree repair [--no-]relative-paths`). If the setting is on but git is older than 2.48, it is only reported.
 - **Bare `HEAD` not at the base** (a pre-0.10.0 repo pointing at `worktree-config-root`, or a dangling `HEAD`) → `symbolic-ref HEAD refs/heads/<base>`.
 - **Legacy parking branch** `worktree-config-root` with no commits outside the base and no worktree → deletes it. (With commits of its own, or a worktree, it is only reported.)
 - **Orphaned git locks** (`*.lock` anywhere in `.bare`, e.g. `HEAD.lock`, `index.lock`, `objects/maintenance.lock`) and **leftover temp objects** (`objects/**/tmp_obj_*`, `objects/pack/tmp_pack_*`, `tmp_idx_*`) → deletes them. Only when **stale**: at least 60 s old and no git process running on this machine, or at least 10 min old regardless. Locks are fixed before anything else (they would make other fixes fail).
@@ -476,10 +477,14 @@ tickets         = "required"               # required | optional | off
 ticket_prefixes = ["DROP", "OPS"]          # accepted keys (recommended)
 # ticket_pattern  = "DROP-\\d+"            # alternative: explicit regex (takes priority)
 
+relative_worktrees = false               # opt-in relative worktree paths (git >= 2.48)
+
 [release]
 format       = "release/{version}"         # slash, not dash
 default_base = "production"
 ```
+
+`relative_worktrees` (default `false`): record **relative** paths in each worktree's `.git` and in `.bare/worktrees/*/gitdir`, so the repo works from any mount. Requires git ≥ 2.48 and is **not backward compatible** (git sets `extensions.relativeWorktrees`; older git and libgit2 < 1.9.4 refuse the repo). Enabling sets `worktree.useRelativePaths` in the bare and repairs existing worktrees; disabling repairs them back to absolute and removes the extension. `config set relative_worktrees <bool>` applies it immediately and refuses to enable it on an older git; `setup`/`convert` apply it from the profile (warning on an older git); `doctor` fixes drift.
 
 ### 8.3 Ticket policy
 

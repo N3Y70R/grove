@@ -308,7 +308,7 @@ gwt doctor [--fix] [--dry-run] [--json]
 | `--dry-run` | Reports only, does not modify |
 | `--json` | Report in JSON |
 
-**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, a bare `HEAD` not pointing at the base and the legacy `worktree-config-root` branch (pre-0.10.0 repos; deleted only if it has no commits of its own), and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
+**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, worktree paths that don't match `relative_worktrees`, a bare `HEAD` not pointing at the base and the legacy `worktree-config-root` branch (pre-0.10.0 repos; deleted only if it has no commits of its own), and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
 
 **Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees; **recent locks** (maybe in use); worktrees with **no git author identity** (a commit would fail with *"Author identity unknown"*). In `tickets = off` mode it does not report ticket mismatches.
 
@@ -743,6 +743,7 @@ ticket_prefixes   = ["DROP", "OPS"]     # accepted project keys
 # ticket_pattern  = "DROP-\\d+"         # alternative: explicit regex (takes priority)
 integration_branch = "temporary-unified-test"   # destination of `publish` ("" = none)
 known_git_hosts   = ["github.com", "bitbucket.org", "gitlab.com"]  # fallback for `ssh check --all`
+relative_worktrees = false              # opt-in relative worktree paths (git >= 2.48), see below
 
 [release]
 format       = "release/{version}"
@@ -758,6 +759,21 @@ default_base = "production"
 | `gitflow` | `main` | feature, hotfix, bugfix, release | `required` | `develop` |
 
 Custom profiles: define `[profiles.<name>]` in `~/.config/grove/config.toml` (it can override the built-in ones).
+
+### Relative worktree paths (`relative_worktrees`, opt-in)
+
+By default git writes **absolute** paths in each worktree's `.git` file, so if the repo is seen from another path (a container, a VM, another machine's mount), git doesn't work inside the worktrees there. With git **≥ 2.48** grove can make them **relative**:
+
+```
+gwt config set relative_worktrees true    # converts the existing worktrees now
+gwt config set relative_worktrees false   # converts them back
+```
+
+When enabled, grove sets `worktree.useRelativePaths` in the bare, so every later `git worktree add/move/repair` (grove's or yours) is relative too. A profile can include `relative_worktrees = true`; `setup`/`convert` then apply it.
+
+**Why it's off by default:** it is not backward compatible. git marks the repo with `extensions.relativeWorktrees`, and **older git (< 2.48) and libgit2-based tools (< 1.9.4, e.g. TortoiseGit) refuse to open the repository**. Enable it only if every git that touches the repo is new enough. Turning it off converts the worktrees back and removes the mark. With an old git, grove refuses to enable it and says why; `gwt doctor` reports and fixes a repo whose paths don't match the setting.
+
+Without this option, `gwt list --json` still gives each worktree's `gitdir`, enough to use `GIT_DIR`/`GIT_WORK_TREE` from another mount.
 
 ### `tickets` policy
 

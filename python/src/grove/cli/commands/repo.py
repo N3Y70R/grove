@@ -96,6 +96,9 @@ def cmd_setup(args, out: Output) -> int:
     if ctx.base:
         core_config.DEFAULT_BASE = ctx.base
     cfg_path = core_config.write_repo_config(ctx.bare, core_config.effective_policy())
+    from ...core import worktree_paths as wp
+    if wp.apply_if_configured(git, ctx, warn=out.warn):
+        out.step("Worktrees use relative paths (relative_worktrees = true)")
     out.set_result({"name": ctx.name, "root": str(ctx.root), "profile": profile_name,
                     "base": core_config.DEFAULT_BASE})
     out.success(f"Repo {ctx.name} ready")
@@ -160,6 +163,17 @@ def cmd_config(args, out: Output) -> int:
         core_config.write_repo_config(repo.bare, core_config.effective_policy())
         out.set_result({"ssh_alias": core_config.SSH_ALIAS, "origin": new_url})
         out.success(f"ssh_alias = '{core_config.SSH_ALIAS or '(none)'}' · origin = {new_url}")
+        return 0
+
+    if args.config_command == "set" and args.key == "relative_worktrees":
+        from ...core import worktree_paths as wp
+        value = core_config._coerce(args.key, args.value)
+        action = wp.set_relative(_make_runner(args, out), repo, value)
+        data = core_config.read_repo_config(repo.bare)
+        out.set_result({"key": args.key, "value": value, "applied": action, "config": data})
+        done = {"enable": "worktrees converted to relative paths",
+                "disable": "worktrees converted back to absolute paths"}.get(action, "nothing to convert")
+        out.success(f"config set · relative_worktrees = {str(value).lower()} ({done})")
         return 0
 
     if args.config_command == "set":

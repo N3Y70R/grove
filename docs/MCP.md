@@ -227,7 +227,9 @@ same `base` works for `kind="ticket"` and `kind="release"`.
 > locks and temp objects, and reports missing author identity.
 
 > "I'm in a container and git doesn't work in the worktree." → `grove_list(cwd=…)`
-> and use each row's `gitdir` as `GIT_DIR` (relative to the repo root).
+> and use each row's `gitdir` as `GIT_DIR` (relative to the repo root). For a
+> permanent fix, if every git touching the repo is ≥ 2.48:
+> `grove_config(set_key="relative_worktrees", set_value="true", cwd=…)`.
 
 ### Bring in an existing branch
 

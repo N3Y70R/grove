@@ -41,6 +41,9 @@ ORIGIN_REFSPEC = "+refs/heads/*:refs/remotes/origin/*"
 # so `unset` falls back to it). None = not recorded (older repos → 'default').
 PROFILE = None  # type: ignore[assignment]
 
+# Opt-in relative worktree paths (git >= 2.48; see core/worktree_paths.py).
+RELATIVE_WORKTREES = False
+
 # Legacy: repos made before python 0.10.0 have this internal branch and the
 # bare HEAD pointing at it. New repos point the bare HEAD at the base instead;
 # `doctor` migrates old ones. Still read from grove.toml to find the branch.
@@ -163,9 +166,10 @@ def apply_policy(policy: dict) -> None:
     global PARKING_BRANCH, DEFAULT_BASE, TICKET_TYPES, SPECIAL_WORKTREES
     global TEMP_DIR, RELEASE_FORMAT, RELEASE_DEFAULT_BASE, TICKETS, TYPE_FOLDERS
     global INTEGRATION_BRANCH, KNOWN_GIT_HOSTS, TICKET_PREFIXES, SSH_ALIAS, ARTIFACTS_DIR
-    global PROFILE
+    global PROFILE, RELATIVE_WORKTREES
 
     PROFILE = policy.get("profile", PROFILE)
+    RELATIVE_WORKTREES = bool(policy.get("relative_worktrees", RELATIVE_WORKTREES))
 
     PARKING_BRANCH = policy.get("parking_branch", PARKING_BRANCH)
     DEFAULT_BASE = policy.get("default_base", DEFAULT_BASE)
@@ -261,7 +265,8 @@ def render_repo_config(policy: dict) -> str:
     for key in ("profile", "default_base", "allowed_types",
                 "special_worktrees", "temp_dir", "artifacts_dir", "tickets",
                 "ticket_prefixes", "ticket_pattern",
-                "integration_branch", "ssh_alias", "known_git_hosts"):
+                "integration_branch", "ssh_alias", "known_git_hosts",
+                "relative_worktrees"):
         if key in policy and policy[key] is not None:
             lines.append(f"{key} = {_toml_scalar(policy[key])}")
     release = policy.get("release") or {}
@@ -292,6 +297,7 @@ def effective_policy() -> dict:
         "integration_branch": INTEGRATION_BRANCH,
         "ssh_alias": SSH_ALIAS,
         "known_git_hosts": list(KNOWN_GIT_HOSTS),
+        "relative_worktrees": RELATIVE_WORKTREES,
         "release": {"format": RELEASE_FORMAT, "default_base": RELEASE_DEFAULT_BASE},
     }
     # Emits the friendly form (list of keys) if configured that way; otherwise the regex.
@@ -308,7 +314,7 @@ def effective_policy() -> dict:
 
 # Keys a user may set, and which ones are lists (comma-separated on input).
 SETTABLE_KEYS = {
-    "default_base", "allowed_types", "special_worktrees",
+    "default_base", "allowed_types", "special_worktrees", "relative_worktrees",
     "temp_dir", "artifacts_dir", "tickets", "ticket_prefixes", "ticket_pattern",
     "integration_branch", "ssh_alias", "known_git_hosts",
 }
@@ -321,9 +327,20 @@ def read_repo_config(bare: Path) -> dict:
     return _read_toml(cfg) if cfg.is_file() else {}
 
 
+_BOOL_KEYS = {"relative_worktrees"}
+_TRUE, _FALSE = {"true", "yes", "on", "1"}, {"false", "no", "off", "0"}
+
+
 def _coerce(key: str, value: str):
     if key in _LIST_KEYS:
         return [v.strip() for v in value.split(",") if v.strip()]
+    if key in _BOOL_KEYS:
+        v = str(value).strip().lower()
+        if v in _TRUE:
+            return True
+        if v in _FALSE:
+            return False
+        raise ValidationError(f"{key} must be true or false (got '{value}').")
     return value
 
 

@@ -164,6 +164,7 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
             ))
 
     issues.extend(_bare_head(git, repo, existing))
+    issues.extend(_worktree_paths(git, repo))
     issues.extend(_hygiene(git, repo, existing))
     return issues
 
@@ -171,6 +172,28 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
 # --------------------------------------------------------------------------- #
 # Bare HEAD -> base, and the legacy parking branch (before python 0.10.0)
 # --------------------------------------------------------------------------- #
+
+def _worktree_paths(git: GitRunner, repo: RepoContext) -> List[Issue]:
+    """The repo's worktree paths don't match `relative_worktrees`."""
+    from . import worktree_paths as wp
+    action = wp.drift(git, repo)
+    if not action:
+        return []
+    want = "relative" if action == "enable" else "absolute"
+    if action == "enable" and wp.git_version(git) < wp.MIN_GIT:
+        return [Issue(
+            kind="worktree-paths", severity=MANUAL, target=".bare",
+            message=(f"relative_worktrees = true, but it needs git >= "
+                     f"{wp.MIN_GIT[0]}.{wp.MIN_GIT[1]}"),
+            action="upgrade git, or `gwt config set relative_worktrees false`",
+        )]
+    return [Issue(
+        kind="worktree-paths", severity=AUTO, target=".bare",
+        message=f"worktree paths don't match relative_worktrees ({want} expected)",
+        action=f"convert the worktrees to {want} paths",
+        fix=(lambda: wp.enable(git, repo)) if action == "enable" else (lambda: wp.disable(git, repo)),
+    )]
+
 
 def _bare_head(git: GitRunner, repo: RepoContext, existing: List[Worktree]) -> List[Issue]:
     issues: List[Issue] = []
@@ -347,6 +370,7 @@ def _make_rename_fix(git: GitRunner, repo: RepoContext, w: Worktree, new_branch:
 # Application order: upstream before moving/renaming folders; prune last.
 # Leftover locks go first: they can make every other git-based fix fail.
 _FIX_ORDER = {"stale-lock": 0, "stale-tmp": 0, "bare-head": 0.5, "parking-branch": 0.6,
+              "worktree-paths": 0.7,
               "upstream": 1, "naming": 2, "release-format": 3, "orphan": 4}
 
 

@@ -127,6 +127,8 @@ def op_setup(
     if ctx.base:
         core_config.DEFAULT_BASE = ctx.base
     core_config.write_repo_config(ctx.bare, core_config.effective_policy())
+    from ..core import worktree_paths as wp
+    wp.apply_if_configured(git, ctx)
     return {"name": ctx.name, "root": str(ctx.root),
             "profile": profile_name, "base": core_config.DEFAULT_BASE}
 
@@ -444,6 +446,12 @@ def op_config_set_ssh_alias(*, value: str, cwd: Optional[str] = None) -> dict:
 
 def op_config_set(*, key: str, value: str, cwd: Optional[str] = None) -> dict:
     repo = _enter(cwd)
+    if key == "relative_worktrees":
+        from ..core import worktree_paths as wp
+        v = core_config._coerce(key, value)
+        action = wp.set_relative(_git(), repo, v)
+        return {"key": key, "value": v, "applied": action,
+                "config": core_config.read_repo_config(repo.bare)}
     data = core_config.set_repo_value(repo.bare, key, value)
     return {"key": key, "value": data.get(key), "config": data}
 

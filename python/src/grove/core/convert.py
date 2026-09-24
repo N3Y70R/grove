@@ -216,10 +216,8 @@ def _convert_in_place(git, root, cur, base, origin_url, branches, fetch, git_poi
     git.run(["worktree", "prune"], cwd=bare, check=False)
     _wire_origin(git, bare, origin_url, fetch, step)
 
-    # 3) Parking branch + HEAD.
-    if not git.ok(["rev-parse", "--verify", f"refs/heads/{config.PARKING_BRANCH}"], cwd=bare):
-        git.run(["branch", config.PARKING_BRANCH, base], cwd=bare)
-    git.run(["symbolic-ref", "HEAD", f"refs/heads/{config.PARKING_BRANCH}"], cwd=bare)
+    # 3) Bare HEAD -> base (no parking branch needed).
+    git.run(["symbolic-ref", "HEAD", f"refs/heads/{base}"], cwd=bare)
 
     # 4) Worktrees.
     wts = _branch_set(branches, cur, base, _all_branches(git, bare))
@@ -327,9 +325,7 @@ def _convert_into_inner(git, src, dest, bare, cur, base, origin_url, branches, f
         git.run(["remote", "remove", "origin"], cwd=bare, check=False)
     _wire_origin(git, bare, origin_url, fetch, step)
 
-    if not git.ok(["rev-parse", "--verify", f"refs/heads/{config.PARKING_BRANCH}"], cwd=bare):
-        git.run(["branch", config.PARKING_BRANCH, base], cwd=bare)
-    git.run(["symbolic-ref", "HEAD", f"refs/heads/{config.PARKING_BRANCH}"], cwd=bare)
+    git.run(["symbolic-ref", "HEAD", f"refs/heads/{base}"], cwd=bare)
 
     wts = _branch_set(branches, cur, base, _all_branches(git, bare))
     _make_worktrees(git, bare, dest, wts, origin_url, step)

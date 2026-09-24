@@ -1,4 +1,4 @@
-"""Setup operation: initializes a repo with the bare + production + parking model."""
+"""Setup operation: initializes a repo with the bare + base-worktree model."""
 
 from __future__ import annotations
 
@@ -101,9 +101,10 @@ def _setup_inner(git, url, root, bare, name, base_branch, git_pointer, step) -> 
                         f"Re-run with --base {cands[0]}.")
             raise ValidationError(msg)
 
-    step(f"Creating parking branch {config.PARKING_BRANCH} (base {base_branch})")
-    git.run(["branch", config.PARKING_BRANCH, base_branch], cwd=bare)
-    git.run(["symbolic-ref", "HEAD", f"refs/heads/{config.PARKING_BRANCH}"], cwd=bare)
+    # The bare's HEAD points at the base. A bare HEAD doesn't "occupy" its branch
+    # (git lets a worktree check it out), so no internal parking branch is needed.
+    step(f"Pointing the bare HEAD at {base_branch}")
+    git.run(["symbolic-ref", "HEAD", f"refs/heads/{base_branch}"], cwd=bare)
 
     step(f"Creating worktree {base_branch}/ (origin/{base_branch})")
     prod_path = root / base_branch

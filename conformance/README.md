@@ -130,7 +130,7 @@ This way each PR that touches `python/`, `go/` or `rust/` validates that the imp
 - [ ] Write the runner (`run` + `lib/`), language-agnostic.
 - [ ] Helper to build the test git origin (branches, releases, non-conventional branches).
 - [ ] Scenarios per command:
-  - [ ] `setup` (bare, parking branch, production tracking origin; with/without `--ssh-alias`)
+  - [ ] `setup` (bare with `HEAD` → base, no parking branch, production tracking origin; with/without `--ssh-alias`)
   - [ ] `create` ticket in `required` / `optional` / `off` modes; new and existing release; temp
   - [ ] `track` conformant and with `--as`; special branches
   - [ ] `remove` individual, `--delete-branch`, `--merged`, protections, `--dry-run`

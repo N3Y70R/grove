@@ -81,7 +81,7 @@ What it does, step by step (you can see it with `-v`):
 → Profile: default (base main, tickets optional)
 → Cloning bare into my-repo/.bare
 → Configuring origin refspec
-→ Creating parking branch worktree-config-root (base main)
+→ Pointing the bare HEAD at main
 → Creating worktree main/ (origin/main)
 ✓ Repo my-repo ready
   .bare/   bare repository (+ grove.toml)
@@ -95,11 +95,11 @@ What happened under the hood:
 ```mermaid
 flowchart TD
   A[git clone --bare] --> B[.bare/]
-  B --> C[creates branch worktree-config-root<br/>bare HEAD points here]
+  B --> C[bare HEAD points at main<br/>no extra branch]
   B --> D[worktree main/<br/>tracks origin/main]
 ```
 
-> **Why the `worktree-config-root` branch?** In the bare model, the branch the `.bare`'s `HEAD` points to stays "occupied" and can't be used in a worktree. grove creates a parking branch for that, leaving the base branch free for its own folder.
+> **What about `worktree-config-root`?** Repos created before 0.10.0 have that internal "parking" branch, because grove used to point the bare's `HEAD` at it to keep the base free for its own worktree. git doesn't need that (a bare `HEAD` doesn't occupy its branch), so new repos point `HEAD` at the base. In an older repo, `gwt doctor --fix` re-points `HEAD` and deletes the parking branch when it has no commits of its own.
 
 Verify with:
 

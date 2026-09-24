@@ -13,8 +13,7 @@ brings existing branches into an already-managed repo). `convert` is the missing
 
 ```
 myrepo/
-├── .bare/                     # the git repository (bare) + grove.toml
-├── worktree-config-root       # parking branch (HEAD of .bare points here)
+├── .bare/                     # the git repository (bare, HEAD -> base) + grove.toml
 ├── <base>/                    # worktree of the base branch (e.g. production)
 └── <current-branch>/          # worktree of the branch you were on
 ```
@@ -57,8 +56,8 @@ Reuses the existing `.git` (offline, fast, keeps all refs/branches/stashes/confi
    `push.default = current`. (No network needed — the clone already has its
    `refs/remotes/origin/*`; `git fetch` is best-effort and can be skipped with
    `--no-fetch`.)
-4. **Parking branch:** create `worktree-config-root` from the base and point
-   `HEAD` at it (`symbolic-ref`).
+4. **Bare HEAD:** point `HEAD` at the base (`symbolic-ref`). *(Before 0.10.0 this
+   created a `worktree-config-root` parking branch; no longer needed.)*
 5. **Clean the orphaned root checkout** (merged recursively, path by path — a
    tracked folder can also hold ignored files, e.g. `python/.venv`; a conflict is
    kept at the root and reported)**:** the old working-tree files now sit

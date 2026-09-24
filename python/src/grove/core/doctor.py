@@ -22,6 +22,7 @@ MANUAL = "manual"
 class Issue:
     kind: str                       # orphan | upstream | release-format | naming | ticket | nested
                                     # | git-pointer | stale-lock | lock | stale-tmp | identity
+                                    # | bare-head | parking-branch
     severity: str                   # AUTO | MANUAL
     target: str                     # affected folder/branch
     message: str                    # description of the problem
@@ -162,7 +163,52 @@ def diagnose(git: GitRunner, repo: RepoContext) -> List[Issue]:
                 fix=_make_upstream_fix(git, repo, w.branch, expected),
             ))
 
+    issues.extend(_bare_head(git, repo, existing))
     issues.extend(_hygiene(git, repo, existing))
+    return issues
+
+
+# --------------------------------------------------------------------------- #
+# Bare HEAD -> base, and the legacy parking branch (before python 0.10.0)
+# --------------------------------------------------------------------------- #
+
+def _bare_head(git: GitRunner, repo: RepoContext, existing: List[Worktree]) -> List[Issue]:
+    issues: List[Issue] = []
+    base = config.DEFAULT_BASE
+    if not git.ok(["rev-parse", "--verify", "-q", f"refs/heads/{base}"], cwd=repo.bare):
+        return issues                      # no local base: nothing sensible to point at
+    head = git.run(["symbolic-ref", "-q", "HEAD"], cwd=repo.bare,
+                   check=False, mutating=False).stdout.strip()
+    if head != f"refs/heads/{base}":
+        def _fix_head():
+            git.run(["symbolic-ref", "HEAD", f"refs/heads/{base}"], cwd=repo.bare)
+        issues.append(Issue(
+            kind="bare-head", severity=AUTO, target=".bare/HEAD",
+            message=f"bare HEAD points at {head or '(detached)'}, not the base",
+            action=f"point it at refs/heads/{base}", fix=_fix_head,
+        ))
+
+    park = config.PARKING_BRANCH
+    if park == base or not git.ok(["rev-parse", "--verify", "-q", f"refs/heads/{park}"],
+                                  cwd=repo.bare):
+        return issues
+    in_use = any(w.branch == park for w in existing)
+    merged = git.ok(["merge-base", "--is-ancestor", park, base], cwd=repo.bare)
+    if merged and not in_use:
+        def _drop_parking():
+            git.run(["branch", "-D", park], cwd=repo.bare)
+        issues.append(Issue(
+            kind="parking-branch", severity=AUTO, target=park,
+            message="legacy internal parking branch (not needed since 0.10.0)",
+            action=f"delete branch {park} (no commits outside {base})", fix=_drop_parking,
+        ))
+    else:
+        why = "it has a worktree" if in_use else f"it has commits that {base} doesn't"
+        issues.append(Issue(
+            kind="parking-branch", severity=MANUAL, target=park,
+            message=f"legacy internal parking branch; not deleted because {why}",
+            action="review it; delete it with 'git branch -D' once nothing is lost",
+        ))
     return issues
 
 
@@ -300,8 +346,8 @@ def _make_rename_fix(git: GitRunner, repo: RepoContext, w: Worktree, new_branch:
 
 # Application order: upstream before moving/renaming folders; prune last.
 # Leftover locks go first: they can make every other git-based fix fail.
-_FIX_ORDER = {"stale-lock": 0, "stale-tmp": 0, "upstream": 1, "naming": 2,
-              "release-format": 3, "orphan": 4}
+_FIX_ORDER = {"stale-lock": 0, "stale-tmp": 0, "bare-head": 0.5, "parking-branch": 0.6,
+              "upstream": 1, "naming": 2, "release-format": 3, "orphan": 4}
 
 
 def apply(issues: List[Issue]) -> int:

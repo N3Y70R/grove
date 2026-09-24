@@ -8,7 +8,7 @@ For installation, see [INSTALL.md](INSTALL.md). For the full design, see the spe
 
 ## Model and structure
 
-Each repo is set up with the **bare model**: a bare repository in `.bare/` and the worktrees as sibling folders. The bare's `HEAD` points to a parking branch (`worktree-config-root`) so it doesn't retain any real branch from the origin.
+Each repo is set up with the **bare model**: a bare repository in `.bare/` and the worktrees as sibling folders. The bare's `HEAD` points at the base branch; no internal branch is created. (Repos made before 0.10.0 have a `worktree-config-root` branch: `gwt doctor --fix` removes it.)
 
 ```
 <repo>/
@@ -103,7 +103,7 @@ gwt setup <url> [--name <dir>] [--into <path>] [--profile <name>]
 | `--profile <name>` | `default` | Policy profile to apply |
 | `--ssh-alias <alias>` | autodetected | `~/.ssh/config` alias to use for the remote (`none` = URL as-is) |
 
-What it does: clones the bare, configures the origin refspec, creates the parking branch, creates the base branch worktree (e.g. `production` or `main`) tracking the origin, and writes `.bare/grove.toml` with the profile's policy.
+What it does: clones the bare, configures the origin refspec, points the bare `HEAD` at the base, creates the base branch worktree (e.g. `production` or `main`) tracking the origin, and writes `.bare/grove.toml` with the profile's policy.
 
 **Already have the repo cloned?** Don't re-clone: use [`gwt convert`](#gwt-convert) (alias `gwt adopt`). If `setup`'s destination is already a git clone, it stops and suggests exactly that command.
 
@@ -308,7 +308,7 @@ gwt doctor [--fix] [--dry-run] [--json]
 | `--dry-run` | Reports only, does not modify |
 | `--json` | Report in JSON |
 
-**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
+**Fixes automatically:** orphans (prune), missing/incorrect upstream (set-upstream), release format with a hyphen (renames to `release/<v>`), flat folder whose branch is an allowed type (moves it to the convention), missing root `.git` pointer, a bare `HEAD` not pointing at the base and the legacy `worktree-config-root` branch (pre-0.10.0 repos; deleted only if it has no commits of its own), and **orphaned git locks / leftover temp objects** in `.bare` (e.g. a `HEAD.lock` that makes git say *"Another git process seems to be running"*). A lock counts as orphaned when it is ≥60 s old and no git process is running on this machine, or ≥10 min old regardless.
 
 **Reports only (does not touch):** type not in `allowed_types` (e.g. `chore/...` brought in with `track`) — warns that it does not conform to the configuration but does not move it; folder ticket ≠ branch ticket; nested worktrees; **recent locks** (maybe in use); worktrees with **no git author identity** (a commit would fail with *"Author identity unknown"*). In `tickets = off` mode it does not report ticket mismatches.
 
@@ -517,7 +517,7 @@ gwt config set-ssh-alias none        # returns to the canonical URL
 ```
 
 - **`show`** (default): reports the repo, origin, and the effective policy. With the global `--json` flag, it delivers it as a parseable object (ideal for inspecting a repo from scripts).
-- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`, `parking_branch`. List keys take a comma-separated value (`feature,hotfix,release`); `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other).
+- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`. List keys take a comma-separated value (`feature,hotfix,release`); `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other).
 - **`unset <key>`**: removes the key so the value falls back to the active profile/default.
 - **`edit`**: opens `grove.toml` in `$EDITOR` (or `$VISUAL`, else `vi`) for free-form edits.
 - **`set-ssh-alias <alias>`**: saves `ssh_alias` in `grove.toml` and **rewrites the `origin`** to the alias (`git@github.com:...` → `git@gh-work:...`), so that `fetch`/`push` use the correct key. `none` resolves the alias's real host and returns the `origin` to its canonical form.
@@ -732,7 +732,6 @@ A profile with the name of a built-in one (`default`, `personal`, `gitflow`) ove
 ### Fields (`.bare/grove.toml`)
 
 ```toml
-parking_branch    = "worktree-config-root"
 default_base      = "production"
 allowed_types     = ["feature", "hotfix", "bugfix"]
 special_worktrees = ["production", "temporary-unified-test"]

@@ -33,13 +33,13 @@ Two corollaries that follow from the above:
 
 Each repo is mounted with the **bare model**: a bare repository in `.bare/` and all worktrees as sibling folders inside the repo folder.
 
-So that the `.bare` does not retain ("occupy") any real branch of the origin, its `HEAD` points to a local parking branch called **`worktree-config-root`**, created locally from `production`. This way `production` stays free to be used by its own worktree and no origin branch is blocked by the bare.
+The `.bare`'s `HEAD` points at the **base branch** (e.g. `production`). A bare repository's `HEAD` does not "occupy" its branch — git lets a worktree check it out — so the base has its own worktree like any other branch, and plain `git log` from the repo root shows the base. *(Until python 0.10.0 grove pointed `HEAD` at an internal parking branch, `worktree-config-root`, which then sat among the user's branches; `gwt doctor --fix` migrates such repos: it re-points `HEAD` at the base and deletes the parking branch when it has no commits of its own.)*
 
 ## 3. Directory structure
 
 ```
 <repo>/
-├── .bare/                         # bare repository; HEAD -> worktree-config-root
+├── .bare/                         # bare repository; HEAD -> the base branch
 ├── production/                    # SPECIAL: worktree of the production branch
 ├── temporary-unified-test/        # SPECIAL: unified test branch
 ├── temp/                          # SPECIAL: container for ephemeral worktrees / ticketless experiments
@@ -111,7 +111,7 @@ Steps:
 
 1. `git clone --bare <url> .bare` and configure the refspec so that **all** origin branches are visible (`+refs/heads/*:refs/remotes/origin/*`).
 2. Create the `production/` worktree following `origin/production`.
-3. Create the local branch `worktree-config-root` based on `production` and point the `.bare`'s `HEAD` to it.
+3. Point the `.bare`'s `HEAD` at the base (`git symbolic-ref HEAD refs/heads/production`); no extra branch is created.
 
 Result: repo ready with `.bare/` + `production/`.
 
@@ -138,7 +138,7 @@ from the network. Full design in [`../docs/DESIGN-convert.md`](../docs/DESIGN-co
   worktree, merging folder by folder so ignored files nested in tracked folders
   are moved too; an ignored file that already exists in the worktree with other
   content is kept at the root and reported, never overwritten), then creates the
-  parking branch, the worktrees and the root `.git` pointer. Keeps all local
+  bare `HEAD` (→ base), the worktrees and the root `.git` pointer. Keeps all local
   branches, stashes and config.
 - **Config:** applies `--profile` (default: `default`) and writes
   `.bare/grove.toml` with that policy and the detected base, like `setup`.
@@ -270,6 +270,8 @@ Detects **and fixes** hygiene problems.
 - **Old release format:** `release-vX.Y.Z` (dash) → normalizes to `release/vX.Y.Z`.
 - **Incorrect or missing upstream:** worktrees fetched from the origin whose local branch does not track —or tracks wrongly— its origin branch → fixes with `git branch --set-upstream-to`.
 - **Missing root `.git` pointer:** the repo root has no `.git` file pointing at `.bare` → writes `gitdir: ./.bare` (heals repos made before this feature or by hand).
+- **Bare `HEAD` not at the base** (a pre-0.10.0 repo pointing at `worktree-config-root`, or a dangling `HEAD`) → `symbolic-ref HEAD refs/heads/<base>`.
+- **Legacy parking branch** `worktree-config-root` with no commits outside the base and no worktree → deletes it. (With commits of its own, or a worktree, it is only reported.)
 - **Orphaned git locks** (`*.lock` anywhere in `.bare`, e.g. `HEAD.lock`, `index.lock`, `objects/maintenance.lock`) and **leftover temp objects** (`objects/**/tmp_obj_*`, `objects/pack/tmp_pack_*`, `tmp_idx_*`) → deletes them. Only when **stale**: at least 60 s old and no git process running on this machine, or at least 10 min old regardless. Locks are fixed before anything else (they would make other fixes fail).
 
 **Reports but does NOT fix** (requires human judgment):
@@ -385,7 +387,7 @@ In all modes, a merge **conflict** aborts the operation (leaves the worktree cle
 Shows or adjusts the repo configuration (`.bare/grove.toml`).
 
 - **`show`** (default): reports the repo, `origin` and the effective policy; with `--json`, as a parseable object.
-- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`, `parking_branch`. List keys take a comma-separated value; `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other). Unknown keys and invalid `tickets` values are rejected.
+- **`set <key> <value>`**: writes one key into `grove.toml`. Settable keys: `default_base`, `tickets` (`off`/`optional`/`required`), `allowed_types`, `special_worktrees`, `temp_dir`, `artifacts_dir`, `integration_branch`, `ssh_alias`, `ticket_prefixes`, `ticket_pattern`, `known_git_hosts`. List keys take a comma-separated value; `ticket_prefixes` and `ticket_pattern` are mutually exclusive (setting one clears the other). Unknown keys and invalid `tickets` values are rejected.
 - **`unset <key>`**: removes the key, reverting it to the active profile/default value.
 - **`edit`**: opens `grove.toml` in `$EDITOR` (else `$VISUAL`, else `vi`).
 - **`set-ssh-alias <alias>`**: saves `ssh_alias` in the config and rewrites the `origin` to the alias (so git uses the correct key); `none` resolves the real host and reverts to the canonical URL.
@@ -465,7 +467,6 @@ This way a work repo and a personal one coexist on the same machine with differe
 ### 8.2 Configurable fields (`.bare/grove.toml`)
 
 ```toml
-parking_branch = "worktree-config-root"   # normally global, does not change
 default_base    = "production"             # e.g. "main" in personal repos
 allowed_types   = ["feature", "hotfix", "bugfix", "release"]
 special_worktrees = ["production", "temporary-unified-test"]
@@ -566,9 +567,8 @@ $ gwt setup git@github.com:acme/myrepo.git -v
 → Creating worktree production/ (origin/production)
   $ git -C myrepo/.bare worktree add ../production production
   $ git -C myrepo/production branch --set-upstream-to=origin/production production
-→ Creating parking branch worktree-config-root (base production)
-  $ git -C myrepo/.bare branch worktree-config-root production
-  $ git -C myrepo/.bare symbolic-ref HEAD refs/heads/worktree-config-root
+→ Pointing the bare HEAD at production
+  $ git -C myrepo/.bare symbolic-ref HEAD refs/heads/production
 ✓ Repo myrepo ready
 ```
 
@@ -593,8 +593,7 @@ $ gwt setup git@github.com:acme/myrepo.git
 → Cloning bare into myrepo/.bare
 → Configuring origin refspec (+refs/heads/*:refs/remotes/origin/*)
 → Creating worktree production/ (origin/production)
-→ Creating parking branch worktree-config-root (base production)
-→ bare HEAD -> worktree-config-root
+→ Pointing the bare HEAD at production
 ✓ Repo myrepo ready
   .bare/       bare repository
   production/  production  [tracks origin/production]

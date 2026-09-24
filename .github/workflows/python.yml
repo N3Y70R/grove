@@ -27,6 +27,12 @@ jobs:
       - name: Install (with test + mcp extras)
         run: pip install "./python[test,mcp]"
 
+      - name: Validate the Agent Skill (agentskills.io spec)
+        run: |
+          pip install "skills-ref>=0.1.1"
+          agentskills validate skills/grove
+          diff -r skills/grove python/src/grove/_skill/grove   # packaged copy in sync
+
       - name: Unit + integration tests
         run: |
           git --version   # relative-worktree tests need git >= 2.48 (skipped otherwise, see -rs)

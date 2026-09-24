@@ -16,6 +16,8 @@ dist/
 .venv/
 venv/
 .pytest_cache/
+# uv: grove is a library, don't pin exact dependency versions
+uv.lock
 
 # Go
 /go/bin/

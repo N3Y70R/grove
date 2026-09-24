@@ -39,8 +39,12 @@ facades and docs stay in sync**:
    - constrained choices use an **enum** (`Literal[...]`);
    - the tool has **`ToolAnnotations`** (read-only / destructive / idempotent,
      `open_world_hint=False`);
-   - it returns **`dict[str, Any]`** (not bare `dict`), so clients get
-     `structured_content` and an output schema;
+   - it returns a **`TypedDict` from `grove/mcp/schemas.py`** describing every
+     field (`Annotated[..., Field(description=…)]`, `NotRequired` for keys that
+     may be absent) — or, for shapes that vary a lot, `dict[str, Any]`. Never a
+     bare `dict` (clients would get text only). `tests/test_mcp_output_contract.py`
+     calls every typed tool: the SDK silently drops undeclared keys, so a
+     field missing from the schema fails there;
    - its description ends with a ``CLI: `gwt …` `` line.
    `tests/test_mcp_schema.py` enforces all of this (it fails if any parameter
    lacks a description, a tool lacks its output schema or its `CLI:` line). The MCP is the agent's only view of the tool, so poor schemas =

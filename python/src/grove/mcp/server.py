@@ -38,6 +38,10 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     ) from exc
 
 from . import _ops
+from .schemas import (
+    CompareResult, ConvertResult, CreateResult, DoctorResult, FetchResult, ListResult,
+    RemoveResult, ResetResult, SetupResult, StartResult, TrackResult,
+)
 from ..core.errors import UsageError
 
 mcp = MCPServer(name="grove")
@@ -49,9 +53,10 @@ Cwd = Annotated[Optional[str], Field(
                 "Defaults to the process working directory; always pass it explicitly "
                 "when driving grove from chat.")]
 
-# Every tool returns `dict[str, Any]` (not bare `dict`): with that type the SDK
-# sends `structured_content` plus the same data as JSON text, and publishes an
-# object output schema. A bare `dict` would only send text.
+# Return types: tools with a stable shape return a TypedDict from `.schemas`,
+# so their output schema lists every field (type + description). The rest
+# return `dict[str, Any]` (a generic object schema). Never a bare `dict`: the
+# SDK would then send text only, without `structured_content`.
 
 # Annotation presets (open_world_hint=False: grove is offline, pure-git).
 def _ann(title, *, read_only=False, destructive=False, idempotent=False):
@@ -71,7 +76,7 @@ def grove_setup(
     git_pointer: Annotated[bool, Field(description="Write the root .git pointer (gitdir: ./.bare) so plain git works from the repo root. Default true.")] = True,
     keep_on_error: Annotated[bool, Field(description="If setup fails midway, keep the partial folder instead of removing it. Default false (clean up so a retry starts fresh).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> SetupResult:
     """Initialize a managed repo (bare model + base worktree) from an origin URL.
 
     Applies a policy profile (default if omitted), auto-detects the base branch
@@ -97,7 +102,7 @@ def grove_convert(
     dry_run: Annotated[bool, Field(description="Return the plan without making changes.")] = False,
     profile: Annotated[Optional[str], Field(description="Policy profile to apply and record in .bare/grove.toml: default | personal | gitflow | a custom one. Default: default.")] = None,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> ConvertResult:
     """Adopt/convert an existing normal clone into grove's bare + worktrees model
     (no re-clone). Use this when the user already has the repo cloned.
 
@@ -122,7 +127,7 @@ def grove_list(
     type: Annotated[Optional[str], Field(description="Filter by type/kind (feature, hotfix, release, special, temp…).")] = None,
     dirty: Annotated[bool, Field(description="Only worktrees with uncommitted changes.")] = False,
     orphans: Annotated[bool, Field(description="Only orphan/prunable worktrees.")] = False,
-) -> dict[str, Any]:
+) -> ListResult:
     """List the repo's worktrees with status (branch, ticket, ahead/behind, dirty).
 
     `ahead`/`behind` are measured against `compared_to`: the upstream, or the
@@ -149,7 +154,7 @@ def grove_create(
     version: Annotated[Optional[str], Field(description="Version for kind=release, e.g. v1.2.0.")] = None,
     base: Annotated[Optional[str], Field(description="Branch to start from. Say 'from <branch>' → this. Works for all kinds, including temp. Omit for the repo's default base.")] = None,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> CreateResult:
     """Create a worktree (ticket, release or temp).
 
     The ticket key and slug are supplied by the caller; grove does not query any
@@ -169,7 +174,7 @@ def grove_start(
     base: Annotated[Optional[str], Field(description="Base for a NEW worktree (default: the repo's default base). Say 'from <branch>' → this. grove starts from origin/<base> after fetching.")] = None,
     fetch: Annotated[bool, Field(description="Fetch from origin first so the base is current. Default true.")] = True,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> StartResult:
     """Start or resume work on a ticket in ONE call — prefer this over
     grove_create/grove_track when the user says "start / work on ticket X".
 
@@ -189,7 +194,7 @@ def grove_track(
     branch: Annotated[str, Field(description="Existing branch name (local or on origin) to bring in.")],
     as_: Annotated[Optional[str], Field(description="Explicit destination path, e.g. 'hotfix/PROJ-1-fix', to relocate/force a type.")] = None,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> TrackResult:
     """Bring an existing branch (local or on origin) into the structure as a worktree.
 
     CLI: `gwt track <branch> [--as <type>/<TICKET>-<slug>]`
@@ -206,7 +211,7 @@ def grove_remove(
     confirm: Annotated[bool, Field(description="Required: set true to actually remove (this is destructive). Not needed with dry_run.")] = False,
     dry_run: Annotated[bool, Field(description="Report what WOULD be removed without changing anything (no confirm needed). Use it before merged=true.")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> RemoveResult:
     """Remove a worktree (DESTRUCTIVE — requires confirm=true, unless dry_run).
 
     Provide 'target' (ticket, branch or path), or merged=true to sweep all
@@ -226,7 +231,7 @@ def grove_reset(
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> ResetResult:
     """DISCARDS local commits and changes: reset a worktree to its origin branch
     (fetch + reset --hard). Requires confirm=true.
 
@@ -244,7 +249,7 @@ def grove_sync(
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> ResetResult:
     """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
     to origin). To only bring remote changes, use grove_fetch.
 
@@ -281,7 +286,7 @@ def grove_publish(
 def grove_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable issues (otherwise report only).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> DoctorResult:
     """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones.
 
     Besides structure (orphans, naming, upstreams, root .git pointer) it finds
@@ -298,7 +303,7 @@ def grove_doctor(
 def grove_fetch(
     prune: Annotated[bool, Field(description="Also drop origin/* refs of branches deleted on the remote (git fetch --prune).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> FetchResult:
     """Bring what's new on origin and report each worktree's ahead/behind — the
     SAFE way to update from the remote: it only updates origin/* refs and never
     modifies any worktree (unlike grove_reset, which discards local work).
@@ -318,7 +323,7 @@ def grove_compare(
     vs: Annotated[Optional[str], Field(description="Compare ALL worktrees against this ref.")] = None,
     fetch: Annotated[bool, Field(description="git fetch origin first: the SAFE way to bring remote changes (updates origin/* refs, never touches worktrees).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> CompareResult:
     """Ahead/behind between branches/worktrees. With fetch=true it first runs
     `git fetch origin` — the safe way to bring remote changes (it never modifies
     your worktrees; unlike grove_reset, which discards local work).

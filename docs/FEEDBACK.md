@@ -139,9 +139,9 @@ nobody knows those files are safe to delete.
 - `doctor` reports orphaned `*.lock` (no running git) and
   `objects/**/tmp_obj_*`; `--fix` removes them. → issue
 - `doctor` checks that `user.email` resolves for the repo and its worktrees. →
-  issue *(verify first whether the identity failure was grove's: the dropi zone
-  has grove identity routing `ok`, so it may have come from the assisted
-  environment, which doesn't see the Mac's global config.)*
+  ✅ 0.6.2. *(Verified 2026-09-23: the original failure was not grove's — a
+  fresh repo under the dropi zone resolves the identity from grove's zone file;
+  the assisted environment simply can't see the Mac's `~/.gitconfig`.)*
 
 ## 7. Worktree `.git` files use absolute paths
 
@@ -315,6 +315,7 @@ days, L more).
 | 18 | Docs: arbitrary-base recipe, profile editing & precedence, dropi-style profile, SSH key selection, ticket prefixes, release tagging | §1–4, §16, §17 | M |
 | 19 | Suggest an existing base when the configured one is missing | §3 | S |
 | 20 | `rel_path` correct from another mount | §7 | S |
+| 21 | CI matrix: add Python 3.13 and 3.14 (pipx installs with 3.14) | — | S |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
 base auto-detection (0.5.0); `config set/unset/edit`, `ssh aliases`,

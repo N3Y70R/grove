@@ -2,6 +2,23 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.14.1
+
+### Fixed
+
+- **Upgrading grove under a running MCP server** now fails clearly: every tool
+  call compares the version installed on disk with the one the server loaded
+  and, if they differ, answers "grove was upgraded to X, but this MCP server is
+  still running Y: restart the MCP client". Before, lazily imported modules came
+  from the new version while results were validated against the old schemas,
+  and some calls failed with a bare "Error executing tool" (seen with
+  `grove_repos` after 0.13.2 → 0.14.0).
+- `gwt ssh add` with an existing key (`--key`, "reuse key") no longer tells you
+  to upload it: it says to add it only if it isn't on the host yet. The verify
+  hint now names the alias (`gwt ssh check <name> --live`).
+- `gwt ssh accounts` sizes its columns from the content, so a long key name no
+  longer runs into the ZONE column.
+
 ## python — 0.14.0
 
 ### Added

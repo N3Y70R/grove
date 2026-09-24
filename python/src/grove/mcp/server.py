@@ -22,6 +22,7 @@ from typing import Annotated, List, Literal, Optional
 
 try:
     from mcp.server.mcpserver import MCPServer
+    from mcp.server.mcpserver.exceptions import ToolError
     from mcp.types import ToolAnnotations
     from pydantic import Field
 except ModuleNotFoundError as exc:  # pragma: no cover
@@ -45,9 +46,40 @@ from .schemas import (
     SshRemoveResult,
     StartResult, TrackResult,
 )
+from .. import __version__ as _LOADED_VERSION
 from ..core.errors import UsageError
 
-mcp = MCPServer(name="grove")
+
+def _installed_version() -> Optional[str]:
+    """grove's version as installed on disk now (None when not installed as a
+    distribution, e.g. running from a source checkout)."""
+    try:
+        from importlib.metadata import version
+        return version("grove-wt")
+    except Exception:
+        return None
+
+
+class _GroveServer(MCPServer):
+    """Refuses to run when grove was upgraded under a running server.
+
+    An upgrade replaces the files while this process keeps the old code in
+    memory; modules imported later come from the new version and results are
+    validated against the old schemas, which fails with an opaque error. Say
+    what happened instead.
+    """
+
+    async def call_tool(self, name, arguments, context=None):
+        on_disk = _installed_version()
+        if on_disk and on_disk != _LOADED_VERSION:
+            raise ToolError(
+                f"grove was upgraded to {on_disk}, but this MCP server is still running "
+                f"{_LOADED_VERSION}: restart the MCP client (and refresh its tool list) "
+                f"before using grove.")
+        return await super().call_tool(name, arguments, context)
+
+
+mcp = _GroveServer(name="grove")
 
 # Reusable parameter annotations -------------------------------------------- #
 

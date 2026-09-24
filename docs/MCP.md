@@ -169,6 +169,10 @@ the public key; the **agent uploads it** to GitHub/Bitbucket via its own connect
 - **"No managed repo (.bare/) found":** the tool needs the repo path — ask the
   agent again including the absolute path so it passes `cwd`, or let it find the
   repo with `grove_repos`.
+- **"grove was upgraded to X, but this MCP server is still running Y":** you
+  upgraded grove while the client kept the old server running. Restart the
+  client (and refresh its tools). Before 0.14.1 this showed up as a bare
+  "Error executing tool" on some calls.
 - **The agent follows outdated advice:** compare `grove_config().version` with
   the skill's `metadata.grove-version`; `grove_doctor` reports `skill-outdated`
   and `fix=true` refreshes an untouched copy. Restart the client after upgrading.

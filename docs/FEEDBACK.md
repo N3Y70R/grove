@@ -392,6 +392,36 @@ against the live MCP server: no technical errors) found gaps, not mistakes:
 copies ("installed copy is for grove 0.13.0 … Re-run with force") — the
 manifest existed, but only `doctor` consulted it. Fixed in 0.13.2 (item 38).
 
+## 21. Upgrading under a running MCP server; `ssh` output
+
+**Status:** ✅ items 41–43 done in 0.14.1; item 44 open.
+
+**Finding.** Setting up the personal account zone after 0.14.0:
+
+- `grove_repos` with no arguments failed with a bare "Error executing tool",
+  while the same call with `paths` worked and `gwt repos` was fine. The MCP
+  server was still the 0.13.2 process; `pipx install` had replaced the files,
+  so `core/repos.py` (imported lazily) came from 0.14.0 and returned
+  `source: "default"`, which the 0.13.2 output schema rejects. Any upgrade
+  without a restart can mix versions this way, and the error says nothing.
+- `gwt ssh add` with `--key` for an existing key (`reuse key`) still said
+  "Upload this public key", although the key was already on GitHub; the verify
+  hint named the host (`github.com`) instead of the alias.
+- `gwt ssh accounts` used fixed column widths: a long key name ran into ZONE.
+- With both zones configured, `repos_roots` wasn't needed, but it showed its
+  semantics surprise: it *adds* to the zones, so listing
+  `~/dropi/github/workspace` still searched the zone `~/dropi/github`.
+
+**Proposed improvement.**
+- The MCP server compares the version installed on disk with the one it
+  loaded, before every tool call, and refuses with "grove was upgraded to X …
+  restart the MCP client".
+- `ssh add` with a reused key: "If it isn't on github.com yet, add it"; verify
+  with the alias.
+- `ssh accounts`: column widths from the content.
+- Later: decide whether `repos_roots`, when set, should *replace* the zones
+  (search exactly what the user listed). → issue
+
 ## Cross-cutting / meta
 
 - **MCP discoverability.** Several delays came from the agent searching for the
@@ -454,6 +484,10 @@ days, L more).
 | 37 | ~~`repos_roots` in `~/.config/grove/config.toml`: extra folders for `gwt repos` besides the identity zones~~ ✅ 0.14.0 | §20 | S |
 | 38 | ~~`skill install` refreshes an untouched outdated copy without `--force`~~ ✅ 0.13.2 | §20 | S |
 | 39 | ~~No ticket extraction when `tickets = "off"` (`list`, `start`)~~ ✅ 0.14.0 | §16 | S |
+| 41 | ~~Stale MCP server after an upgrade: clear "restart the client" error instead of an opaque one~~ ✅ 0.14.1 | §21 | S |
+| 42 | ~~`ssh add` with a reused key doesn't demand an upload; verify with the alias~~ ✅ 0.14.1 | §21 | S |
+| 43 | ~~`ssh accounts` column widths from the content~~ ✅ 0.14.1 | §21 | S |
+| 44 | `repos_roots` semantics: replace the zones when set, instead of adding to them? | §21 | S |
 | 40 | Trim workflow advice from the MCP tool descriptions (the skill covers it); each ends pointing to the skill | §18 | S–M |
 
 **Done** (for the record): `create temp --base`, richer MCP schemas, `setup`
@@ -476,4 +510,5 @@ everyday tools + output contract test (0.11.1); typed schemas for all 20 tools
 `skill-outdated` in `doctor`, `gwt repos`, flow for a moved base, Spanish
 triggers, first-push troubleshooting (0.13.0); `repos` agrees with `config`,
 skill review follow-ups (0.13.1); `skill install` refreshes untouched copies (0.13.2); `repos_roots`, no tickets
-when `tickets = "off"` (0.14.0).
+when `tickets = "off"` (0.14.0); stale-MCP detection, `ssh add`/`accounts`
+output (0.14.1).

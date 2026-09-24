@@ -237,10 +237,14 @@ def cmd_ssh_add(args, out: Output) -> int:
         return 0
 
     out.success(f"Account {args.name} ready" + (" (dry-run)" if args.dry_run else ""))
-    if res["pubkey"]:
+    if res["pubkey"] and not res.get("created_key"):
+        out.plain(f"  Reused an existing key. If it isn't on {args.host} yet, add it (Settings → SSH keys):")
+        out.plain(f"  {res['pubkey']}")
+        out.plain(f"  Verify:  gwt ssh check {args.name} --live")
+    elif res["pubkey"]:
         out.plain(f"  Upload this public key to {args.host} (Settings → SSH keys):")
         out.plain(f"  {res['pubkey']}")
-        out.plain(f"  Then verify:  gwt ssh check {args.host} --live")
+        out.plain(f"  Then verify:  gwt ssh check {args.name} --live")
     elif not args.dry_run:
         out.plain(f"  Public key: {res['key']}.pub")
     return 0
@@ -283,15 +287,21 @@ def cmd_ssh_accounts(args, out: Output) -> int:
         return 0
 
     _ROUTING = {"ok": ("✓", "green"), "partial": ("!", "yellow"), "none": ("—", "dim")}
-    out.plain(f"{'ACCOUNT':<16}{'HOST':<16}{'KEY':<30}{'ZONE':<26}ROUTING")
+    table = []
     for (a, st, z, routing) in rows:
-        keybits = Path(a.key).name
-        keybits += " ✓" if st.exists else out._c(" ✗", "yellow")
-        if st.in_agent is True:
-            keybits += " agent"
+        key = Path(a.key).name + (" ✓" if st.exists else " ✗") + (" agent" if st.in_agent is True else "")
         zone = f"{z.scope_dir}  {z.email}" if z else "—"
+        table.append((a.name, a.host, key, zone, routing, st.exists))
+    # Column widths from the content (plain text; colour is added afterwards).
+    w = [max(len(h), *(len(r[i]) for r in table)) + 2
+         for i, h in enumerate(("ACCOUNT", "HOST", "KEY", "ZONE"))]
+    out.plain(f"{'ACCOUNT':<{w[0]}}{'HOST':<{w[1]}}{'KEY':<{w[2]}}{'ZONE':<{w[3]}}ROUTING")
+    for name, host, key, zone, routing, exists in table:
+        cell = f"{key:<{w[2]}}"
+        if not exists:
+            cell = cell.replace(" ✗", out._c(" ✗", "yellow"), 1)
         sym, color = _ROUTING[routing]
-        out.plain(f"{a.name:<16}{a.host:<16}{keybits:<30}{zone:<28} {out._c(sym, color)}")
+        out.plain(f"{name:<{w[0]}}{host:<{w[1]}}{cell}{zone:<{w[3]}}{out._c(sym, color)}")
     return 0
 
 

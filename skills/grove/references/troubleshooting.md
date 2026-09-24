@@ -17,7 +17,7 @@ Match the symptom, apply the fix, re-run `grove_doctor` to confirm.
 | push rejected `(non-fast-forward)` right after a rebase | origin still has the pre-rebase commits | your own branch: `git push --force-with-lease`; if someone else pushed, `git pull --rebase` first |
 | force-push refused by repository rules (`GH013`, "Cannot force-push") | rules forbid rewriting that branch | branch only yours and not merged: `git push origin --delete <branch>`, then `git push -u origin <branch>`; otherwise merge the base instead of rebasing |
 | `skill-outdated` issue | installed skill written for another grove version | untouched copy: `grove_doctor(fix=true)`; edited: review, then `gwt skill install [--claude] --force` |
-| new version installed but not visible | MCP server still running the old code | restart the MCP client; refresh tools |
+| new version installed but not visible, or a tool fails with "grove was upgraded to X, but this MCP server is still running Y" (older servers: a bare "Error executing tool") | MCP server still running the old code after an upgrade | restart the MCP client; refresh tools |
 | `pipx install --force grove-wt` installs an older version | stale PyPI index on the network | `pipx runpip grove-wt index versions grove-wt`; or install from a local checkout |
 
 `doctor` fixes run in a safe order (locks first) and never delete work: a

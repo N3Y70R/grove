@@ -18,7 +18,7 @@ an agent can choose the right tool and arguments without trial and error. Keep
 this enrichment in sync whenever a tool or its parameters change.
 """
 
-from typing import Annotated, Any, List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
 try:
     from mcp.server.mcpserver import MCPServer
@@ -39,8 +39,10 @@ except ModuleNotFoundError as exc:  # pragma: no cover
 
 from . import _ops
 from .schemas import (
-    CompareResult, ConvertResult, CreateResult, DoctorResult, FetchResult, ListResult,
-    RemoveResult, ResetResult, SetupResult, StartResult, TrackResult,
+    CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
+    ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
+    SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult, SshRemoveResult,
+    StartResult, TrackResult,
 )
 from ..core.errors import UsageError
 
@@ -53,10 +55,9 @@ Cwd = Annotated[Optional[str], Field(
                 "Defaults to the process working directory; always pass it explicitly "
                 "when driving grove from chat.")]
 
-# Return types: tools with a stable shape return a TypedDict from `.schemas`,
-# so their output schema lists every field (type + description). The rest
-# return `dict[str, Any]` (a generic object schema). Never a bare `dict`: the
-# SDK would then send text only, without `structured_content`.
+# Return types: every tool returns a TypedDict from `.schemas`, so its output
+# schema lists every field (type + description). Never a bare `dict`: the SDK
+# would then send text only, without `structured_content`.
 
 # Annotation presets (open_world_hint=False: grove is offline, pure-git).
 def _ann(title, *, read_only=False, destructive=False, idempotent=False):
@@ -267,7 +268,7 @@ def grove_publish(
     no_sync: Annotated[bool, Field(description="Additive mode: don't sync the integration branch before merging.")] = False,
     confirm: Annotated[bool, Field(description="Required only when regenerating an EXISTING branch (force-push). Not needed for first-time creation.")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> PublishResult:
     """Merge branches into the shared integration branch, or create it from a base.
 
     Additive (default) requires the branch to exist. regenerate=true rebuilds it
@@ -340,7 +341,7 @@ def grove_config(
     set_value: Annotated[Optional[str], Field(description="Value for set_key. For list keys (allowed_types, special_worktrees, ticket_prefixes, known_git_hosts) use a comma-separated string.")] = None,
     unset_key: Annotated[Optional[str], Field(description="A grove.toml key to remove (reverts to the profile/default value).")] = None,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> ConfigResult:
     """Show the repo configuration, or change it: set the SSH alias (rewrites
     origin), set an arbitrary grove.toml key, or unset one. Omit all of these to
     just show the current config.
@@ -364,7 +365,7 @@ def grove_ssh_check(
     all: Annotated[bool, Field(description="Diagnose every Host in ~/.ssh/config.")] = False,
     live: Annotated[bool, Field(description="Actually test authentication (ssh -T).")] = False,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> SshCheckResult:
     """Diagnose SSH config for a git remote (keys, agent, permissions).
 
     CLI: `gwt ssh check [target] [--all] [--live]`
@@ -376,7 +377,7 @@ def grove_ssh_check(
 def grove_ssh_aliases(
     target: Annotated[Optional[str], Field(description="URL or host to map (default: the current repo's origin). Use this to discover which ~/.ssh/config alias a repo should use.")] = None,
     cwd: Cwd = None,
-) -> dict[str, Any]:
+) -> SshAliasesResult:
     """List the ~/.ssh/config aliases that resolve to a repo's host (the
     repo↔alias map), marking which one is currently applied. Read-only.
 
@@ -396,7 +397,7 @@ def grove_ssh_add(
     no_agent: Annotated[bool, Field(description="Don't load the key into the ssh-agent.")] = False,
     no_passphrase: Annotated[bool, Field(description="Generate the key without a passphrase (default true; no TTY here).")] = True,
     dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
-) -> dict[str, Any]:
+) -> SshAddResult:
     """Provision an SSH account (machine-level): generate an ed25519 key, write the
     ~/.ssh/config Host alias, and wire folder-scoped git identity.
 
@@ -411,7 +412,7 @@ def grove_ssh_add(
 
 
 @mcp.tool(annotations=_ann("List SSH accounts", read_only=True))
-def grove_ssh_accounts() -> dict[str, Any]:
+def grove_ssh_accounts() -> SshAccountsResult:
     """List grove-managed SSH accounts and zones (alias, host, key, routing coherence).
 
     CLI: `gwt ssh accounts`
@@ -422,7 +423,7 @@ def grove_ssh_accounts() -> dict[str, Any]:
 @mcp.tool(annotations=_ann("Diagnose/fix SSH multi-account setup", idempotent=True))
 def grove_ssh_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable items (otherwise report only).")] = False,
-) -> dict[str, Any]:
+) -> SshDoctorResult:
     """Diagnose the SSH/git multi-account setup; set fix=true to apply auto-fixable items.
 
     Reports the host-vs-alias trap, embedded secrets, missing IdentitiesOnly/insteadOf,
@@ -440,7 +441,7 @@ def grove_ssh_remove(
     keep_routing: Annotated[bool, Field(description="Keep the git identity routing for the zone.")] = False,
     confirm: Annotated[bool, Field(description="Required: set true to proceed (edits ~/.ssh/config and ~/.gitconfig).")] = False,
     dry_run: Annotated[bool, Field(description="Preview the edits without applying them.")] = False,
-) -> dict[str, Any]:
+) -> SshRemoveResult:
     """Remove a grove-managed SSH account (DESTRUCTIVE — requires confirm=true).
 
     CLI: `gwt ssh remove <name> [--delete-key]`

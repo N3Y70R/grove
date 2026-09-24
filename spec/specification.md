@@ -799,7 +799,7 @@ Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `
 
 - **Typed** inputs (JSON schema) instead of text flags.
 - **No interaction**: confirmation of destructive actions goes as a boolean parameter.
-- Output always **structured** (the `result`), never human text: sent as MCP `structured_content` (with an object output schema per tool) plus the same JSON as text for text-only clients. Tools with a stable shape declare a **typed** output schema (each field's type, allowed values and description); tools whose shape varies (`config`, `publish`, `ssh_*`) declare a generic object.
+- Output always **structured** (the `result`), never human text: sent as MCP `structured_content` (with an object output schema per tool) plus the same JSON as text for text-only clients. Every tool declares a **typed** output schema (each field's type, allowed values and description); a tool with several modes (`config`) declares one schema whose mode-specific fields are optional.
 - Each tool carries a **description** that the agent uses to decide when to invoke it, ending with a `CLI:` line with the equivalent command.
 - `grove_config` and `grove_doctor` (and their `--json` CLI counterparts) include the grove **`version`**.
 

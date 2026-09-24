@@ -41,8 +41,9 @@ facades and docs stay in sync**:
      `open_world_hint=False`);
    - it returns a **`TypedDict` from `grove/mcp/schemas.py`** describing every
      field (`Annotated[..., Field(description=…)]`, `NotRequired` for keys that
-     may be absent) — or, for shapes that vary a lot, `dict[str, Any]`. Never a
-     bare `dict` (clients would get text only). `tests/test_mcp_output_contract.py`
+     may be absent; for a tool with several modes, one schema whose
+     mode-specific fields are `NotRequired`). Never a bare `dict` (clients would
+     get text only). `tests/test_mcp_output_contract.py`
      calls every typed tool: the SDK silently drops undeclared keys, so a
      field missing from the schema fails there;
    - its description ends with a ``CLI: `gwt …` `` line.

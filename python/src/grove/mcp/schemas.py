@@ -12,7 +12,7 @@ is missing or undeclared — the SDK silently drops undeclared keys from
 
 from __future__ import annotations
 
-from typing import Annotated, List, Literal, Optional
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import Field
 from typing_extensions import NotRequired, TypedDict
@@ -167,3 +167,155 @@ class DoctorResult(TypedDict):
     manual: Annotated[int, D("How many need manual review.")]
     applied: Annotated[int, D("Fixes applied in this call (0 unless fix=true).")]
     version: Annotated[str, D("grove version that produced this report.")]
+
+
+# --------------------------------------------------------------------------- #
+# Configuration (one schema for the four modes: show / set / unset / ssh alias)
+# --------------------------------------------------------------------------- #
+
+class ReleasePolicy(TypedDict):
+    format: Annotated[str, D("Release branch format, e.g. release/{version}.")]
+    default_base: Annotated[str, D("Base for new release branches.")]
+
+
+class ConfigResult(TypedDict):
+    """Show: repo, root, origin, version and the effective policy. set_key: key,
+    value, config (+ applied for relative_worktrees). unset_key: unset, config.
+    set_ssh_alias: ssh_alias, origin."""
+    repo: NotRequired[Annotated[str, D("show: repo name.")]]
+    root: NotRequired[Annotated[str, D("show: absolute path of the managed repo.")]]
+    origin: NotRequired[Annotated[Optional[str], D("show / set_ssh_alias: origin URL (after the rewrite, for set_ssh_alias).")]]
+    version: NotRequired[Annotated[str, D("show: grove version.")]]
+    profile: NotRequired[Annotated[Optional[str], D("show: policy profile the repo was created with.")]]
+    default_base: NotRequired[Annotated[str, D("show: base branch for new worktrees.")]]
+    allowed_types: NotRequired[Annotated[List[str], D("show: ticket types `create` accepts.")]]
+    special_worktrees: NotRequired[Annotated[List[str], D("show: protected special worktrees.")]]
+    temp_dir: NotRequired[Annotated[str, D("show: folder for temp worktrees.")]]
+    artifacts_dir: NotRequired[Annotated[str, D("show: local, never-versioned artifacts folder ('' = disabled).")]]
+    tickets: NotRequired[Annotated[Literal["required", "optional", "off"], D("show: ticket policy.")]]
+    integration_branch: NotRequired[Annotated[str, D("show: shared integration branch for publish ('' = none).")]]
+    ssh_alias: NotRequired[Annotated[str, D("show / set_ssh_alias: ~/.ssh/config alias for the remote ('' = none).")]]
+    known_git_hosts: NotRequired[Annotated[List[str], D("show: hosts for `ssh check --all` without ~/.ssh/config.")]]
+    relative_worktrees: NotRequired[Annotated[bool, D("show: whether worktrees use relative paths.")]]
+    release: NotRequired[Annotated[ReleasePolicy, D("show: release branch policy.")]]
+    ticket_prefixes: NotRequired[Annotated[List[str], D("show: accepted ticket keys (when configured).")]]
+    ticket_pattern: NotRequired[Annotated[str, D("show: ticket regex (when no prefixes are configured).")]]
+    key: NotRequired[Annotated[str, D("set_key: the key set.")]]
+    value: NotRequired[Annotated[Any, D("set_key: the stored value (lists for list keys, booleans for boolean keys).")]]
+    applied: NotRequired[Annotated[Optional[Literal["enable", "disable"]], D("set_key relative_worktrees: conversion performed, or null if none was needed.")]]
+    unset: NotRequired[Annotated[str, D("unset_key: the key removed (falls back to the repo's profile).")]]
+    config: NotRequired[Annotated[Dict[str, Any], D("set_key / unset_key: the resulting grove.toml contents.")]]
+
+
+# --------------------------------------------------------------------------- #
+# Publish
+# --------------------------------------------------------------------------- #
+
+class PublishResult(TypedDict):
+    integration: Annotated[str, D("Integration branch published to.")]
+    mode: Annotated[Literal["additive", "regenerate", "created"], D("additive: merged on top; regenerate: rebuilt from base (force-push); created: new from base.")]
+    created: Annotated[bool, D("True when the integration branch did not exist and was created.")]
+    branches: Annotated[List[str], D("Branches merged in, in order.")]
+    base: Annotated[Optional[str], D("Base used for regenerate/creation, or null.")]
+
+
+# --------------------------------------------------------------------------- #
+# SSH
+# --------------------------------------------------------------------------- #
+
+class SshIdentity(TypedDict):
+    path: Annotated[str, D("Private key path (IdentityFile).")]
+    exists: Annotated[bool, D("Whether the key file exists.")]
+    perms_ok: Annotated[Optional[bool], D("Key permissions are safe (600); null when not applicable (e.g. Windows).")]
+    loaded: Annotated[Optional[bool], D("Key loaded in the ssh-agent; null when it can't be determined.")]
+
+
+class SshLive(TypedDict):
+    ok: Annotated[bool, D("Authentication succeeded (ssh -T).")]
+    message: Annotated[str, D("Server's answer or the error.")]
+
+
+class SshHost(TypedDict):
+    target: Annotated[str, D("Host or alias diagnosed.")]
+    hostname: Annotated[Optional[str], D("Resolved HostName.")]
+    user: Annotated[Optional[str], D("Resolved User.")]
+    identities_only: Annotated[Optional[bool], D("IdentitiesOnly setting (only the listed keys are offered).")]
+    config_present: Annotated[bool, D("Whether ~/.ssh/config exists.")]
+    identities: Annotated[List[SshIdentity], D("Keys that would be offered.")]
+    agent_running: Annotated[bool, D("Whether an ssh-agent is reachable.")]
+    agent_keys: Annotated[int, D("Number of keys loaded in the agent.")]
+    live: Annotated[Optional[SshLive], D("Live authentication result (only with live=true).")]
+    error: Annotated[Optional[str], D("Why the host couldn't be diagnosed, if so.")]
+
+
+class SshCheckResult(TypedDict):
+    hosts: Annotated[List[SshHost], D("One report per host diagnosed.")]
+
+
+class SshAliasMatch(TypedDict):
+    alias: Annotated[str, D("~/.ssh/config Host alias.")]
+    hostname: Annotated[str, D("Real host the alias resolves to.")]
+    identity_files: Annotated[List[str], D("Keys the alias offers.")]
+    current: Annotated[bool, D("True for the alias the repo's origin uses now.")]
+
+
+class SshAliasesResult(TypedDict):
+    host: Annotated[str, D("Real host of the repo's origin (or of the target).")]
+    current: Annotated[Optional[str], D("Alias currently in use, or null.")]
+    aliases: Annotated[List[SshAliasMatch], D("Aliases that resolve to that host.")]
+
+
+class SshAddResult(TypedDict):
+    name: Annotated[str, D("Account alias.")]
+    host: Annotated[str, D("Real host (e.g. github.com).")]
+    key: Annotated[str, D("Private key path.")]
+    created_key: Annotated[bool, D("True when a new key was generated (false when reused).")]
+    pubkey: Annotated[Optional[str], D("Public key to upload to the host (grove never uploads it).")]
+    zone: Annotated[Optional[str], D("Folder whose repos use this account (git identity routing), or null.")]
+    email: Annotated[Optional[str], D("Git identity email for the zone, or null.")]
+    name_missing: Annotated[bool, D("True when no global git user.name is set.")]
+    dry_run: Annotated[bool, D("True when nothing was written (preview).")]
+    steps: Annotated[List[str], D("What was done (or would be done).")]
+
+
+class SshAccount(TypedDict):
+    name: Annotated[str, D("Account alias.")]
+    host: Annotated[str, D("Real host.")]
+    key: Annotated[Optional[str], D("Private key path.")]
+    zone: Annotated[Optional[str], D("Folder routed to this account, or null.")]
+    email: Annotated[Optional[str], D("Git identity email of the zone, or null.")]
+    routing: Annotated[Literal["ok", "partial", "none"], D("Coherence of the git identity routing.")]
+
+
+class SshZone(TypedDict):
+    scope_dir: Annotated[str, D("Folder of the zone.")]
+    email: Annotated[Optional[str], D("Git identity email used inside it.")]
+    identity_path: Annotated[str, D("grove-managed gitconfig file for the zone.")]
+    rewrites: Annotated[Dict[str, str], D("URL rewrites host → alias applied inside the zone.")]
+
+
+class SshAccountsResult(TypedDict):
+    accounts: Annotated[List[SshAccount], D("grove-managed SSH accounts.")]
+    zones: Annotated[List[SshZone], D("Folder zones with git identity routing.")]
+
+
+class SshFinding(TypedDict):
+    check: Annotated[str, D("Check that fired (e.g. trap, useconfigonly, perms, secret).")]
+    severity: Annotated[Literal["fix", "review"], D("fix: auto-fixable with fix=true; review: manual.")]
+    target: Annotated[str, D("Affected account, file or setting.")]
+    message: Annotated[str, D("What is wrong.")]
+    fixable: Annotated[bool, D("True when fix=true would repair it.")]
+
+
+class SshDoctorResult(TypedDict):
+    findings: Annotated[List[SshFinding], D("Problems found (empty when healthy).")]
+    auto_fixable: Annotated[int, D("How many findings fix=true can repair.")]
+    review: Annotated[int, D("How many need manual review.")]
+    applied: Annotated[int, D("Fixes applied in this call.")]
+
+
+class SshRemoveResult(TypedDict):
+    name: Annotated[str, D("Account alias removed.")]
+    deleted_key: Annotated[bool, D("Whether the key files were deleted.")]
+    dry_run: Annotated[bool, D("True when nothing was written (preview).")]
+    steps: Annotated[List[str], D("What was done (or would be done).")]

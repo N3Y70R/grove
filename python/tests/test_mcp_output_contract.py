@@ -8,6 +8,7 @@ required key), so any drift between a tool's result and its schema fails here.
 
 import asyncio
 import json
+import shutil
 import subprocess
 
 import pytest
@@ -18,7 +19,9 @@ from grove.mcp import server  # noqa: E402
 
 TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_track",
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
-         "grove_doctor", "grove_compare"}
+         "grove_doctor", "grove_compare", "grove_config", "grove_publish",
+         "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
+         "grove_ssh_doctor", "grove_ssh_remove"}
 
 
 def _git(args, cwd):
@@ -84,3 +87,55 @@ def test_every_typed_tool_honours_its_schema(repo, origin, tmp_path):
     _git(["clone", "-q", origin, str(clone)], tmp_path)
     assert call("grove_convert", path=str(clone), dry_run=True)["dry_run"] is True
     assert call("grove_convert", path=str(clone), fetch=False)["into"] is False
+
+
+def test_every_tool_is_typed():
+    schemas = _schemas()
+    assert TYPED == set(schemas), f"untyped or unknown: {set(schemas) ^ TYPED}"
+
+
+def test_config_and_publish_honour_their_schemas(repo):
+    git, ctx = repo
+    cwd = str(ctx.root)
+    shown = call("grove_config", cwd=cwd)
+    assert shown["default_base"] == "main" and "release" in shown
+    assert call("grove_config", cwd=cwd, set_key="default_base", set_value="main")["key"] == "default_base"
+    assert call("grove_config", cwd=cwd, set_key="allowed_types", set_value="feature,fix")["value"] == ["feature", "fix"]
+    assert call("grove_config", cwd=cwd, set_key="relative_worktrees", set_value="false")["applied"] is None
+    assert call("grove_config", cwd=cwd, unset_key="allowed_types")["unset"] == "allowed_types"
+    assert call("grove_config", cwd=cwd, set_ssh_alias="none")["ssh_alias"] == ""
+    pub = call("grove_publish", cwd=cwd, into="integration", regenerate=True, base="main")
+    assert pub["mode"] == "created" and pub["created"] is True
+
+
+@pytest.fixture
+def ssh_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    from grove.core import blockedit
+    blockedit.reset_backup_cache()
+    return home
+
+
+@pytest.mark.skipif(not (shutil.which("ssh-keygen") and shutil.which("git")),
+                    reason="requires ssh-keygen and git")
+def test_ssh_tools_honour_their_schemas(ssh_home):
+    zone = ssh_home / "work"
+    zone.mkdir()
+    assert call("grove_ssh_add", name="t-gh", host="github.com", email="t@example.com",
+                scope_dir=str(zone), dry_run=True)["dry_run"] is True
+    added = call("grove_ssh_add", name="t-gh", host="github.com", email="t@example.com",
+                 scope_dir=str(zone), no_agent=True)
+    assert added["pubkey"].startswith("ssh-ed25519 ")
+    accts = call("grove_ssh_accounts")
+    assert accts["accounts"][0]["routing"] == "ok"
+    assert call("grove_ssh_check", target="t-gh")["hosts"][0]["target"] == "t-gh"
+    assert call("grove_ssh_check", all=True)["hosts"]
+    # `ssh -G` reads the passwd home, not $HOME, so the alias match itself is
+    # covered elsewhere; here only the result's shape/contract matters.
+    assert isinstance(call("grove_ssh_aliases", target="github.com")["aliases"], list)
+    assert "findings" in call("grove_ssh_doctor")
+    assert call("grove_ssh_remove", name="t-gh", dry_run=True)["dry_run"] is True
+    assert call("grove_ssh_remove", name="t-gh", confirm=True)["name"] == "t-gh"

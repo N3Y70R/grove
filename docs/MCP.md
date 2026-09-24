@@ -126,12 +126,11 @@ findings can be dated to a release.
 
 Results are **structured**: each call returns `structured_content` (the result
 object, described by the tool's output schema) and the same data as JSON text
-for clients that only read text. The everyday tools (`grove_list`, `grove_start`,
-`grove_fetch`, `grove_create`, `grove_track`, `grove_remove`, `grove_reset`,
-`grove_doctor`, `grove_compare`, `grove_setup`, `grove_convert`) publish a
-**typed** output schema: every field with its type, allowed values and a
-description, so the agent knows what it will get before calling. The rest
-(`grove_config`, `grove_publish`, `grove_ssh_*`) still publish a generic object.
+for clients that only read text. **Every tool publishes a typed output
+schema**: each field with its type, allowed values and a description, so the
+agent knows what it will get before calling. `grove_config` has one schema for
+its four modes (show / set / unset / ssh alias); each field's description says
+in which mode it appears.
 
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,

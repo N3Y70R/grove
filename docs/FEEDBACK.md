@@ -308,7 +308,7 @@ days, L more).
 | 9 | ~~`remove` cleans empty parent folders~~ ✅ 0.7.0 | §14 | S |
 | 10 | ~~`version` in `grove_config` / `grove_doctor`~~ ✅ 0.7.1 | §15 | S |
 | 11 | ~~`kind: "base"` for the base worktree~~ ✅ 0.8.0 (also protected from `remove`) | §13 | S |
-| 12 | `gwt fetch` verb | §8 | S |
+| 12 | ~~`gwt fetch` verb~~ ✅ 0.8.3 | §8 | S |
 | 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
 | 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
 | 15 | Migrate to mcp 2.x | §17 | M |
@@ -329,4 +329,5 @@ alias, `setup` → `convert` hint, version and CLI equivalents in the MCP (0.7.1
 `kind: base` (protected), correct paths from another mount — no more false
 orphans for `doctor` (0.8.0); neutral cwd for global git config, base
 suggestions in `create`/`setup`, CI on 3.11–3.14 (0.8.1); `unset` falls back to the repo's profile, docs:
-recipes, configuration, SSH key selection, release process (0.8.2).
+recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
+(0.8.3).

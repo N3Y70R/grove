@@ -2,6 +2,16 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.8.3
+
+### Added
+
+- **`gwt fetch [--prune]`** (MCP: `grove_fetch`): brings what's new on origin
+  and shows every worktree's ahead/behind and status — **without touching any
+  worktree**. It is the safe counterpart of `reset`; it used to exist only as a
+  side effect of `compare --fetch`, where nobody looking for "update" found it.
+  The hints in `reset`/`sync` and the docs now point to it.
+
 ## python — 0.8.2
 
 Theme: **documentation for the questions that keep coming up** (and a bug it

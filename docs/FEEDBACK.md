@@ -225,6 +225,9 @@ until 0.6.1.
 
 ## 12. `worktree-config-root` looks like a user branch
 
+**Status:** ✅ done in 0.10.0 — the branch is gone: the bare `HEAD` points at the
+base (a bare `HEAD` doesn't occupy its branch), and `doctor --fix` migrates old repos.
+
 **Finding.** The parking branch lives in `refs/heads`, next to real branches,
 pointing to an old commit. In a repo with many branches someone will sweep it.
 
@@ -309,7 +312,7 @@ days, L more).
 | 11 | ~~`kind: "base"` for the base worktree~~ ✅ 0.8.0 (also protected from `remove`) | §13 | S |
 | 12 | ~~`gwt fetch` verb~~ ✅ 0.8.3 | §8 | S |
 | 13 | Opt-in relative worktree paths (`relative_worktrees`) | §7 | M |
-| 14 | Parking branch out of `refs/heads` (unborn HEAD or `refs/grove/*`) | §12 | M |
+| 14 | ~~Parking branch out of `refs/heads`~~ ✅ 0.10.0 — removed: bare `HEAD` → base; `doctor` migrates | §12 | M |
 | 15 | ~~Migrate to mcp 2.x~~ ✅ 0.9.0 | §17 | M |
 | 16 | ~~Split `cli/main.py`~~ ✅ 0.8.4 | §17 | M |
 | 17 | ~~Composite MCP op "start ticket X from base Y"~~ ✅ 0.9.2 (`gwt start` / `grove_start`) | meta | M |
@@ -333,4 +336,4 @@ recipes, configuration, SSH key selection, release process (0.8.2); `gwt fetch`
 (0.8.3); `cli/main.py` split into `cli/commands/*` (0.8.4); mcp 2.x, default profile for
 repos without `grove.toml`, end-to-end MCP test (0.9.0); structured MCP
 results (0.9.1); `gwt start` / `grove_start`, `--no-track` for new branches
-(0.9.2).
+(0.9.2); no parking branch — bare `HEAD` → base, `doctor` migration (0.10.0).

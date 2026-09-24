@@ -2,6 +2,26 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — 0.10.0
+
+### Changed
+
+- **No more internal parking branch.** grove used to create
+  `worktree-config-root` and point the bare's `HEAD` at it, so the base branch
+  stayed free for its own worktree — leaving an internal branch among the
+  user's branches. git doesn't need it (a bare `HEAD` doesn't occupy its branch;
+  verified on git 2.34), so `setup` and `convert` now point the bare `HEAD` at the
+  base, and plain `git log` from the repo root shows the base. New `grove.toml`
+  files no longer carry `parking_branch` (still read, to migrate old repos).
+
+### Added
+
+- **`doctor` migrates existing repos**: a bare `HEAD` that doesn't point at the
+  base (`bare-head`: the legacy parking branch, or a dangling `HEAD`) is
+  re-pointed, and the legacy `worktree-config-root` branch is deleted when it
+  has no commits outside the base and no worktree (`parking-branch`); otherwise
+  it is only reported. Run `gwt doctor --fix` once per existing repo.
+
 ## python — 0.9.2
 
 ### Added

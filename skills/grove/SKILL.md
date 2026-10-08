@@ -17,7 +17,11 @@ The folder path is the branch name. Work happens inside those folders; never
 
 Drive it with the grove MCP tools when they are available (always pass
 `cwd` = the repo folder, the one containing `.bare/`), otherwise with `gwt`.
-Every MCP tool's description ends with its `CLI:` equivalent.
+Every MCP tool's description ends with its `CLI:` equivalent. MCP is optional:
+an agent with terminal access can use this skill and `gwt`. The skill provides
+instructions; executing operations requires CLI or MCP access.
+Read grove's message in tool errors before retrying: it is the same message
+printed by the CLI.
 
 **Know the repo only by name?** `grove_repos` (`gwt repos`) lists the managed
 repos under the user's identity zones and `repos_roots`, or the folders you
@@ -29,6 +33,8 @@ up side by side; act only on the repo the user named.
 
 | The user wants to… | MCP tool | CLI |
 |---|---|---|
+| install / refresh the skill for a client | `grove_skill_install(target="agents"|"claude"|"project", dry_run=true)` | `gwt skill install [--claude | --project | --path DIR] --dry-run` |
+| check installed user-level skill copies | `grove_skill_status` | `gwt skill status` |
 | start / resume work on a ticket | `grove_start(type, name, ticket, base?)` | `gwt start PROJ-1 feature "login"` |
 | find a repo's path | `grove_repos(paths?)` | `gwt repos [PATH …]` |
 | see the worktrees and their state | `grove_list` | `gwt list` |
@@ -82,6 +88,14 @@ freshly fetched `origin/<base>`.
 5. Never answer `diverged` with `grove_reset`: it throws your commits away.
 
 ## Gotchas
+
+- Signing: preview configuration changes and select an account/key explicitly.
+  Users register the public key for signing with their platform; registering it
+  for SSH authentication does not also register it for signatures. Never upload
+  a private key. Local test success does not establish remote recognition.
+- Skill installation includes references. Preview the chosen destination, then
+  install without dry-run; edited/unverified copies need review before force.
+  User-level status does not establish that a client loaded the skill.
 
 - Doctor results keep initial findings. Check `remaining_issues` /
   `remaining_findings` and `failures` after repair; `applied` means verified.

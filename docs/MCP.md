@@ -7,6 +7,11 @@ them. This guide covers installing it and wiring it into the common clients.
 For the tool list and design, see [`../python/src/grove/mcp/README.md`](../python/src/grove/mcp/README.md)
 and the spec ([§13](../spec/specification.md)).
 
+MCP is an optional execution channel. An agent with terminal access can instead
+use `gwt` and the same Agent Skill; see [first-use checks](INSTALL.md#first-use-with-an-agent).
+A successful `grove_skill_status` call from the agent confirms the connection
+and running server version, not that the client loaded the skill.
+
 ## 1. Install (with the `mcp` extra)
 
 The MCP SDK is an optional extra; install grove so that the `grove-mcp`

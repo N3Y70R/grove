@@ -71,7 +71,7 @@ With a specific branch or tag:
 pipx install "git+https://bitbucket.org/your-org/grove.git@v0.1.0"
 ```
 
-Advantage: a single command, cross-platform, and updatable with `pipx upgrade grove`.
+Advantage: a single command, cross-platform, and updatable with `pipx upgrade grove-wt`.
 
 ### Option B — From a wheel file (no git) — **guide for whoever receives the `.whl`**
 
@@ -285,3 +285,31 @@ Install pipx (§1.2). If you installed it with `pip install --user pipx`, invoke
 - **Windows:** works in PowerShell, cmd, and Windows Terminal. For ANSI colors use Windows 10+ / Windows Terminal. Alternatively, Git Bash or WSL provide a Linux-like environment where grove behaves the same as on macOS/Linux.
 
 > Note: runtime behavior on Windows is still pending formal verification (paths, colors, `git worktree`). The packaging is portable; it's advisable to run `gwt setup` and `gwt list` once on Windows before adopting it across the team.
+
+## First use with an agent
+
+Choose the execution channel: a terminal-capable agent can use CLI + skill;
+MCP is optional and requires `grove-wt[mcp]` and client registration.
+Installing the package does not install the skill or configure a client.
+
+```sh
+gwt --version
+git --version
+gwt skill install --dry-run
+gwt skill install
+gwt skill status
+```
+
+Use `--claude` for Claude's skill directory, `--project` for a worktree, or
+`--path DIR` for a client-specific destination. Installation copies the complete
+skill, including references, and records file hashes. It refreshes untouched
+copies and preserves edits; review conflicts before using `--force`.
+`skill status` checks user-level copies, not every custom/project destination.
+For CLI use, ask the agent to run `gwt --version` from its terminal.
+
+For MCP use, follow [MCP.md](MCP.md) to register the server, restart the client,
+and ask the agent to call `grove_skill_status`. Its reported version should
+match `gwt --version`. This verifies connection and server version; it does not
+prove the client loaded the skill. Check skill discovery/loading separately
+using the client's facilities. SSH accounts and commit signing are optional,
+separate configurations; their absence does not prevent basic Grove use.

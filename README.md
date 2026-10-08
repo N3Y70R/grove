@@ -29,6 +29,10 @@ All implementations expose the same `gwt` command and must behave the same accor
 
 grove ships an [Agent Skill](https://agentskills.io) — [`skills/grove/`](skills/grove/SKILL.md) — that teaches an AI agent (Claude, Codex, Gemini CLI, Cursor, Copilot…) how to work with grove: the recommended flow, which tool fits which request, and the gotchas. Install it with `gwt skill install` (to `~/.agents/skills`; `--claude` for `~/.claude/skills`, `--project` for the current worktree). `gwt doctor` tells you when an installed copy is older than your grove and refreshes it if you didn't edit it.
 
+MCP is optional: an agent with terminal access can follow the skill using `gwt`.
+The skill supplies instructions, not an execution channel. Installing the package
+and installing the skill are separate steps; see [first-use checks](docs/INSTALL.md#first-use-with-an-agent).
+
 ## Repository structure
 
 ```

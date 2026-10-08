@@ -4,7 +4,11 @@ A hands-on guide to learning grove through complete workflows. Each section is a
 
 If you haven't installed it yet, go first to [INSTALL.md](INSTALL.md). For the dry reference of each command, see [USAGE.md](USAGE.md).
 
-> **Prefer to drive grove from chat (an MCP agent) instead of the CLI?** These
+An agent with terminal access can also follow these flows using `gwt` and the
+Agent Skill; MCP is optional. Complete the [first-use checks](INSTALL.md#first-use-with-an-agent)
+for your chosen execution channel.
+
+> **Prefer to drive grove through MCP?** These
 > same flows, expressed as natural-language prompts mapped to grove's MCP tools,
 > are in [MCP.md §9 — Conversational flows](MCP.md#9-conversational-flows-chat--grove-tools).
 

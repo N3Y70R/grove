@@ -598,3 +598,22 @@ def op_ssh_remove(
         )
     return sshprov.remove_account(name, delete_key=delete_key,
                                   keep_routing=keep_routing, dry_run=dry_run)
+
+
+@core_config.isolated_operation
+def op_signing_enable(*, account=None, key=None, scope="repo", scope_dir=None, cwd=None, dry_run=False):
+    from ..core import signing, signingdoctor
+    return signingdoctor.sanitize(signing.configure(enable=True, account=account, key=key, scope=scope,
+                                                    scope_dir=scope_dir, cwd=cwd, dry_run=dry_run))
+
+
+@core_config.isolated_operation
+def op_signing_disable(*, scope="repo", scope_dir=None, cwd=None, dry_run=False):
+    from ..core import signing, signingdoctor
+    return signingdoctor.sanitize(signing.configure(enable=False, scope=scope, scope_dir=scope_dir, cwd=cwd, dry_run=dry_run))
+
+
+@core_config.isolated_operation
+def op_signing_doctor(*, cwd=None, test=False, error_text=None, fix=False, dry_run=False):
+    from ..core import signingdoctor
+    return signingdoctor.diagnose(cwd=cwd, test=test, error_text=error_text, fix=fix, dry_run=dry_run)

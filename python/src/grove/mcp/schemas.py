@@ -381,3 +381,79 @@ class SshRemoveResult(TypedDict):
     deleted_key: Annotated[bool, D("Whether the key files were deleted.")]
     dry_run: Annotated[bool, D("True when nothing was written (preview).")]
     steps: Annotated[List[str], D("What was done (or would be done).")]
+
+
+class SigningConfigEntry(TypedDict):
+    key: Annotated[str, D("Git signing/identity setting name.")]
+    value: Annotated[str, D("Redacted configuration value.")]
+    scope: Annotated[str, D("Git source scope: system, global, local, worktree or command.")]
+    origin: Annotated[str, D("Configuration source reported by Git.")]
+
+
+class SigningChange(TypedDict):
+    file: Annotated[str, D("Configuration file to edit.")]
+    key: Annotated[str, D("Git setting to change.")]
+    before: Annotated[Optional[str], D("Previous effective value, null if absent.")]
+    after: Annotated[Optional[str], D("Planned effective value, null if removed.")]
+
+
+class SigningResult(TypedDict):
+    scope: Annotated[Literal["repo", "zone"], D("Scope of the managed signing block.")]
+    file: Annotated[str, D("Target configuration file.")]
+    enabled: Annotated[bool, D("Effective automatic signing after application or preview; inherited signing may remain enabled.")]
+    managed: Annotated[bool, D("Whether Grove signing settings remain in the target.")]
+    changed: Annotated[bool, D("Whether the file changes or would change in dry-run.")]
+    dry_run: Annotated[bool, D("True when no configuration was written.")]
+    changes: Annotated[List[SigningChange], D("Effective changes with previous and proposed values.")]
+    configuration: Annotated[List[SigningConfigEntry], D("Git effective sources after writing; original sources during preview.")]
+    effective: Annotated[Dict[str, str], D("Effective values after writing or planned values during preview.")]
+    message: Annotated[str, D("Outcome and meaning of the operation.")]
+
+
+class SigningFinding(TypedDict):
+    check: Annotated[str, D("Stable diagnostic identifier.")]
+    target: Annotated[str, D("Affected path, key or supplied error.")]
+    message: Annotated[str, D("Observed problem.")]
+    severity: Annotated[Literal["error", "warning"], D("Blocking error or advisory warning; independent of reparability.")]
+    action: Annotated[str, D("Recommended action without guessing a key or rewriting history.")]
+    fixable: Annotated[bool, D("Whether a deterministic non-interactive repair is available.")]
+    evidence: Annotated[str, D("Redacted diagnostic evidence; supplied errors are treated as data.")]
+
+
+class SigningCheck(TypedDict):
+    check: Annotated[str, D("Inspection identifier.")]
+    status: Annotated[Literal["passed", "skipped", "not_applicable"], D("Whether inspection completed or was intentionally omitted.")]
+    message: Annotated[str, D("Inspection result or reason for omission.")]
+
+
+class SigningTest(TypedDict):
+    status: Annotated[Literal["not_run", "skipped", "passed", "failed", "needs_unlock", "unsupported"], D("Explicit signing test outcome.")]
+    message: Annotated[str, D("Redacted signer output or reason no test ran.")]
+    cryptographic_verification: Annotated[Literal["not_run", "passed", "failed"], D("Verification using temporary trust for the actual signature key.")]
+    local_verification: Annotated[Literal["not_run", "not_configured", "passed", "failed"], D("Independent verification against configured local trust/revocations.")]
+    local_evidence: NotRequired[Annotated[str, D("Redacted local verification output when available.")]]
+
+
+class SigningRepairs(TypedDict):
+    proposed: Annotated[int, D("Available repair callbacks.")]
+    attempted: Annotated[int, D("Repairs attempted; zero in dry-run.")]
+    applied: Annotated[int, D("Repairs whose findings disappeared on subsequent inspection.")]
+    failures: Annotated[List[RepairFailure], D("Repairs that failed; the remaining findings also report unresolved problems.")]
+
+
+class SigningContext(TypedDict):
+    directory: Annotated[str, D("Directory used for effective Git configuration.")]
+    repo: Annotated[str, D("Managed repository container.")]
+
+
+class SigningDoctorResult(TypedDict):
+    context: Annotated[SigningContext, D("Explicitly resolved repository/worktree context.")]
+    configuration: Annotated[List[SigningConfigEntry], D("Effective configuration entries and their origins.")]
+    checks: Annotated[List[SigningCheck], D("Completed and skipped passive inspections.")]
+    findings: Annotated[List[SigningFinding], D("Initial findings plus interpreted supplied errors.")]
+    test: Annotated[SigningTest, D("Disposable signing test; no target commits, refs or hooks are created.")]
+    repairs: Annotated[SigningRepairs, D("Proposed, attempted, verified and failed repair counts.")]
+    remaining_findings: Annotated[List[SigningFinding], D("Unresolved findings after repairs and explicit tests.")]
+    dry_run: Annotated[bool, D("No writes, repairs or signing tests executed when true.")]
+    provider_verification: Annotated[Literal["not_checked"], D("Provider recognition is never asserted by local diagnosis.")]
+    ok: Annotated[bool, D("True when no blocking findings remain; warnings may still exist.")]

@@ -21,7 +21,7 @@ TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_tr
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
          "grove_doctor", "grove_compare", "grove_config", "grove_publish",
          "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
-         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install", "grove_repos", "grove_skill_status"}
+         "grove_ssh_doctor", "grove_ssh_remove", "grove_skill_install", "grove_repos", "grove_skill_status", "grove_signing_enable", "grove_signing_disable", "grove_signing_doctor"}
 
 
 def _git(args, cwd):

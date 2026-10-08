@@ -43,7 +43,7 @@ from .schemas import (
     CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
     ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
     ReposResult, SkillInstallResult, SkillStatusResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
-    SshRemoveResult,
+    SshRemoveResult, SigningResult, SigningDoctorResult,
     StartResult, TrackResult,
 )
 from .. import __version__ as _LOADED_VERSION
@@ -539,6 +539,59 @@ def grove_skill_status() -> SkillStatusResult:
     CLI: `gwt skill status`
     """
     return _ops.op_skill_status()
+
+
+
+@mcp.tool(annotations=_ann("Enable SSH commit signing", idempotent=True))
+def grove_signing_enable(
+    scope: Annotated[Literal["repo", "zone"], Field(description="repo: shared .bare/config; zone: an existing Grove identity file.")],
+    account: Annotated[Optional[str], Field(description="Existing Grove account alias; select exactly one of account or key.")] = None,
+    key: Annotated[Optional[str], Field(description="Private/public signing key path, resolved against cwd; alternative to account.")] = None,
+    scope_dir: Annotated[Optional[str], Field(description="Existing identity zone directory; required for zone unless account supplies it.")] = None,
+    dry_run: Annotated[bool, Field(description="Preview changes without writing files, loading keys or signing.")] = False,
+    cwd: Cwd = None,
+) -> SigningResult:
+    """Enable SSH signing with an explicit selection; preserve external config.
+    Reject edited managed blocks and competing overrides. No key generation or
+    provider registration. Repository settings apply to all its worktrees.
+
+    CLI: `gwt signing enable --scope repo|zone --account ALIAS | --key PATH [--scope-dir DIR] [--dry-run]`
+    """
+    return _ops.op_signing_enable(account=account, key=key, scope=scope, scope_dir=scope_dir, dry_run=dry_run, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("Remove managed signing settings", destructive=True, idempotent=True))
+def grove_signing_disable(
+    scope: Annotated[Literal["repo", "zone"], Field(description="Signing block scope to remove: shared repository or existing zone.")],
+    scope_dir: Annotated[Optional[str], Field(description="Existing zone directory; required for zone, unused for repo.")] = None,
+    dry_run: Annotated[bool, Field(description="Preview removal and inherited signing without editing configuration.")] = False,
+    cwd: Cwd = None,
+) -> SigningResult:
+    """Remove only Grove's validated signing block. Earlier settings remain;
+    inherited signing may still be enabled, as reported by enabled/effective.
+    An edited block is a conflict and will not be removed blindly.
+
+    CLI: `gwt signing disable --scope repo|zone [--scope-dir DIR] [--dry-run]`
+    """
+    return _ops.op_signing_disable(scope=scope, scope_dir=scope_dir, dry_run=dry_run, cwd=cwd)
+
+
+@mcp.tool(annotations=_ann("Diagnose commit signing", idempotent=False))
+def grove_signing_doctor(
+    test: Annotated[bool, Field(description="Explicitly sign and verify a disposable commit; executes configured signer/dynamic selection, never target hooks or refs.")] = False,
+    error_text: Annotated[Optional[str], Field(description="Previous signing/server error (UTF-8, at most 16 KiB); treated as data and redacted, never executed.")] = None,
+    fix: Annotated[bool, Field(description="Restrict selected private-key permissions on POSIX or attempt non-interactive agent loading, then diagnose again; never select a key, enable signing or rewrite commits.")] = False,
+    dry_run: Annotated[bool, Field(description="Inspect and plan only; skip signing tests, repairs and all configuration writes.")] = False,
+    cwd: Cwd = None,
+) -> SigningDoctorResult:
+    """Diagnose effective SSH signing, key availability and local verification.
+    Interpret supplied errors without a provider connection. Distinguish signing,
+    cryptographic verification and configured local trust; provider recognition
+    remains not_checked. Other signing formats are not converted automatically.
+
+    CLI: `gwt signing doctor [--test] [--error-file PATH] [--fix] [--dry-run]`
+    """
+    return _ops.op_signing_doctor(test=test, error_text=error_text, fix=fix, dry_run=dry_run, cwd=cwd)
 
 
 def main() -> None:

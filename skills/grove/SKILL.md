@@ -1,6 +1,6 @@
 ---
 name: grove
-description: grove worktrees (gwt, grove_* MCP, .bare/) — start or resume a ticket ("arranca el TICKET-123"), bring origin changes ("trae lo de origin"), clean merged worktrees ("limpia los worktrees"), fix git locks. Also adopts existing clones, creates temp and release worktrees, finds a repo's path and diagnoses repo hygiene. Triggers on "start working on ticket X", "update from origin", gwt, worktrees.
+description: grove worktrees (gwt, grove_* MCP, .bare/) — start or resume a ticket ("arranca el TICKET-123"), bring origin changes ("trae lo de origin"), clean merged worktrees ("limpia los worktrees"), fix git locks. Also configures and diagnoses SSH commit signing, adopts existing clones, creates temp and release worktrees, finds a repo's path and diagnoses repo hygiene. Triggers on "start working on ticket X", "update from origin", gwt, worktrees.
 license: GPL-3.0-or-later
 compatibility: Requires grove (pipx install "grove-wt[mcp]") and git. Optional relative worktree paths need git >= 2.48.
 metadata:
@@ -43,6 +43,9 @@ up side by side; act only on the repo the user named.
 | clone a new repo | `grove_setup(url, profile?)` | `gwt setup <url>` |
 | merge tickets into the shared integration branch (`integration_branch`) | `grove_publish(targets=[…])` | `gwt publish PROJ-1 PROJ-2` |
 | diagnose SSH accounts / preview repairs | `grove_ssh_doctor(fix=true, dry_run=true)` | `gwt ssh doctor --fix --dry-run` |
+| configure SSH commit signing | `grove_signing_enable(scope="repo", account=…, dry_run=true)` | `gwt signing enable --scope repo --account ALIAS --dry-run` |
+| diagnose signing or a verified-signature rejection | `grove_signing_doctor(cwd=…, error_text=…, test=true)` | `gwt signing doctor --test [--error-file FILE]` |
+| remove managed signing settings | `grove_signing_disable(scope="repo", dry_run=true)` | `gwt signing disable --scope repo --dry-run` |
 | a push/fetch fails for SSH, or a new GitHub/Bitbucket account | `grove_ssh_check(live=true)`, `grove_ssh_add` | `gwt ssh check`, `gwt ssh add` |
 
 Default to **`grove_start`** for anything like "work on / start / continue
@@ -137,3 +140,7 @@ refuses to open the repo, or an upgrade doesn't show up.
 Read [references/configuration.md](references/configuration.md) when the user
 wants to change the base branch, ticket rules, profiles or relative worktree
 paths.
+
+Read [references/signing.md](references/signing.md) for first-time signing,
+signing errors, verification trust or removing signing settings. Local tests do
+not certify remote recognition; users register the public signing key themselves.

@@ -685,3 +685,46 @@ agent state. After applying repairs, use `remaining_issues` / `remaining_finding
 and `failures` to see what still needs attention; `applied` counts verified repairs.
 Existing signing settings survive SSH account updates and removals. Configuring
 commit signatures remains a separate task.
+
+## First-time SSH signing
+
+If you already have an SSH key, use it explicitly with `signing enable --key`.
+Otherwise provision an account/key first, entering a passphrase in the terminal:
+
+```bash
+gwt ssh add personal-gh --host github.com --no-identity --print-pubkey
+# Keep the printed PUBLIC key for manual registration as a signing key.
+gwt signing enable --scope repo --account personal-gh -C ~/workspace/repo/main --dry-run
+gwt signing enable --scope repo --account personal-gh -C ~/workspace/repo/main
+gwt signing doctor --test -C ~/workspace/repo/main
+```
+
+The public key printed by `ssh add` belongs to that account's private key; upload
+it yourself to the platform hosting the remote, choosing its signing-key role
+when applicable. Registering a key for SSH authentication may be a separate step.
+Do not upload the private file. The platform may also require your commit email
+to belong to your account. A successful local test does not certify that remote
+registration is complete.
+
+For several repositories in an existing Grove zone, use `--scope zone` with its
+`--scope-dir` instead of repeating configuration in each repo. To diagnose a
+later signing failure, start with `signing doctor`; supply the saved error with
+`--error-file`, or run `--test` for a bounded test. Encrypted keys need unlocking
+in the terminal/agent. Dry-run never signs, even with `--test` or `--fix`.
+
+### Separate personal and work folders
+
+If you already have a personal identity zone and a work identity zone, activate
+signing once per existing zone with the corresponding account. Account inventory
+shows each `zone` directory; it may be a parent of your workspace, so review its
+reach first. For example, with aliases `personal-gh` and `work-gh`:
+
+```bash
+gwt signing enable --scope zone --account personal-gh -C ~/personal/workspace/repo/main --dry-run
+gwt signing enable --scope zone --account work-gh -C ~/company/github/workspace/repo/main --dry-run
+```
+
+Apply the corresponding reviewed plan without `--dry-run`. Each zone keeps its
+own email/routing and signing key. A repo outside the chosen zone is rejected;
+removing one zone's managed signing does not change the other. Use `--scope repo`
+when you intend to configure a single repository instead of the whole zone.

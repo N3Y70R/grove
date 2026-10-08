@@ -149,6 +149,9 @@ SSH discovery / account provisioning (machine-level; see USAGE §`gwt ssh …`):
 `grove_ssh_aliases` (read-only repo↔alias map), `grove_ssh_add`,
 `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove`.
 
+SSH signing: `grove_signing_enable`, `grove_signing_disable`,
+`grove_signing_doctor` (repo/zone scope, dry-run and local diagnosis).
+
 Destructive tools (`grove_remove`, `grove_reset`, `grove_publish` with
 `regenerate`, and `grove_ssh_remove`) require a `confirm: true` argument; the
 agent must pass it explicitly, which is your safety gate.
@@ -356,3 +359,26 @@ there; MCP never prompts or removes a passphrase.
 `grove_reset(dry_run=true, cwd="/path/to/repo/main")` previews losses and steps
 without confirmation or a reset. Actual execution still requires `confirm=true`.
 Explicit `cwd` controls the implicit target and each call gets an independent policy.
+
+### SSH commit signing (first setup and diagnosis)
+
+Chat: “Configure this existing account to sign commits in this repository.”
+CLI: `gwt signing enable --scope repo --account personal-gh -C /path/repo/main --dry-run`.
+Tool: `grove_signing_enable(scope="repo", account="personal-gh", cwd="/path/repo/main", dry_run=true)`;
+apply the same selection with `dry_run=false` once the requested plan is clear.
+
+Chat: “Why did signing fail? Here is the error.”
+CLI: `gwt signing doctor --error-file /path/error.txt --test -C /path/repo/main`.
+Tool: `grove_signing_doctor(cwd="/path/repo/main", error_text="…", test=true)`.
+Passive diagnosis uses `test=false`; `test=true` runs configured signer/selector
+programs and signs a disposable commit without target hooks/refs. All operations
+support dry-run; doctor then skips repairs and the signing test.
+
+`grove_signing_disable(scope="repo", cwd="/path/repo/main", dry_run=true)`
+previews removing only managed settings. Inherited signing may remain enabled.
+Every new tool returns a detailed typed result shared with CLI JSON. Zone scope
+requires an existing identity zone and a repository within it. `error_text` is
+limited to 16 KiB and never executed. Doctor cannot certify provider registration:
+help the user register the public signing key themselves, and distinguish local
+trust from remote recognition. Never upload a private key or rewrite history to
+repair a server policy error automatically.

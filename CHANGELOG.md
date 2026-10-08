@@ -4,6 +4,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ## python — Unreleased
 
+### Added
+
+- SSH commit signing: `gwt signing enable|disable|doctor` and three typed MCP
+  tools. Explicit repository/zone key selection, effective configuration origins,
+  protected managed blocks and dry-run plans preserving external settings.
+- Disposable real signing/verification tests, separate configured local trust,
+  bounded non-interactive execution, redacted previous-error diagnosis without
+  provider credentials, and verified repair accounting.
+- First-time setup tutorial and signing guidance in the packaged Grove skill.
+
 ### Fixed
 
 - Dry-run skips doctor callbacks, keys, agent loading and backups in CLI/JSON/MCP;

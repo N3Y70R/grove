@@ -898,3 +898,48 @@ Headless JSON/MCP cannot generate an encrypted key interactively; use the termin
 for that step or explicitly choose `--no-passphrase`. Existing encrypted keys can
 be reused. If loading needs unlock, load the key in a terminal and diagnose again.
 An author email is not a commit signature; Grove does not configure signing yet.
+
+## SSH commit signing
+
+```bash
+gwt signing enable --scope repo --account personal-gh -C /path/repo/main --dry-run
+gwt signing enable --scope repo --account personal-gh -C /path/repo/main
+gwt signing enable --scope zone --key ~/.ssh/signing_key --scope-dir ~/work -C ~/work/repo/main
+gwt signing doctor -C /path/repo/main
+gwt signing doctor --test -C /path/repo/main
+gwt signing doctor --error-file /path/signing-error.txt --json -C /path/repo/main
+gwt signing doctor --fix --test --dry-run -C /path/repo/main
+gwt signing disable --scope repo --dry-run -C /path/repo/main
+```
+
+`enable` requires `--scope repo|zone` and exactly one of `--account`/`--key`.
+Repo settings are shared by all worktrees. Zone settings use an existing Grove
+identity zone; select `--scope-dir` unless the account supplies it, and target a
+repository inside the zone. Paths containing spaces are supported. Grove does
+not create a key in `signing enable`: first use `ssh add` or choose an existing
+SSH key. Signing and authentication can use different keys.
+
+`disable` removes only Grove's signing block and reports inherited signing that
+may remain enabled. External settings are preserved; edited managed blocks and
+competing includes/worktree/process overrides require review instead of overwrite.
+
+Doctor inspects Git's effective settings and reports their origins. `--test`
+signs/verifies a disposable commit, leaving target commits, refs and hooks intact;
+it runs configured signer/dynamic selection programs only when requested.
+Processes never prompt for passphrases: unlock/load encrypted keys in a terminal.
+Private material may work without an agent. Only public material requires the
+matching private key in the agent or an adjacent private file.
+
+`--fix` can restrict private-key permissions on POSIX or attempt a non-interactive load of the selected encrypted key and then
+rediagnoses. It never enables signing, chooses a key or rewrites commits.
+`--dry-run` skips all edits, repairs and signing tests (test status `skipped`).
+JSON uses the standard envelope, including verbose traces. Error files must be
+UTF-8 and at most 16 KiB; their contents are redacted and treated as data.
+
+Signing capability, cryptographic verification and configured local trust are
+separate results. Missing local `allowedSignersFile` is a warning: signing may
+work. `provider_verification=not_checked` always; manually register the public
+key as a signing key with your Git hosting platform. Server policy errors may
+also concern older unsigned commits. Doctor never repairs them by rewriting
+history. Exit codes: 0 without blocking findings, 1 pending blocking findings,
+2 operational failure, 3 invalid usage/context.

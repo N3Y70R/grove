@@ -9,6 +9,7 @@ from grove.core import platform as plat
 
 def test_paths_follow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     p = plat.paths()
     assert p.home == tmp_path
@@ -19,6 +20,7 @@ def test_paths_follow_home(tmp_path, monkeypatch):
 
 def test_normalize_gitdir_absolute_forwardslash_trailing(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     out = plat.normalize_gitdir("~/dropi")
     assert out.endswith("/")

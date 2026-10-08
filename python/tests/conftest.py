@@ -50,7 +50,9 @@ def _clean_env(monkeypatch, tmp_path):
     monkeypatch.delenv("GROVE_TICKET_PREFIX", raising=False)
     # Isolate from the host git config and pin the default branch to 'main', so
     # tests never depend on the runner's init.defaultBranch (CI often = 'master').
-    gitconfig = tmp_path / "gitconfig"
+    home = tmp_path / "_grove_home"
+    home.mkdir(exist_ok=True)
+    gitconfig = home / ".gitconfig"
     gitconfig.write_text("[init]\n\tdefaultBranch = main\n", encoding="utf-8")
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
     # Hide the host's ssh-agent: tests must see "no agent" (as in CI), otherwise

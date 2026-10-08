@@ -14,9 +14,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence
 
+from .platform import paths as _paths
+
 Echo = Callable[[Sequence[str]], None]
 
 SSH_CONFIG = Path.home() / ".ssh" / "config"
+_INITIAL_SSH_CONFIG = SSH_CONFIG
+
+
+def ssh_config_path():
+    return SSH_CONFIG if SSH_CONFIG != _INITIAL_SSH_CONFIG else _paths().ssh_config
 
 # Patterns that indicate successful authentication in the live test.
 _LIVE_OK_PATTERNS = (
@@ -55,6 +62,11 @@ class HostReport:
 
 
 SSH_DIR = Path.home() / ".ssh"
+_INITIAL_SSH_DIR = SSH_DIR
+
+
+def ssh_dir_path():
+    return SSH_DIR if SSH_DIR != _INITIAL_SSH_DIR else _paths().ssh_dir
 _NON_KEY_NAMES = {"config", "known_hosts", "known_hosts.old", "authorized_keys", "environment"}
 
 
@@ -62,11 +74,11 @@ _NON_KEY_NAMES = {"config", "known_hosts", "known_hosts.old", "authorized_keys",
 # Process helpers
 # --------------------------------------------------------------------------- #
 
-def _run(args: Sequence[str], echo: Optional[Echo] = None, timeout: Optional[int] = None):
+def _run(args: Sequence[str], echo: Optional[Echo] = None, timeout: Optional[int] = 10):
     if echo:
         echo(list(args))
     try:
-        return subprocess.run(args, text=True, capture_output=True, timeout=timeout)
+        return subprocess.run(args, text=True, capture_output=True, timeout=timeout, stdin=subprocess.DEVNULL)
     except FileNotFoundError:
         return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: not found")
     except subprocess.TimeoutExpired:
@@ -98,7 +110,7 @@ def host_from_url(url: str) -> Optional[str]:
 
 def _ssh_g(host: str, echo: Optional[Echo] = None):
     """Returns (cfg, error). error is None if all is well, or the reason from ssh -G."""
-    proc = _run(["ssh", "-G", host], echo=echo)
+    proc = _run(["ssh", "-F", str(ssh_config_path()) if ssh_config_path().is_file() else os.devnull, "-G", host], echo=echo)
     cfg: dict = {}
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "").strip().splitlines()
@@ -124,7 +136,7 @@ def _agent_fingerprints(echo: Optional[Echo] = None):
         m = re.search(r"(SHA256:[A-Za-z0-9+/=]+|MD5:[0-9a-f:]+)", line)
         if m:
             fps.append(m.group(1))
-    return True, fps
+    return proc.returncode in (0, 1), fps
 
 
 def _fingerprint_of(path: Path, echo: Optional[Echo] = None) -> Optional[str]:
@@ -153,7 +165,7 @@ def _identity_info(raw_path: str, agent_fps: List[str], echo: Optional[Echo]) ->
 
 
 def check_host(host: str, *, live: bool = False, echo: Optional[Echo] = None) -> HostReport:
-    rep = HostReport(target=host, config_present=SSH_CONFIG.is_file())
+    rep = HostReport(target=host, config_present=ssh_config_path().is_file())
     cfg, err = _ssh_g(host, echo)
     if err:
         rep.error = f"ssh -G failed: {err}"
@@ -198,11 +210,11 @@ def _live_test(host: str, user: Optional[str], echo: Optional[Echo]) -> LiveResu
 
 def list_local_keys(echo: Optional[Echo] = None) -> List[IdentityInfo]:
     """Private keys present in ~/.ssh (heuristic), for users without config."""
-    if not SSH_DIR.is_dir():
+    if not ssh_dir_path().is_dir():
         return []
     _, agent_fps = _agent_fingerprints(echo)
     keys: List[IdentityInfo] = []
-    for f in sorted(SSH_DIR.iterdir()):
+    for f in sorted(ssh_dir_path().iterdir()):
         if not f.is_file():
             continue
         name = f.name
@@ -216,10 +228,10 @@ def list_local_keys(echo: Optional[Echo] = None) -> List[IdentityInfo]:
 
 def list_config_hosts() -> List[str]:
     """Hosts declared in ~/.ssh/config (skips wildcard patterns)."""
-    if not SSH_CONFIG.is_file():
+    if not ssh_config_path().is_file():
         return []
     hosts: List[str] = []
-    for line in SSH_CONFIG.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in ssh_config_path().read_text(encoding="utf-8", errors="replace").splitlines():
         s = line.strip()
         if not s or s.startswith("#"):
             continue
@@ -228,3 +240,21 @@ def list_config_hosts() -> List[str]:
                 if "*" not in token and "?" not in token and token not in hosts:
                     hosts.append(token)
     return hosts
+
+
+def report_dict(rep) -> dict:
+    return {
+        "target": rep.target,
+        "hostname": rep.hostname,
+        "user": rep.user,
+        "identities_only": rep.identities_only,
+        "config_present": rep.config_present,
+        "identities": [
+            {"path": i.path, "exists": i.exists, "perms_ok": i.perms_ok, "loaded": i.loaded}
+            for i in rep.identities
+        ],
+        "agent_running": rep.agent_running,
+        "agent_keys": len(rep.agent_keys),
+        "live": ({"ok": rep.live.ok, "message": rep.live.message} if rep.live else None),
+        "error": rep.error,
+    }

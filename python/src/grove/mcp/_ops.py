@@ -73,10 +73,10 @@ def _wt_dict(wt: Worktree) -> dict:
     return worktree_dict(wt)
 
 
-def _target_worktree(git: GitRunner, repo: RepoContext, target: Optional[str]) -> Worktree:
+def _target_worktree(git: GitRunner, repo: RepoContext, target: Optional[str], cwd: Optional[str] = None) -> Worktree:
     if target:
         return core_remove.resolve_target(git, repo, target)
-    cwd = Path.cwd().resolve()
+    cwd = Path(cwd).resolve() if cwd else Path.cwd().resolve()
     for w in list_worktrees(git, repo, with_status=True):
         if w.is_bare or not w.branch:
             continue
@@ -85,13 +85,14 @@ def _target_worktree(git: GitRunner, repo: RepoContext, target: Optional[str]) -
             return w
         except ValueError:
             continue
-    raise UsageError("Specify 'target' (the worktree was not detected from the current directory).")
+    raise UsageError("Specify a worktree explicitly (not detected from the requested directory).")
 
 
 # --------------------------------------------------------------------------- #
 # Operations (1:1 with the CLI commands)
 # --------------------------------------------------------------------------- #
 
+@core_config.isolated_operation
 def op_setup(
     url: str,
     *,
@@ -133,6 +134,7 @@ def op_setup(
             "profile": profile_name, "base": core_config.DEFAULT_BASE}
 
 
+@core_config.isolated_operation
 def op_convert(
     *,
     path: Optional[str] = None,
@@ -161,6 +163,7 @@ def op_convert(
             "into": bool(into), "dry_run": dry_run}
 
 
+@core_config.isolated_operation
 def op_list(
     *,
     cwd: Optional[str] = None,
@@ -184,6 +187,7 @@ def op_list(
     return {"count": len(rows), "worktrees": rows}
 
 
+@core_config.isolated_operation
 def op_create(
     *,
     kind: str = "ticket",
@@ -217,6 +221,7 @@ def op_create(
     return {"path": str(path), "rel_path": rel, "branch": rel}
 
 
+@core_config.isolated_operation
 def op_track(
     *,
     branch: str,
@@ -231,6 +236,7 @@ def op_track(
             "branch": branch, "warnings": warnings}
 
 
+@core_config.isolated_operation
 def op_remove(
     *,
     target: Optional[str] = None,
@@ -266,37 +272,42 @@ def op_remove(
 _reset_losses = core_sync.reset_losses
 
 
+@core_config.isolated_operation
 def op_sync(
     *,
     target: Optional[str] = None,
     clean: bool = False,
     confirm: bool = False,
+    dry_run: bool = False,
     cwd: Optional[str] = None,
 ) -> dict:
     """Deprecated alias of op_reset."""
-    res = op_reset(target=target, clean=clean, confirm=confirm, cwd=cwd)
+    res = op_reset(target=target, clean=clean, confirm=confirm, dry_run=dry_run, cwd=cwd)
     res["deprecated"] = "use grove_reset"
     return res
 
 
+@core_config.isolated_operation
 def op_reset(
     *,
     target: Optional[str] = None,
     clean: bool = False,
     confirm: bool = False,
+    dry_run: bool = False,
     cwd: Optional[str] = None,
 ) -> dict:
-    if not confirm:
+    if not confirm and not dry_run:
         raise UsageError("reset DISCARDS local commits and changes in the worktree; "
                          "set confirm=true. To only bring remote changes use grove_fetch.")
-    git = _git()
+    git = GitRunner(dry_run=dry_run)
     repo = _enter(cwd)
-    wt = _target_worktree(git, repo, target)
+    wt = _target_worktree(git, repo, target, cwd)
     losses = _reset_losses(wt)
     upstream = core_sync.reset_worktree(git, repo, wt, clean=clean)
-    return {"worktree": wt.rel_path, "upstream": upstream, "discarded": losses}
+    return {"worktree": wt.rel_path, "upstream": upstream, "discarded": losses, "dry_run": dry_run}
 
 
+@core_config.isolated_operation
 def op_publish(
     *,
     targets: List[str],
@@ -344,31 +355,15 @@ def op_publish(
             "branches": branches, "base": base}
 
 
-def op_doctor(
-    *,
-    fix: bool = False,
-    cwd: Optional[str] = None,
-) -> dict:
-    git = _git()
+@core_config.isolated_operation
+def op_doctor(*, fix: bool = False, dry_run: bool = False,
+              cwd: Optional[str] = None) -> dict:
+    git = GitRunner(dry_run=dry_run)
     repo = _enter(cwd)
-    issues = core_doctor.diagnose(git, repo)
-    auto = [i for i in issues if i.fix is not None]
-    manual = [i for i in issues if i.fix is None]
-    applied = core_doctor.apply(issues) if (fix and auto) else 0
-    return {
-        "issues": [
-            {"kind": i.kind, "severity": i.severity, "target": i.target,
-             "message": i.message, "action": i.action, "fixable": i.fix is not None}
-            for i in issues
-        ],
-        "auto_fixable": len(auto),
-        "manual": len(manual),
-        "applied": applied,
-        "version": __version__,
-        "skills": core_doctor.skill_report(git, repo),
-    }
+    return core_doctor.report(git, repo, fix=fix, dry_run=dry_run)
 
 
+@core_config.isolated_operation
 def op_start(
     *,
     type: str,
@@ -385,11 +380,13 @@ def op_start(
                             base=base, fetch=fetch)
 
 
+@core_config.isolated_operation
 def op_skill_status() -> dict:
     from ..core import skill as core_skill
     return core_skill.machine_status()
 
 
+@core_config.isolated_operation
 def op_skill_install(
     *,
     target: str = "agents",
@@ -404,11 +401,13 @@ def op_skill_install(
     return core_skill.install(dest_root=root, force=force, dry_run=dry_run)
 
 
+@core_config.isolated_operation
 def op_repos(*, paths: Optional[List[str]] = None, depth: int = 3) -> dict:
     from ..core import repos as core_repos
     return core_repos.discover(paths or None, depth=depth)
 
 
+@core_config.isolated_operation
 def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
     from ..core import fetch as core_fetch
     git = _git()
@@ -416,6 +415,7 @@ def op_fetch(*, prune: bool = False, cwd: Optional[str] = None) -> dict:
     return {"prune": prune, "worktrees": core_fetch.fetch(git, repo, prune=prune)}
 
 
+@core_config.isolated_operation
 def op_compare(
     *,
     a: Optional[str] = None,
@@ -432,10 +432,11 @@ def op_compare(
         ref_label, rows = core_compare.compare_all_vs(git, repo, vs)
         return {"vs": ref_label, "rows": rows}
     if not a:
-        raise UsageError("Specify 'a' (the worktree/branch to compare).")
+        a = _target_worktree(git, repo, None, cwd).branch
     return core_compare.compare_one(git, repo, a, b)
 
 
+@core_config.isolated_operation
 def op_config_show(*, cwd: Optional[str] = None) -> dict:
     repo = _enter(cwd)
     pol = core_config.effective_policy()
@@ -443,6 +444,7 @@ def op_config_show(*, cwd: Optional[str] = None) -> dict:
             "version": __version__, **pol}
 
 
+@core_config.isolated_operation
 def op_config_set_ssh_alias(*, value: str, cwd: Optional[str] = None) -> dict:
     git = _git()
     repo = _enter(cwd)
@@ -469,6 +471,7 @@ def op_config_set_ssh_alias(*, value: str, cwd: Optional[str] = None) -> dict:
     return {"ssh_alias": core_config.SSH_ALIAS, "origin": new_url}
 
 
+@core_config.isolated_operation
 def op_config_set(*, key: str, value: str, cwd: Optional[str] = None) -> dict:
     repo = _enter(cwd)
     if key == "relative_worktrees":
@@ -481,30 +484,14 @@ def op_config_set(*, key: str, value: str, cwd: Optional[str] = None) -> dict:
     return {"key": key, "value": data.get(key), "config": data}
 
 
+@core_config.isolated_operation
 def op_config_unset(*, key: str, cwd: Optional[str] = None) -> dict:
     repo = _enter(cwd)
     data = core_config.unset_repo_value(repo.bare, key)
     return {"unset": key, "config": data}
 
 
-def _ssh_report_to_dict(rep) -> dict:
-    return {
-        "target": rep.target,
-        "hostname": rep.hostname,
-        "user": rep.user,
-        "identities_only": rep.identities_only,
-        "config_present": rep.config_present,
-        "identities": [
-            {"path": i.path, "exists": i.exists, "perms_ok": i.perms_ok, "loaded": i.loaded}
-            for i in rep.identities
-        ],
-        "agent_running": rep.agent_running,
-        "agent_keys": len(rep.agent_keys),
-        "live": ({"ok": rep.live.ok, "message": rep.live.message} if rep.live else None),
-        "error": rep.error,
-    }
-
-
+@core_config.isolated_operation
 def op_ssh_check(
     *,
     target: Optional[str] = None,
@@ -529,9 +516,10 @@ def op_ssh_check(
             if not host:
                 raise UsageError("No SSH origin here; pass 'target' (URL or host) or set all=true.")
         reports = [sshcheck.check_host(host, live=live)]
-    return {"hosts": [_ssh_report_to_dict(r) for r in reports]}
+    return {"hosts": [sshcheck.report_dict(r) for r in reports]}
 
 
+@core_config.isolated_operation
 def op_ssh_aliases(*, target: Optional[str] = None, cwd: Optional[str] = None) -> dict:
     """Maps a repo (or host/URL) to the SSH aliases that could serve it."""
     if target:
@@ -558,6 +546,7 @@ def op_ssh_aliases(*, target: Optional[str] = None, cwd: Optional[str] = None) -
 # SSH account provisioning (machine-level; no repo context). See spec §14.
 # --------------------------------------------------------------------------- #
 
+@core_config.isolated_operation
 def op_ssh_add(
     name: str,
     *,
@@ -583,41 +572,18 @@ def op_ssh_add(
     return sshprov.add_account(spec)
 
 
+@core_config.isolated_operation
 def op_ssh_accounts() -> dict:
-    inv = sshprov.read_inventory()
-    return {
-        "accounts": [
-            {
-                "name": a.name, "host": a.host, "key": a.key,
-                "zone": (z.scope_dir if (z := inv.zone_of(a)) else None),
-                "email": (z.email if z else None),
-                "routing": inv.routing_state(a),
-            }
-            for a in inv.accounts
-        ],
-        "zones": [
-            {"scope_dir": z.scope_dir, "email": z.email,
-             "identity_path": z.identity_path, "rewrites": z.rewrites}
-            for z in inv.zones
-        ],
-    }
+    return sshprov.inventory_dict()
 
 
-def op_ssh_doctor(*, fix: bool = False) -> dict:
-    findings = sshdoctor.diagnose()
-    auto = [f for f in findings if f.severity == "fix"]
-    review = [f for f in findings if f.severity == "review"]
-    applied = sshdoctor.apply_fixes(findings) if (fix and auto) else 0
-    return {
-        "findings": [
-            {"check": f.check, "severity": f.severity, "target": f.target,
-             "message": f.message, "fixable": f.fixer is not None}
-            for f in findings
-        ],
-        "auto_fixable": len(auto), "review": len(review), "applied": applied,
-    }
+@core_config.isolated_operation
+def op_ssh_doctor(*, fix: bool = False, dry_run: bool = False) -> dict:
+    return sshdoctor.report(fix=fix, dry_run=dry_run,
+                            git=GitRunner(dry_run=dry_run), interactive=False)
 
 
+@core_config.isolated_operation
 def op_ssh_remove(
     name: str,
     *,

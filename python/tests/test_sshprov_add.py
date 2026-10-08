@@ -7,7 +7,7 @@ import shutil
 
 import pytest
 
-from grove.core import blockedit, sshprov
+from grove.core import blockedit, sshprov, gitidentity
 from grove.core import platform as plat
 from grove.core.errors import ValidationError
 from grove.core.gitrunner import GitRunner
@@ -21,6 +21,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     blockedit.reset_backup_cache()
     return tmp_path
@@ -51,7 +52,7 @@ def test_add_full_account_writes_everything(home):
     # Git identity: includeIf + identity file + hardening.
     gitcfg = (home / ".gitconfig").read_text()
     assert "grove:zone=dropi" in gitcfg and "gitdir:" in gitcfg
-    ident = (home / ".config" / "grove" / "identities" / "dropi.gitconfig").read_text()
+    ident = (home / ".config" / "grove" / "identities" / f"{gitidentity.zone_id_for(home / 'dropi')}.gitconfig").read_text()
     assert "victor.orobio@dropi.co" in ident
     assert 'git@dropi-gh:' in ident and "insteadOf = git@github.com:" in ident
 
@@ -83,7 +84,7 @@ def test_two_accounts_share_a_zone(home):
                               email="x@dropi.co", scope_dir=home / "dropi"))
     sshprov.add_account(_spec("dropi-bb", host="bitbucket.org",
                               email="x@dropi.co", scope_dir=home / "dropi"))
-    ident = (home / ".config" / "grove" / "identities" / "dropi.gitconfig").read_text()
+    ident = (home / ".config" / "grove" / "identities" / f"{gitidentity.zone_id_for(home / 'dropi')}.gitconfig").read_text()
     assert "git@dropi-gh:" in ident and "git@dropi-bb:" in ident
     inv = sshprov.read_inventory(plat.paths())
     assert len(inv.zones) == 1
@@ -123,6 +124,6 @@ def test_remove_account_cleans_block_and_zone(home):
     assert "Host dropi-gh" not in cfg
     # Zone became empty → includeIf + identity file gone.
     assert "grove:zone=dropi" not in (home / ".gitconfig").read_text()
-    assert not (home / ".config" / "grove" / "identities" / "dropi.gitconfig").exists()
+    assert not (home / ".config" / "grove" / "identities" / f"{gitidentity.zone_id_for(home / 'dropi')}.gitconfig").exists()
     # Key kept by default.
     assert (home / ".ssh" / "id_ed25519_dropi_gh").is_file()

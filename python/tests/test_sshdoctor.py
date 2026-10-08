@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from grove.core import blockedit, sshdoctor, sshprov
+from grove.core import gitidentity, blockedit, sshdoctor, sshprov
 from grove.core import platform as plat
 from grove.core.gitrunner import GitRunner
 
@@ -17,6 +17,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     blockedit.reset_backup_cache()
     return tmp_path
@@ -77,7 +78,7 @@ def test_detects_and_fixes_useconfigonly(home):
 def test_detects_and_fixes_missing_insteadof(home):
     (home / "dropi").mkdir()
     _add(home)
-    ident = home / ".config" / "grove" / "identities" / "dropi.gitconfig"
+    ident = home / ".config" / "grove" / "identities" / f"{gitidentity.zone_id_for(home / 'dropi')}.gitconfig"
     # Strip the url rewrite, leaving the account un-routed.
     ident.write_text("[user]\n    email = x@dropi.co\n")
     findings = sshdoctor.diagnose()

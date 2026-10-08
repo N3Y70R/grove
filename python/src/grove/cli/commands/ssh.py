@@ -74,24 +74,6 @@ def _render_ssh_report(out: Output, rep) -> None:
         out.plain(f"  {out._c('→', 'dim')} tip: add --live to test real authentication")
 
 
-def _ssh_report_to_dict(rep) -> dict:
-    return {
-        "target": rep.target,
-        "hostname": rep.hostname,
-        "user": rep.user,
-        "identities_only": rep.identities_only,
-        "config_present": rep.config_present,
-        "identities": [
-            {"path": i.path, "exists": i.exists, "perms_ok": i.perms_ok, "loaded": i.loaded}
-            for i in rep.identities
-        ],
-        "agent_running": rep.agent_running,
-        "agent_keys": len(rep.agent_keys),
-        "live": ({"ok": rep.live.ok, "message": rep.live.message} if rep.live else None),
-        "error": rep.error,
-    }
-
-
 def cmd_ssh_check(args, out: Output) -> int:
     from ...core import sshcheck
 
@@ -123,7 +105,7 @@ def cmd_ssh_check(args, out: Output) -> int:
 
     if out.json_mode:
         out.set_result({
-            "hosts": [_ssh_report_to_dict(r) for r in reports],
+            "hosts": [sshcheck.report_dict(r) for r in reports],
             "local_keys": ([
                 {"path": k.path, "exists": k.exists, "perms_ok": k.perms_ok, "loaded": k.loaded}
                 for k in local_keys
@@ -204,9 +186,6 @@ def cmd_ssh_aliases(args, out: Output) -> int:
 def cmd_ssh_add(args, out: Output) -> int:
     from ...core import sshprov
 
-    if out.json_mode and not args.no_passphrase:
-        raise UsageError("--json requires --no-passphrase (no TTY to enter a passphrase).")
-
     spec = sshprov.AddSpec(
         name=args.name,
         host=args.host,
@@ -217,11 +196,12 @@ def cmd_ssh_add(args, out: Output) -> int:
         no_agent=args.no_agent,
         no_passphrase=args.no_passphrase,
         dry_run=args.dry_run,
+        interactive=not out.json_mode,
     )
     git = GitRunner(dry_run=args.dry_run, on_command=out.git_echo)
     res = sshprov.add_account(spec, git, echo=out.git_echo)
 
-    if args.print_pubkey:
+    if args.print_pubkey and not out.json_mode:
         print(res["pubkey"])
         return 0
 
@@ -255,32 +235,16 @@ def cmd_ssh_accounts(args, out: Output) -> int:
 
     inv = sshprov.read_inventory()
 
+    if out.json_mode:
+        out.set_result(sshprov.inventory_dict(echo=out.git_echo, inventory=inv))
+        out.success(f"{len(inv.accounts)} account(s)")
+        return 0
+
     rows = []
     for a in inv.accounts:
         st = sshprov.key_status(a, out.git_echo)
         z = inv.zone_of(a)
         rows.append((a, st, z, inv.routing_state(a)))
-
-    if out.json_mode:
-        out.set_result({
-            "accounts": [
-                {
-                    "name": a.name, "host": a.host, "key": a.key,
-                    "key_exists": st.exists, "in_agent": st.in_agent,
-                    "zone": (z.scope_dir if z else None),
-                    "email": (z.email if z else None),
-                    "routing": routing,
-                }
-                for (a, st, z, routing) in rows
-            ],
-            "zones": [
-                {"scope_dir": z.scope_dir, "email": z.email,
-                 "identity_path": z.identity_path, "rewrites": z.rewrites}
-                for z in inv.zones
-            ],
-        })
-        out.success(f"{len(inv.accounts)} account(s)")
-        return 0
 
     if not rows:
         out.plain("No grove-managed SSH accounts. Add one with: gwt ssh add <name> --host <host> --email <email> --scope-dir <dir>")
@@ -327,54 +291,31 @@ def cmd_ssh_remove(args, out: Output) -> int:
 def cmd_ssh_doctor(args, out: Output) -> int:
     from ...core import sshdoctor
 
-    git = GitRunner(on_command=out.git_echo)
-    findings = sshdoctor.diagnose(git=git, echo=out.git_echo)
-    auto = [f for f in findings if f.severity == "fix"]
-    review = [f for f in findings if f.severity == "review"]
-
-    _MARK = {"fix": ("✗", "red"), "review": ("!", "yellow")}
-
-    if out.json_mode:
-        applied = sshdoctor.apply_fixes(findings) if args.fix and auto else 0
-        out.set_result({
-            "findings": [
-                {"check": f.check, "severity": f.severity, "target": f.target,
-                 "message": f.message, "fixable": f.fixer is not None}
-                for f in findings
-            ],
-            "auto_fixable": len(auto), "review": len(review), "applied": applied,
-        })
-        out.success(f"{len(findings)} finding(s); {len(auto)} auto-fixable, {len(review)} manual")
-        return 1 if (len(review) or (auto and not args.fix)) else 0
-
-    if not findings:
-        out.success("No problems: the SSH/git multi-account setup is healthy.")
-        return 0
-
-    out.plain("Findings:")
-    for f in findings:
-        sym, color = _MARK[f.severity]
-        out.plain(f"  {out._c(sym, color)} {f.check:<14} {f.target}")
-        out.plain(f"      {f.message}")
-    out.plain(f"{len(auto)} auto-fixable · {len(review)} require manual review.")
-
-    if args.dry_run or not auto:
-        return 1 if (review or auto) else 0
-
+    git = GitRunner(dry_run=args.dry_run, on_command=out.git_echo)
+    interactive = not out.json_mode and not args.dry_run
+    findings = sshdoctor.diagnose(git=git, echo=out.git_echo, interactive=interactive)
+    auto = [f for f in findings if f.severity == "fix" and f.fixer is not None]
+    if not out.json_mode:
+        for f in findings:
+            out.warn(f"{f.check}: {f.target}: {f.message}")
     do_fix = args.fix
-    if not do_fix:
+    if interactive and auto and not do_fix:
         try:
-            ans = input(f"Apply the {len(auto)} automatic fixes? [y/N] ").strip().lower()
+            do_fix = input(f"Apply the {len(auto)} automatic fixes? [y/N] ").strip().lower() in ("y", "yes")
         except EOFError:
-            ans = ""
-        do_fix = ans in ("y", "yes")
-
-    if do_fix:
-        n = sshdoctor.apply_fixes(findings)
-        out.success(f"{n} fix(es) applied.")
-        return 1 if review else 0
-    out.plain("No changes were applied.")
-    return 1
+            do_fix = False
+    result = sshdoctor.report(fix=do_fix, dry_run=args.dry_run, findings=findings,
+                              git=git, echo=out.git_echo, interactive=interactive)
+    out.set_result(result)
+    remaining = result["remaining_findings"]
+    for failure in result["failures"]:
+        out.warn(f"{failure['target']}: {failure['message']}")
+    if not remaining and not result["failures"]:
+        out.success("No problems: the SSH/git multi-account setup is healthy.")
+    else:
+        out.success(f"{len(findings)} finding(s); {result['applied']} repair(s) verified; "
+                    f"{len(remaining)} remain" + (" (dry-run)" if args.dry_run else ""))
+    return 1 if remaining or result["failures"] else 0
 
 
 def cmd_ssh_help(args, out: Output) -> int:

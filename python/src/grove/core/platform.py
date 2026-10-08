@@ -38,11 +38,21 @@ def _home() -> Path:
 
 def paths() -> Paths:
     home = _home()
+    override = os.environ.get("GIT_CONFIG_GLOBAL")
+    if override is not None:
+        gitconfig = Path(os.path.expanduser(override))
+        if not gitconfig.is_absolute():
+            gitconfig = home / gitconfig  # global Git operations run from home
+    else:
+        gitconfig = home / ".gitconfig"
+        xdg = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config"))) / "git" / "config"
+        if not gitconfig.exists() and xdg.is_file():
+            gitconfig = xdg
     return Paths(
         home=home,
         ssh_dir=home / ".ssh",
         ssh_config=home / ".ssh" / "config",
-        gitconfig=home / ".gitconfig",
+        gitconfig=gitconfig,
         identities_dir=home / ".config" / "grove" / "identities",
         backups_dir=home / ".config" / "grove" / "backups",
     )
@@ -95,13 +105,18 @@ def enforce_key_perms(path: Path) -> Optional[bool]:
 # ssh-agent
 # --------------------------------------------------------------------------- #
 
-def _run(args: Sequence[str], echo: Optional[Echo] = None):
+def _run(args: Sequence[str], echo: Optional[Echo] = None, *, interactive=False, timeout=10):
     if echo:
         echo(list(args))
     try:
-        return subprocess.run(args, text=True, capture_output=True)
+        env = None if interactive else {**os.environ, "SSH_ASKPASS_REQUIRE": "never"}
+        return subprocess.run(args, text=True, capture_output=True, timeout=timeout,
+                              stdin=None if interactive else subprocess.DEVNULL,
+                              start_new_session=not interactive, env=env)
     except FileNotFoundError:
         return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: not found")
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", "timeout; unlock the key in a terminal and retry")
 
 
 def git_process_running() -> Optional[bool]:
@@ -135,16 +150,16 @@ def git_process_running() -> Optional[bool]:
 def agent_running() -> bool:
     """Whether an ssh-agent is reachable. `ssh-add -l` returns 2 when it is not."""
     proc = _run(["ssh-add", "-l"])
-    return proc.returncode not in (2, 127)
+    return proc.returncode in (0, 1)
 
 
-def agent_add(key: Path, echo: Optional[Echo] = None) -> bool:
+def agent_add(key: Path, echo: Optional[Echo] = None, *, interactive=False) -> bool:
     """Load a key into the agent. Uses the macOS Keychain when available."""
     args = ["ssh-add"]
     if keychain_supported():
         args.append("--apple-use-keychain")
     args.append(str(key))
-    return _run(args, echo=echo).returncode == 0
+    return _run(args, echo=echo, interactive=interactive, timeout=60 if interactive else 10).returncode == 0
 
 
 # --------------------------------------------------------------------------- #
@@ -166,7 +181,7 @@ def normalize_gitdir(scope_dir: Path) -> str:
     p = Path(os.path.expanduser(str(scope_dir)))
     if not p.is_absolute():
         p = _home() / p
-    text = p.as_posix()
+    text = Path(os.path.normpath(str(p))).as_posix()
     if not text.endswith("/"):
         text += "/"
     return text

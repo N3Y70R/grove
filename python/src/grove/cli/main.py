@@ -11,7 +11,8 @@ import json
 import sys
 from typing import List, Optional
 
-from ..core.errors import WtError
+from ..core.errors import WtError, UsageError
+from ..core import config as core_config
 from .commands import maintenance, remote, repo, repos, skill, ssh, worktrees
 from .output import Output
 
@@ -44,6 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+@core_config.isolated_operation
 def main(argv: Optional[List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = build_parser()
@@ -74,6 +76,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(json.dumps(envelope, indent=2, ensure_ascii=False))
 
     try:
+        if json_mode and getattr(args, "confirm_each", False):
+            raise UsageError("--json cannot be combined with --confirm-each (JSON never prompts).")
         rc = args.func(args, out)
         if json_mode:
             _emit({

@@ -91,7 +91,12 @@ class Output:
 
     def git_echo(self, cmd: Sequence[str]) -> None:
         if self.verbose:
-            print(f"  {self._c('$ ' + ' '.join(cmd), 'dim')}")
+            from ..core.redaction import redact
+            trace = redact('$ ' + ' '.join(cmd))
+            if self.json_mode:
+                self.log.append(trace)
+            else:
+                print(f"  {self._c(trace, 'dim')}")
 
     def confirm_git(self, cmd: Sequence[str]) -> bool:
         try:

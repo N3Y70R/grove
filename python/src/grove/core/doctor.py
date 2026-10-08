@@ -442,17 +442,40 @@ _FIX_ORDER = {"stale-lock": 0, "stale-tmp": 0, "bare-head": 0.5, "parking-branch
               "upstream": 1, "naming": 2, "release-format": 3, "orphan": 4}
 
 
+def issue_dict(issue: Issue) -> dict:
+    from .redaction import redact
+    return {"kind": issue.kind, "severity": issue.severity, "target": issue.target,
+            "message": redact(issue.message), "action": redact(issue.action),
+            "fixable": issue.fix is not None}
+
+
+def _actions(issues):
+    ordered = sorted((i for i in issues if i.fix is not None),
+                     key=lambda i: _FIX_ORDER.get(i.kind, 9))
+    return [(i.kind, i.target, i.fix) for i in ordered]
+
+
 def apply(issues: List[Issue]) -> int:
-    """Runs the available automatic fixes. Returns how many it applied."""
-    fixables = [i for i in issues if i.fix is not None]
-    fixables.sort(key=lambda i: _FIX_ORDER.get(i.kind, 9))
-    applied = 0
-    seen = set()
-    for issue in fixables:
-        key = id(issue.fix)
-        if key in seen:          # avoids repeating the same global fix (e.g. prune)
-            continue
-        seen.add(key)
-        issue.fix()
-        applied += 1
-    return applied
+    from .repairs import execute
+    return len(execute(_actions(issues))["completed"])
+
+
+def report(git, repo, *, fix=False, dry_run=False, issues=None) -> dict:
+    from .. import __version__
+    from .repairs import execute
+    issues = diagnose(git, repo) if issues is None else issues
+    run = {"attempted": 0, "completed": [], "failures": []}
+    remaining = issues
+    if fix and not dry_run and not git.dry_run:
+        run = execute(_actions(issues))
+        if run["attempted"]:
+            remaining = diagnose(git, repo)
+    pending = {(i.kind, i.target) for i in remaining}
+    return {"issues": [issue_dict(i) for i in issues],
+            "auto_fixable": sum(i.fix is not None for i in issues),
+            "manual": sum(i.fix is None for i in issues),
+            "applied": sum(key not in pending for key in run["completed"]),
+            "attempted": run["attempted"], "failures": run["failures"],
+            "remaining_issues": [issue_dict(i) for i in remaining],
+            "dry_run": dry_run or git.dry_run, "version": __version__,
+            "skills": skill_report(git, repo)}

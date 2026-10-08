@@ -20,7 +20,7 @@ def _enter_repo(args) -> RepoContext:
 
 
 def _make_runner(args, out: Output) -> GitRunner:
-    confirm = out.confirm_git if getattr(args, "confirm_each", False) else None
+    confirm = out.confirm_git if getattr(args, "confirm_each", False) and not getattr(args, "dry_run", False) else None
     return GitRunner(
         on_command=out.git_echo,
         confirm=confirm,

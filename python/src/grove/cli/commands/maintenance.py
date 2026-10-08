@@ -8,76 +8,35 @@ from ...core import config as core_config
 from ...core.errors import WtError, UsageError
 from ...core.gitrunner import GitRunner
 from ..output import Output
-from .._shared import _common, _enter_repo, _make_runner
+from .._shared import _common, _enter_repo, _make_runner, _base_dir
 
 
 def cmd_doctor(args, out: Output) -> int:
-    from ... import __version__
     from ...core import doctor as core_doctor
-
     git = _make_runner(args, out)
     repo = _enter_repo(args)
     issues = core_doctor.diagnose(git, repo)
     auto = [i for i in issues if i.fix is not None]
-    manual = [i for i in issues if i.fix is None]
-
-    if out.json_mode:
-        applied = 0
-        if args.fix and auto:
-            applied = core_doctor.apply(issues)
-        out.set_result({
-            "issues": [
-                {"kind": i.kind, "severity": i.severity, "target": i.target,
-                 "message": i.message, "action": i.action, "fixable": i.fix is not None}
-                for i in issues
-            ],
-            "auto_fixable": len(auto),
-            "manual": len(manual),
-            "applied": applied,
-            "version": __version__,
-            "skills": core_doctor.skill_report(git, repo),
-        })
-        out.success(
-            f"{len(issues)} problem(s); {len(auto)} auto-fixable, {len(manual)} manual"
-            + (f"; {applied} applied" if args.fix else "")
-        )
-        return 0
-
-    skills = core_doctor.skill_report(git, repo)
-    checked = ", ".join(f"{s['path']} ({s['installed_version'] or '?'})" for s in skills)
-    skill_line = f"Agent Skill copies checked: {checked}" if skills else \
-        "Agent Skill: no installed copy (`gwt skill install`)"
-    if not issues:
-        out.success("No problems: all worktrees follow the convention.")
-        out.plain(skill_line)
-        return 0
-
-    out.plain(f"Problems found in {repo.name}:")
-    for i in issues:
-        mark = out._c("✗", "red") if i.fix is not None else out._c("!", "yellow")
-        out.plain(f"  {mark} {i.kind:<14} {i.target}")
-        out.plain(f"      {i.message}  ->  {i.action}")
-    out.plain(f"{len(auto)} auto-fixable · {len(manual)} require manual review.")
-    out.plain(skill_line)
-
-    if args.dry_run or not auto:
-        if not auto and manual:
-            out.plain("(nothing to fix automatically)")
-        return 0
-
     do_fix = args.fix
-    if not do_fix:
-        try:
-            ans = input(f"Apply the {len(auto)} automatic fixes? [y/N] ").strip().lower()
-        except EOFError:
-            ans = ""
-        do_fix = ans in ("y", "yes")
-
-    if do_fix:
-        n = core_doctor.apply(issues)
-        out.success(f"{n} fix(es) applied.")
-    else:
-        out.plain("No changes were applied.")
+    if not out.json_mode:
+        for i in issues:
+            out.warn(f"{i.kind}: {i.target}: {i.message} -> {i.action}")
+        if auto and not args.dry_run and not do_fix:
+            try:
+                do_fix = input(f"Apply the {len(auto)} automatic fixes? [y/N] ").strip().lower() in ("y", "yes")
+            except EOFError:
+                do_fix = False
+    result = core_doctor.report(git, repo, fix=do_fix, dry_run=args.dry_run, issues=issues)
+    out.set_result(result)
+    for failure in result["failures"]:
+        out.warn(f"Repair failed: {failure['target']}: {failure['message']}")
+    out.success(f"{len(issues)} problem(s); {result['applied']} verified fix(es); "
+                f"{len(result['remaining_issues'])} remaining.")
+    if not out.json_mode:
+        skills = result["skills"]
+        checked = ", ".join(f"{s['path']} ({s['installed_version'] or '?'})" for s in skills)
+        out.plain(f"Agent Skill copies checked: {checked}" if skills else
+                  "Agent Skill: no installed copy (`gwt skill install`)")
     return 0
 
 
@@ -87,7 +46,7 @@ def _worktree_target(args, git, repo):
     if getattr(args, "target", None):
         from ...core import remove as core_remove
         return core_remove.resolve_target(git, repo, args.target)
-    cwd = Path.cwd().resolve()
+    cwd = _base_dir(args)
     for w in _lw(git, repo, with_status=False):
         if w.is_bare or not w.branch:
             continue

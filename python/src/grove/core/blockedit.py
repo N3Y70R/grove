@@ -15,6 +15,11 @@ from __future__ import annotations
 
 import os
 import re
+import hashlib
+import tempfile
+from contextlib import contextmanager
+from contextvars import ContextVar
+from threading import RLock
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -35,6 +40,7 @@ _MARKER_RE = re.compile(
 
 def _find_region(lines: List[str], kind: str, id: str) -> Tuple[Optional[int], Optional[int]]:
     """(start, end) line indices of a marked region, or (None, None). Validates balance."""
+    find_blocks("\n".join(lines))  # validate all regions, including duplicates elsewhere
     start: Optional[int] = None
     end: Optional[int] = None
     for i, line in enumerate(lines):
@@ -113,6 +119,7 @@ def remove_block(text: str, kind: str, id: str) -> Tuple[str, bool]:
 def find_blocks(text: str, kind: Optional[str] = None) -> Dict[str, str]:
     """{id: body} for every grove-managed region (optionally filtered by ``kind``)."""
     out: Dict[str, str] = {}
+    seen = set()
     cur_kind: Optional[str] = None
     cur_id: Optional[str] = None
     buf: List[str] = []
@@ -120,15 +127,25 @@ def find_blocks(text: str, kind: Optional[str] = None) -> Dict[str, str]:
         m = _MARKER_RE.match(line.strip())
         if m:
             if m.group("dir") == ">>>":
+                if cur_id is not None:
+                    raise ValidationError("Nested Grove markers; repair the file before editing.")
+                marker = (m.group("kind"), m.group("id"))
+                if marker in seen:
+                    raise ValidationError(f"Duplicate Grove marker {marker[0]}={marker[1]}")
+                seen.add(marker)
                 cur_kind, cur_id, buf = m.group("kind"), m.group("id"), []
             elif cur_id and m.group("kind") == cur_kind and m.group("id") == cur_id:
                 if kind is None or cur_kind == kind:
                     out[cur_id] = "\n".join(buf)
                 cur_kind = cur_id = None
                 buf = []
+            else:
+                raise ValidationError("Unmatched closing Grove marker; repair the file before editing.")
             continue
         if cur_id is not None:
             buf.append(line)
+    if cur_id is not None:
+        raise ValidationError(f"Unbalanced Grove marker {cur_kind}={cur_id} (missing close)")
     return out
 
 
@@ -138,42 +155,110 @@ def find_blocks(text: str, kind: Optional[str] = None) -> Dict[str, str]:
 
 def read_text(path: Path) -> str:
     p = Path(path)
-    return p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+    try:
+        return p.read_text(encoding="utf-8") if p.is_file() else ""
+    except UnicodeError as exc:
+        raise ValidationError(f"Invalid UTF-8 in {p}; no configuration edit performed.") from exc
 
 
-def write_atomic(path: Path, text: str) -> None:
+_UNCHECKED = object()
+
+
+@contextmanager
+def _file_lock(path: Path):
+    """Cooperating writers lock a stable file while comparing and replacing.
+
+    Keep the lock file: unlinking it allows two processes to lock different
+    inodes. These are only created for real mutations, never for previews.
+    """
+    lock = path.with_name(f".{path.name}.grove-lock")
+    with lock.open("a+b") as stream:
+        if os.name == "nt":
+            import msvcrt
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def write_atomic(path: Path, text: str, *, expected=_UNCHECKED) -> None:
     """Write via tmp + os.replace (no half-written config); mkdir parents; chmod 600 (POSIX)."""
     p = Path(path)
+    if p.is_symlink():
+        p = p.resolve(strict=True)  # preserve the user's config symlink
+    find_blocks(text)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(p.name + ".grove-tmp")
-    tmp.write_text(text, encoding="utf-8")
-    if os.name != "nt":
+    with _EDIT_LOCK, _file_lock(p):
+        if expected is not _UNCHECKED and read_text(p) != expected:
+            raise ValidationError(f"Concurrent edit of {p}; no overwrite performed. Retry after review.")
+        if p.is_file() and read_text(p) == text:
+            return
+        fd, name = tempfile.mkstemp(prefix=f".{p.name}.grove-", dir=p.parent)
+        tmp = Path(name)
         try:
-            os.chmod(tmp, 0o600)
-        except OSError:
-            pass
-    os.replace(tmp, p)
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
+                stream.write(text)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(tmp, p)
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 _BACKED_UP: set = set()
+_BACKUP_SCOPE = ContextVar("grove_backup_scope", default=None)
+_EDIT_LOCK = RLock()
+
+
+@contextmanager
+def edit_scope():
+    """One backup per file per operation, with reentrant in-process edits."""
+    with _EDIT_LOCK:
+        token = _BACKUP_SCOPE.set(set()) if _BACKUP_SCOPE.get() is None else None
+        try:
+            yield
+        finally:
+            if token is not None:
+                _BACKUP_SCOPE.reset(token)
 
 
 def reset_backup_cache() -> None:
     """Clear the per-run backup cache (used by tests)."""
     _BACKED_UP.clear()
+    current = _BACKUP_SCOPE.get()
+    if current is not None:
+        current.clear()
 
 
 def backup_once(path: Path, backups_dir: Path) -> Optional[Path]:
     """Snapshot the original file into ``backups_dir`` before the first edit of a run."""
     p = Path(path)
     key = str(p)
-    if key in _BACKED_UP:
+    cache = _BACKUP_SCOPE.get()
+    cache = _BACKED_UP if cache is None else cache
+    if key in cache:
         return None
-    _BACKED_UP.add(key)
     if not p.is_file():
         return None
     Path(backups_dir).mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    dest = Path(backups_dir) / f"{p.name}.{ts}.bak"
-    dest.write_text(p.read_text(encoding="utf-8", errors="replace"), encoding="utf-8")
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    digest = hashlib.sha256(str(p.absolute()).encode()).hexdigest()[:12]
+    fd, name = tempfile.mkstemp(prefix=f"{p.name}.{digest}.{ts}.", suffix=".bak", dir=backups_dir)
+    dest = Path(name)
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(p.read_bytes())
+    cache.add(key)
     return dest

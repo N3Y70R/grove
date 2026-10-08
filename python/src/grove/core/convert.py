@@ -162,6 +162,7 @@ def convert(
 
 def _apply_profile(profile: Optional[str]) -> str:
     """Resolve and apply the policy profile (same semantics as setup)."""
+    config.reset_policy()
     name = profile or config.DEFAULT_PROFILE
     try:
         policy = config.resolve_profile(name)

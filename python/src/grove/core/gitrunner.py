@@ -6,6 +6,7 @@ interactive confirmation) are injected via callbacks. dry_run is handled here.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Callable, Optional, Sequence
@@ -52,7 +53,7 @@ class GitRunner:
         if self._on_command is not None:
             self._on_command(full)
 
-        if mutating and self._confirm is not None:
+        if mutating and not self.dry_run and self._confirm is not None:
             if not self._confirm(full):
                 raise GitError("Operation cancelled by the user.")
 
@@ -66,10 +67,12 @@ class GitRunner:
             text=True,
             capture_output=capture,
             encoding="utf-8",
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"} if self.dry_run else None,
         )
         if check and proc.returncode != 0:
             msg = (proc.stderr or proc.stdout or "").strip()
-            raise GitError(f"git {' '.join(args)} failed: {msg}")
+            from .redaction import redact
+            raise GitError(redact(f"git {' '.join(args)} failed: {msg}"))
         return proc
 
     def out(self, args: Sequence[str], *, cwd: Optional[Path] = None) -> str:

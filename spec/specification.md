@@ -1,5 +1,30 @@
 # Specification — Git Worktree management tool (`gwt`)
 
+## Reliability contract (general corrections)
+
+- `dry_run` prevents every persistent effect, including direct Python writes,
+  backups, key generation, agent loading and doctor callbacks. Reads may still
+  validate the plan. `fix` never overrides `dry_run`; both doctor MCP tools
+  expose it. A preview records zero applied repairs.
+- JSON is one object with no loose verbose output or interactive prompts.
+  `--json --confirm-each` is a usage error; verbose traces go in `log`.
+- Explicit `-C` / MCP `cwd` determines worktree detection. Policy loads start
+  from fresh defaults, then merge the selected profile and repo overrides;
+  operation scopes serialize legacy mutable policy and restore it on exit.
+- Zones have a stable, unique identity. Existing unambiguous include blocks
+  retain their IDs; new IDs include a digest of the normalized folder path.
+  Ambiguous ownership, conflicting email or routing is rejected before writes.
+- Identity edits preserve configuration Grove does not manage. Removing the
+  last authentication account must not delete independent settings (including
+  signing). Invalid markers and concurrent edits must not be silently lost.
+- Doctor results distinguish initial issues, attempted repairs, failures and
+  remaining issues. Repairs are checked by diagnosing again. Repository doctor
+  retains its historical exit code; SSH doctor exits 1 while problems remain.
+- CLI and MCP share inventory and diagnostic serializers. Added result fields
+  have documented typed MCP schemas. Machine-level SSH provisioning is local;
+  Git clone/fetch/push can contact remotes, but Grove has no hosting API client.
+
+
 > Design document. Defines the agreed behavior before coding.
 > Status: draft for review. Date: 2026-06-23.
 
@@ -12,14 +37,14 @@ The real problem is not running `git worktree` (it's four commands), but **drift
 **Architecture decision.** All the logic lives in a reusable **core** (parsing `git worktree`, applying the convention, validations). Thin facades are mounted on top:
 
 - **Phase 1 — CLI** (`gwt`): for manual use and in CI. It is the facade this document specifies.
-- **Phase 2 — MCP** (future): the same logic exposed as tools so an agent can orchestrate worktree operations. It is added when needed; it's a few extra lines on top of the same core.
+- **Phase 2 — MCP** (implemented): the same logic exposed as tools so an agent can orchestrate worktree operations. The Python implementation ships it as the optional MCP facade over the same core.
 
 ### Design principles
 
-**grove does not query ticket management systems (Jira, Linear, GitHub Issues, etc.) nor any external platform.** All ticket-related information, descriptions or details arrives **by parameter** (or, in phase 2, via the MCP tool that receives it already resolved). grove only needs the *key* and the *slug*; obtaining them is the responsibility of the caller. Reasons:
+**Grove does not query ticket or hosting provider APIs (Jira, Linear, GitHub Issues, etc.).** All ticket-related information, descriptions or details arrives **by parameter** (or, in phase 2, via the MCP tool that receives it already resolved). grove only needs the *key* and the *slug*; obtaining them is the responsibility of the caller. Reasons:
 
 1. **Single responsibility.** grove's domain is the lifecycle of worktrees and the git convention. Ticket systems are another domain; integrating them would burden grove with API clients, authentication, tokens, rate limits and network failure handling foreign to its purpose.
-2. **Pure, offline and deterministic core.** No network or credentials in the core: simpler, safer and reproducible behavior. This keeps the conformance suite as **pure git**, with no need to mock external services.
+2. **No provider API clients in the core.** Git fetch/push and explicit live SSH checks can access the network; ticket metadata is supplied by callers: simpler, safer and reproducible behavior. This keeps the conformance suite as **pure git**, with no need to mock external services.
 3. **Platform agnostic.** By not querying anyone, grove works the same with Jira, Linear, GitHub Issues or no system at all. The only thing the convention needs is the key/slug, which the caller provides.
 4. **Parity between languages.** If grove queried a platform, each implementation (Python/Go/Rust) would have to reimplement that client → duplication and divergence. By-parameter, the three stay thin and the spec remains a verifiable contract.
 5. **Integration at the orchestration layer.** "Functional core, imperative shell" pattern (ports & adapters): grove is the pure core; the network effect (fetching the ticket) is done by the shell — a script or the agent via MCP, which composes "fetch the issue" + "call grove with the data already resolved".
@@ -561,7 +586,7 @@ General form: `gwt <command> [arguments] [flags]`.
 | `--version` | `gwt` version |
 | `-q, --quiet` | Only warnings and errors (suppresses `→` and `✓`) |
 | `-v, --verbose` | Prints each git command executed, step by step, before running it |
-| `--confirm-each` | Step-through mode: shows each git command and asks for confirmation before executing it (implies `-v`) |
+| `--confirm-each` | Step-through mode: confirm executed mutating Git commands (implies `-v`); incompatible with JSON; dry-run never prompts |
 | `--json` | JSON output (applies to `list` and `doctor`) |
 | `--no-color` | No colors |
 | `-C <path>` | Runs as if the cwd were `<path>` (same as `git -C`) |
@@ -596,7 +621,7 @@ $ gwt setup git@github.com:acme/myrepo.git -v
 
 (The git commands shown are illustrative of the flow; the exact ones are fixed in the implementation.)
 
-For specific cases, `--confirm-each` activates a step-through mode: it shows each git command and waits for confirmation (`[y/N]`) before executing it. Implies `-v`. It is not for normal use; it serves when you want to validate a delicate operation step by step.
+For specific cases, `--confirm-each` activates a step-through mode: it shows each git command and waits for confirmation (`[y/N]`) before executing a mutation. JSON rejects this option and dry-run does not prompt. Implies `-v`. It is not for normal use; it serves when you want to validate a delicate operation step by step.
 
 ### 10.2 `gwt setup`
 
@@ -793,7 +818,7 @@ Already implemented: per-repo config (`.bare/grove.toml`), profiles (`default`/`
 
 ## 13. MCP facade (implemented)
 
-This section describes how grove is exposed as an **MCP** (Model Context Protocol) server so that an agent (Claude/Cowork) invokes its operations. **Implemented** in python 0.3.0 (worktree/config/ssh-check tools) and extended in 0.4.0 with the SSH provisioning tools (§14.9); shipped behind the optional extra `pip install "grove[mcp]"` with the `grove-mcp` entry point.
+This section describes how grove is exposed as an **MCP** (Model Context Protocol) server so that an agent (Claude/Cowork) invokes its operations. **Implemented** in python 0.3.0 (worktree/config/ssh-check tools) and extended in 0.4.0 with the SSH provisioning tools (§14.9); shipped behind the optional extra `pip install "grove-wt[mcp]"` with the `grove-mcp` entry point.
 
 ### 13.1 Principle
 
@@ -822,7 +847,7 @@ Mapping ≈1:1 with the commands: `grove_setup`, `grove_list`, `grove_create`, `
 
 ### 13.3 Enrichment
 
-The added value over the 1:1 is combining grove with external context, but **respecting the design principle**: grove's MCP facade also does not go out to the network. Enrichment is **agent composition**: for example, the agent uses its own Jira/GitHub connector to fetch the title of an issue and then calls `grove_create` with that data already resolved; or annotates the output of `grove_list` with the status of PRs it itself queries. grove exposes the worktree operations receiving the info by parameter; it does not incorporate ticket platform clients.
+The added value over the 1:1 is combining grove with external context, but **respecting the design principle**: grove's MCP facade does not query provider APIs; invoked Git fetch/push and live SSH checks can access the network. Enrichment is **agent composition**: for example, the agent uses its own Jira/GitHub connector to fetch the title of an issue and then calls `grove_create` with that data already resolved; or annotates the output of `grove_list` with the status of PRs it itself queries. grove exposes the worktree operations receiving the info by parameter; it does not incorporate ticket platform clients.
 
 ### 13.4 Fit in the monorepo
 
@@ -836,7 +861,7 @@ python/
     └── mcp/                 # MCP facade (_ops.py + server.py)
 ```
 
-- **MCP SDK as an optional extra** (`pip install "grove[mcp]"`), so the base CLI stays dependency-free.
+- **MCP SDK as an optional extra** (`pip install "grove-wt[mcp]"`), so the base CLI stays dependency-free.
 - **Own entry point** `grove-mcp` that launches the server (stdio transport).
 - **Versions with the implementation** (`python/vX.Y.Z`).
 - If Go/Rust want their own MCP, each would have its own under its folder, reusing its core. The spec remains the common contract; the conformance suite could also validate the MCP layer.
@@ -932,7 +957,7 @@ Steps (all idempotent):
 1. **Validate** name/host/email; resolve the key path.
 2. **Key:** if the key does not exist → `ssh-keygen -t ed25519 -C "<name>" -f <key>` (prompts passphrase unless `--no-passphrase`). If it exists, reuse it.
 3. **SSH block:** upsert the marked `Host <name>` block (`HostName`, `User git`, `IdentityFile`, `IdentitiesOnly yes`).
-4. **Identity routing** (unless `--no-identity`): ensure the zone for `--scope-dir` (create the `includeIf` + identity file, or join the existing one), upsert `[user] email` and the `[url …] insteadOf` rewrites mapping the canonical host → this alias. **Harden the global `~/.gitconfig`:** ensure `user.name` is set and `user.useConfigOnly = true` (so git can never auto-invent an identity); if a **conflicting global `insteadOf`** for the same host exists (e.g. a token-bearing rewrite) it is **reported, never auto-removed** (it may contain a secret — human decision).
+4. **Identity routing** (unless `--no-identity`): ensure the zone for `--scope-dir` (create the `includeIf` + identity file, or join the existing one), upsert `[user] email` and the `[url …] insteadOf` rewrites mapping the canonical host → this alias. **Harden the global `~/.gitconfig`:** report a missing `user.name` and ensure `user.useConfigOnly = true` (so git can never auto-invent an identity); `ssh doctor` reports embedded credentials in global URL rewrites for manual rotation/removal. Provisioning does not remove global rewrites automatically.
 5. **Agent:** unless `--no-agent`, load the key (macOS `ssh-add --apple-use-keychain`; Linux/Windows plain `ssh-add`; see §14.8).
 6. **Output:** print the public key and the **upload instructions** for the host (grove does not upload). Verify with a hint to run `gwt ssh check <host> --live` after uploading.
 
@@ -984,7 +1009,6 @@ The diagnostic-and-repair engine — it encodes every failure mode documented in
 | `IdentitiesOnly` | A managed `Host` block lacks `IdentitiesOnly yes` | add it |
 | Agent | Managed key not loaded | `ssh-add` (keychain on macOS) |
 | `useConfigOnly` | `user.useConfigOnly` unset → git can auto-invent identity | set it `true` |
-| `user.name` | global `user.name` missing | set from existing identity (asks) |
 | Missing `insteadOf` | a zone account lacks its canonical→alias rewrite | re-add the rewrite |
 
 **Detects but reports only** (human judgment):
@@ -993,9 +1017,10 @@ The diagnostic-and-repair engine — it encodes every failure mode documented in
 |---|---|
 | Host-vs-alias trap | the key is under an alias but remotes/usage hit the **real host**, which only matches `Host *` (with `IdentitiesOnly` and no `IdentityFile`) → `Permission denied` though the key exists (the exact bug in the guide). Suggests adding a real-host block or repointing remotes. |
 | Secret in config | a global `insteadOf` (or any value) carries an embedded token/password → **flagged, never auto-edited**; advises rotating + removing. |
-| Email divergence | two accounts in the same zone declare different emails. |
+| Identity conflict | Adding an account with an email or host routing different from its existing zone is rejected before provisioning. Accounts do not store separate historical emails. |
+| Missing author name | Global `user.name` is missing; set it explicitly. |
 | Orphans | a marked block whose key file is gone; an `includeIf` whose `scope_dir` or identity file is missing. |
-| Unmanaged block | a hand-written `Host` that overlaps a managed one (reported; never modified). |
+| Effective SSH config | Resolved `HostName`, `User`, key or `IdentitiesOnly` differs from the managed account; review manual rules, `Include` and `Match` (never modified). |
 
 ```
 $ gwt ssh doctor
@@ -1013,7 +1038,7 @@ Apply the 2 fixes? [y/N]
 Removes the account safely.
 
 - Removes the marked `Host <name>` block from `~/.ssh/config`.
-- Removes the account's `insteadOf` rewrites from its zone identity file. If the zone becomes **empty**, removes the `includeIf` + identity file too (unless `--keep-routing`).
+- Removes the account's `insteadOf` rewrites from its zone identity file. When the last account is removed, remove the managed email too. Keep the file and include when settings or user comments remain; remove a genuinely empty zone (unless `--keep-routing`).
 - **Keeps the key files** unless `--delete-key`. Never removes the key from the remote host (that is network; do it in the hosting UI).
 - `--dry-run` shows the planned edits.
 
@@ -1040,4 +1065,4 @@ Implementation notes:
 
 ### 14.9 MCP exposure
 
-Adds `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` to the tool set (§13.2), same rules: typed inputs, structured output, confirmation by parameter. The canonical **enrichment** example: an agent calls `grove_ssh_add` and then uses its **GitHub/Bitbucket connector to upload the printed public key** — grove provisions locally, the agent does the network step. grove itself still never goes to the network.
+Adds `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` to the tool set (§13.2), same rules: typed inputs, structured output, confirmation by parameter. The canonical **enrichment** example: an agent calls `grove_ssh_add` and then uses its **GitHub/Bitbucket connector to upload the printed public key** — grove provisions locally, the agent does the network step. The provisioning tools do not upload keys or query provider APIs.

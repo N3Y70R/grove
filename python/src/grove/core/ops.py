@@ -149,6 +149,10 @@ def bring(
     step(f"Setting upstream {local_branch} -> {origin_ref}")
     git.run(["branch", f"--set-upstream-to={origin_ref}", local_branch], cwd=path)
 
+    # A preview has no new directory or branch to verify.
+    if git.dry_run:
+        return path
+
     # Post-creation verification.
     actual = git.out(["rev-parse", "--abbrev-ref", f"{local_branch}@{{upstream}}"], cwd=path)
     if actual != origin_ref:

@@ -92,7 +92,7 @@ mcp = _GroveServer(name="grove")
 # Reusable parameter annotations -------------------------------------------- #
 
 Cwd = Annotated[Optional[str], Field(
-    description="Absolute path to the managed repo (a folder containing .bare/). "
+    description="Absolute path to the managed repo container or the worktree to target implicitly. "
                 "Defaults to the process working directory; always pass it explicitly "
                 "when driving grove from chat.")]
 
@@ -271,25 +271,27 @@ def grove_remove(
 def grove_reset(
     target: Annotated[Optional[str], Field(description="Ticket/branch/path of the worktree (default: current one).")] = None,
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
-    confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
+    confirm: Annotated[bool, Field(description="Required for execution (discards local commits/changes); dry_run needs no confirm.")] = False,
+    dry_run: Annotated[bool, Field(description="Preview losses and steps without fetching or resetting; needs no confirm.")] = False,
     cwd: Cwd = None,
 ) -> ResetResult:
     """DISCARDS local commits and changes: reset a worktree to its origin branch
-    (fetch + reset --hard). Requires confirm=true.
+    (fetch + reset --hard). Requires confirm=true for real execution; dry_run=true previews safely.
 
     For branches that are regenerated/force-pushed. To only BRING remote changes
     without losing anything, use grove_fetch instead.
 
-    CLI: `gwt reset [target] [--clean] [--yes]`
+    CLI: `gwt reset [target] [--clean] [--yes] [--dry-run]`
     """
-    return _ops.op_reset(target=target, clean=clean, confirm=confirm, cwd=cwd)
+    return _ops.op_reset(target=target, clean=clean, confirm=confirm, dry_run=dry_run, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("DEPRECATED alias of grove_reset", destructive=True))
 def grove_sync(
     target: Annotated[Optional[str], Field(description="Ticket/branch/path of the worktree (default: current one).")] = None,
     clean: Annotated[bool, Field(description="Also delete untracked files (git clean -fd).")] = False,
-    confirm: Annotated[bool, Field(description="Required: set true to proceed (discards local commits/changes).")] = False,
+    confirm: Annotated[bool, Field(description="Required for execution (discards local commits/changes); dry_run needs no confirm.")] = False,
+    dry_run: Annotated[bool, Field(description="Preview losses and steps without fetching or resetting; needs no confirm.")] = False,
     cwd: Cwd = None,
 ) -> ResetResult:
     """DEPRECATED — use grove_reset. DISCARDS local commits and changes (reset --hard
@@ -297,7 +299,7 @@ def grove_sync(
 
     CLI: `gwt sync` (deprecated) → `gwt reset`
     """
-    return _ops.op_sync(target=target, clean=clean, confirm=confirm, cwd=cwd)
+    return _ops.op_sync(target=target, clean=clean, confirm=confirm, dry_run=dry_run, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("Publish to / create the integration branch", destructive=True))
@@ -327,6 +329,7 @@ def grove_publish(
 @mcp.tool(annotations=_ann("Diagnose/fix worktree hygiene", idempotent=True))
 def grove_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable issues (otherwise report only).")] = False,
+    dry_run: Annotated[bool, Field(description="Report planned repairs without modifying files or loading keys.")] = False,
     cwd: Cwd = None,
 ) -> DoctorResult:
     """Diagnose worktree hygiene problems; set fix=true to apply auto-fixable ones.
@@ -338,7 +341,7 @@ def grove_doctor(
 
     CLI: `gwt doctor [--fix] [--dry-run]`
     """
-    return _ops.op_doctor(fix=fix, cwd=cwd)
+    return _ops.op_doctor(fix=fix, dry_run=dry_run, cwd=cwd)
 
 
 @mcp.tool(annotations=_ann("Fetch from origin (never touches worktrees)", idempotent=True))
@@ -464,15 +467,16 @@ def grove_ssh_accounts() -> SshAccountsResult:
 @mcp.tool(annotations=_ann("Diagnose/fix SSH multi-account setup", idempotent=True))
 def grove_ssh_doctor(
     fix: Annotated[bool, Field(description="Apply the auto-fixable items (otherwise report only).")] = False,
+    dry_run: Annotated[bool, Field(description="Report planned repairs without modifying files or loading keys.")] = False,
 ) -> SshDoctorResult:
     """Diagnose the SSH/git multi-account setup; set fix=true to apply auto-fixable items.
 
     Reports the host-vs-alias trap, embedded secrets, missing IdentitiesOnly/insteadOf,
     bad key permissions, unset useConfigOnly, orphans, etc. (auto-fixes the safe ones).
 
-    CLI: `gwt ssh doctor [--fix]`
+    CLI: `gwt ssh doctor [--fix] [--dry-run]`
     """
-    return _ops.op_ssh_doctor(fix=fix)
+    return _ops.op_ssh_doctor(fix=fix, dry_run=dry_run)
 
 
 @mcp.tool(annotations=_ann("Remove an SSH account", destructive=True))

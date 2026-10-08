@@ -113,6 +113,7 @@ def ssh_home(tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(home / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(home))
     from grove.core import blockedit
     blockedit.reset_backup_cache()

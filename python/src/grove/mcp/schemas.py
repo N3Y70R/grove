@@ -108,6 +108,7 @@ class RemoveResult(TypedDict):
 # --------------------------------------------------------------------------- #
 
 class ResetResult(TypedDict):
+    dry_run: Annotated[bool, D("True when losses and steps were only previewed; no reset occurred.")]
     worktree: Annotated[str, D("Worktree reset (folder relative to the repo root).")]
     upstream: Annotated[str, D("Origin branch it was reset to (e.g. origin/main).")]
     discarded: Annotated[List[str], D("What was discarded (unpushed commits, uncommitted changes); empty if nothing.")]
@@ -169,6 +170,12 @@ class SkillCopy(TypedDict):
     edited: Annotated[Optional[bool], D("True/false from the install manifest; null when it has none (installed by 0.12.0 or by hand).")]
 
 
+class RepairFailure(TypedDict):
+    check: Annotated[str, D("Diagnosis whose repair failed.")]
+    target: Annotated[str, D("Affected file, branch or account.")]
+    message: Annotated[str, D("Reason the repair did not complete.")]
+
+
 class DoctorResult(TypedDict):
     issues: Annotated[List[DoctorIssue], D("Problems found (empty when healthy).")]
     auto_fixable: Annotated[int, D("How many issues fix=true can repair.")]
@@ -176,6 +183,11 @@ class DoctorResult(TypedDict):
     applied: Annotated[int, D("Fixes applied in this call (0 unless fix=true).")]
     version: Annotated[str, D("grove version that produced this report.")]
     skills: Annotated[List[SkillCopy], D("Every installed Agent Skill copy doctor checked (empty: none installed).")]
+    attempted: Annotated[int, D("Distinct repair callbacks attempted in this call.")]
+    failures: Annotated[List[RepairFailure], D("Repairs that failed; review the remaining diagnosis.")]
+    remaining_issues: Annotated[List[DoctorIssue], D("Problems still present after repair verification.")]
+    dry_run: Annotated[bool, D("True when repairs were only previewed.")]
+
 
 
 # --------------------------------------------------------------------------- #
@@ -275,6 +287,7 @@ class SshAliasesResult(TypedDict):
 
 
 class SshAddResult(TypedDict):
+    agent_loaded: Annotated[Optional[bool], D("True when loading succeeded, false when it failed, null when not attempted.")]
     name: Annotated[str, D("Account alias.")]
     host: Annotated[str, D("Real host (e.g. github.com).")]
     key: Annotated[str, D("Private key path.")]
@@ -294,6 +307,9 @@ class SshAccount(TypedDict):
     zone: Annotated[Optional[str], D("Folder routed to this account, or null.")]
     email: Annotated[Optional[str], D("Git identity email of the zone, or null.")]
     routing: Annotated[Literal["ok", "partial", "none"], D("Coherence of the git identity routing.")]
+    key_exists: Annotated[bool, D("Whether the private key exists on disk.")]
+    in_agent: Annotated[Optional[bool], D("Key loaded in the agent; null when unavailable or unknown.")]
+
 
 
 class SshZone(TypedDict):
@@ -321,6 +337,11 @@ class SshDoctorResult(TypedDict):
     auto_fixable: Annotated[int, D("How many findings fix=true can repair.")]
     review: Annotated[int, D("How many need manual review.")]
     applied: Annotated[int, D("Fixes applied in this call.")]
+    attempted: Annotated[int, D("Distinct repair callbacks attempted in this call.")]
+    failures: Annotated[List[RepairFailure], D("Repairs that failed; review the remaining diagnosis.")]
+    remaining_findings: Annotated[List[SshFinding], D("Problems still present after repair verification.")]
+    dry_run: Annotated[bool, D("True when repairs were only previewed.")]
+
 
 
 class SkillInstallResult(TypedDict):

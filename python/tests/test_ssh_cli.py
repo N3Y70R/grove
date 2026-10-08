@@ -16,6 +16,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / ".gitconfig"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     from grove.core import blockedit
     blockedit.reset_backup_cache()

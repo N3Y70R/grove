@@ -10,15 +10,17 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from functools import wraps
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from . import blockedit
 from . import gitidentity
 from . import platform as plat
-from .errors import GitError, ValidationError
+from .errors import GitError, ValidationError, UsageError
 from .gitrunner import GitRunner
 
 # --------------------------------------------------------------------------- #
@@ -84,6 +86,7 @@ class AddSpec:
     no_agent: bool = False
     no_passphrase: bool = False
     dry_run: bool = False
+    interactive: bool = False
 
 
 # --------------------------------------------------------------------------- #
@@ -113,24 +116,23 @@ def _parse_account_body(name: str, body: str) -> Account:
             host = _kv(line) or ""
         elif low.startswith("identityfile"):
             key = _kv(line) or ""
+            if key.startswith(('"', "'")):
+                try:
+                    values = shlex.split(key, comments=True)
+                except ValueError as exc:
+                    raise ValidationError("Invalid quoted SSH identity path; review the account block.") from exc
+                if len(values) != 1:
+                    raise ValidationError("Ambiguous SSH identity path; review the account block.")
+                key = values[0]
     return Account(name=name, host=host, key=os.path.expanduser(key),
                    managed=True, zone_dir=zone_dir)
 
 
-def _parse_zone(body: str) -> Optional[Zone]:
-    scope_dir = ""
-    identity_path = ""
-    for line in body.splitlines():
-        m = _GITDIR_RE.search(line)
-        if m:
-            scope_dir = m.group("dir").strip()
-        elif line.strip().lower().startswith("path"):
-            identity_path = os.path.expanduser(line.split("=", 1)[1].strip()) if "=" in line else ""
-    if not identity_path:
-        return None
-    email, rewrites = gitidentity.read_identity(Path(identity_path))
+def _parse_zone(body: str, gitconfig: Path) -> Zone:
+    scope_dir, identity = gitidentity.zone_reference(body, gitconfig)
+    email, rewrites = gitidentity.read_identity(identity)
     return Zone(scope_dir=scope_dir, email=email,
-                identity_path=identity_path, rewrites=rewrites)
+                identity_path=str(identity), rewrites=rewrites)
 
 
 # --------------------------------------------------------------------------- #
@@ -148,7 +150,7 @@ def read_inventory(paths: Optional[plat.Paths] = None) -> Inventory:
 
     git_text = blockedit.read_text(p.gitconfig)
     for _id, body in blockedit.find_blocks(git_text, "zone").items():
-        z = _parse_zone(body)
+        z = _parse_zone(body, p.gitconfig)
         if z is not None:
             inv.zones.append(z)
 
@@ -175,7 +177,7 @@ def key_status(account: Account, echo=None) -> KeyStatus:
     in_agent: Optional[bool] = None
     if exists:
         running, fps = _agent_fingerprints(echo)
-        if running and fps:
+        if running:
             fp = _fingerprint_of(key, echo)
             in_agent = (fp in fps) if fp else None
     return KeyStatus(exists=exists, in_agent=in_agent)
@@ -191,22 +193,23 @@ def _slug(name: str) -> str:
 
 def _tilde(path: Path, paths: plat.Paths) -> str:
     """Render a path with `~` if under home (portable in ssh_config)."""
-    home = str(paths.home)
-    s = str(path)
+    home = paths.home.as_posix()
+    s = path.as_posix()
     if s == home:
         return "~"
-    if s.startswith(home + os.sep):
+    if s.startswith(home + "/"):
         return "~" + s[len(home):]
     return s
 
 
 def _render_host_block(name: str, host: str, key_display: str,
                        zone_dir: Optional[str] = None) -> str:
+    quoted_key = '"' + key_display.replace("\\", "\\\\").replace('"', '\\"') + '"'
     lines = [
         f"Host {name}",
         f"    HostName {host}",
         "    User git",
-        f"    IdentityFile {key_display}",
+        f"    IdentityFile {quoted_key}",
         "    IdentitiesOnly yes",
     ]
     if zone_dir:
@@ -215,7 +218,7 @@ def _render_host_block(name: str, host: str, key_display: str,
 
 
 def _keygen_if_missing(key: Path, comment: str, no_passphrase: bool,
-                       dry_run: bool, echo=None) -> bool:
+                       dry_run: bool, echo=None, *, interactive=False) -> bool:
     """Generate the ed25519 key if absent. Returns True if it (would be) created.
 
     Passphrase: interactive by default (inherit stdio so the user can type); with
@@ -224,12 +227,14 @@ def _keygen_if_missing(key: Path, comment: str, no_passphrase: bool,
         return False
     if dry_run:
         return True
+    if not no_passphrase and not interactive:
+        raise UsageError("Generating an encrypted key requires an interactive terminal; use the CLI.")
     key.parent.mkdir(parents=True, exist_ok=True)
     args = ["ssh-keygen", "-t", "ed25519", "-C", comment, "-f", str(key)]
     if echo:
         echo(args)
     if no_passphrase:
-        proc = subprocess.run(args + ["-N", ""], text=True, capture_output=True)
+        proc = subprocess.run(args + ["-N", ""], text=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=30)
         if proc.returncode != 0:
             raise GitError(f"ssh-keygen failed: {(proc.stderr or '').strip()}")
     else:
@@ -239,30 +244,61 @@ def _keygen_if_missing(key: Path, comment: str, no_passphrase: bool,
     return True
 
 
+def _provisioning_operation(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with blockedit.edit_scope():
+            try:
+                return fn(*args, **kwargs)
+            except (OSError, subprocess.SubprocessError) as exc:
+                from .redaction import redact
+                raise GitError(
+                    f"SSH account operation stopped: {redact(str(exc))}. "
+                    "Earlier steps may remain; inspect ssh accounts and ssh doctor before retrying."
+                ) from exc
+    return wrapped
+
+
+@_provisioning_operation
+
 def add_account(spec: AddSpec, git: Optional[GitRunner] = None,
                 paths: Optional[plat.Paths] = None, echo=None) -> dict:
     """Provision an account: key + ~/.ssh/config block + (optional) git identity routing."""
     p = paths or plat.paths()
     git = git or GitRunner(dry_run=spec.dry_run, on_command=echo)
+    if git.dry_run and not spec.dry_run:
+        spec = replace(spec, dry_run=True)
 
-    if not _NAME_RE.match(spec.name):
+    if not _NAME_RE.fullmatch(spec.name):
         raise ValidationError(f"Invalid account name '{spec.name}' (use letters, digits, -, _).")
-    if not spec.host:
-        raise ValidationError("A --host is required.")
+    if not spec.host or not _NAME_RE.fullmatch(spec.host):
+        raise ValidationError("A valid --host is required (hostname without whitespace or configuration syntax).")
+    if spec.email and any(c in spec.email for c in "\n\r"):
+        raise ValidationError("Email must fit on one line.")
     wants_identity = not spec.no_identity and spec.scope_dir is not None
     if wants_identity and not spec.email:
         raise ValidationError("--email is required for identity routing (or pass --no-identity).")
 
+    inv = read_inventory(p)  # validate all owned regions before any mutation
+    existing = next((a for a in inv.accounts if a.name == spec.name), None)
+    if wants_identity and existing and existing.zone_dir and existing.zone_dir != plat.normalize_gitdir(spec.scope_dir):
+        raise ValidationError("This account belongs to another zone; review its existing routing before moving it.")
+    if wants_identity:
+        gitidentity.upsert_zone(spec.scope_dir, spec.email, {spec.host: spec.name}, p, dry_run=True)
+
     key = Path(spec.key) if spec.key else p.ssh_dir / f"id_ed25519_{_slug(spec.name)}"
+    if any(c in str(key) for c in "\n\r") or (wants_identity and any(c in str(spec.scope_dir) for c in "\n\r")):
+        raise ValidationError("Key and zone paths must fit on one SSH configuration line.")
     steps: List[str] = []
 
-    created = _keygen_if_missing(key, spec.name, spec.no_passphrase, spec.dry_run, echo)
+    created = _keygen_if_missing(key, spec.name, spec.no_passphrase, spec.dry_run, echo, interactive=spec.interactive)
     steps.append(f"{'generate' if created else 'reuse'} key {_tilde(key, p)}")
 
     zone_dir = plat.normalize_gitdir(spec.scope_dir) if wants_identity else None
 
     # SSH config: ensure defaults block, then upsert the account block.
-    text = blockedit.read_text(p.ssh_config)
+    original = blockedit.read_text(p.ssh_config)
+    text = original
     if "defaults" not in blockedit.find_blocks(text, "defaults"):
         text = blockedit.upsert_block(text, "defaults", "defaults", plat.ssh_defaults_block())
         steps.append("write ~/.ssh/config defaults (Host *)")
@@ -271,11 +307,13 @@ def add_account(spec: AddSpec, git: Optional[GitRunner] = None,
     steps.append(f"write ~/.ssh/config block [grove:account={spec.name}]")
     if not spec.dry_run:
         blockedit.backup_once(p.ssh_config, p.backups_dir)
-        blockedit.write_atomic(p.ssh_config, text)
+        blockedit.write_atomic(p.ssh_config, text, expected=original)
 
     name_missing = False
     if wants_identity:
-        h = gitidentity.harden_global(git, name=None)
+        if not spec.dry_run:
+            blockedit.backup_once(p.gitconfig, p.backups_dir)
+        h = gitidentity.harden_global(git, name=None, dry_run=spec.dry_run)
         steps += [f"harden ~/.gitconfig: {c}" for c in h["changes"]]
         name_missing = not h["name"]
         gitidentity.upsert_zone(spec.scope_dir, spec.email, {spec.host: spec.name},
@@ -283,9 +321,13 @@ def add_account(spec: AddSpec, git: Optional[GitRunner] = None,
         steps.append(f"route git@{spec.host}: -> git@{spec.name}: "
                      f"(zone {gitidentity.zone_id_for(spec.scope_dir)}, email {spec.email})")
 
+    agent_loaded = None
     if not spec.no_agent and not spec.dry_run and key.is_file():
-        if plat.agent_add(key, echo):
+        agent_loaded = plat.agent_add(key, echo, interactive=spec.interactive)
+        if agent_loaded:
             steps.append("load key into agent")
+        else:
+            steps.append("agent loading failed; unlock/load the key in a terminal, then run ssh doctor")
 
     pubkey = ""
     pub = Path(str(key) + ".pub")
@@ -294,12 +336,13 @@ def add_account(spec: AddSpec, git: Optional[GitRunner] = None,
 
     return {
         "name": spec.name, "host": spec.host, "key": str(key),
-        "created_key": created, "pubkey": pubkey,
+        "created_key": created, "pubkey": pubkey, "agent_loaded": agent_loaded,
         "zone": zone_dir, "email": (spec.email if wants_identity else None),
         "name_missing": name_missing, "dry_run": spec.dry_run, "steps": steps,
     }
 
 
+@_provisioning_operation
 def remove_account(name: str, *, delete_key: bool = False, keep_routing: bool = False,
                    dry_run: bool = False, paths: Optional[plat.Paths] = None,
                    echo=None) -> dict:
@@ -310,6 +353,8 @@ def remove_account(name: str, *, delete_key: bool = False, keep_routing: bool = 
     if account is None:
         raise ValidationError(f"No grove-managed account '{name}'.")
     zone = inv.zone_of(account)
+    if zone and not keep_routing:
+        gitidentity.remove_account_from_zone(zone.scope_dir, name, p, dry_run=True)
     steps: List[str] = []
 
     text = blockedit.read_text(p.ssh_config)
@@ -318,18 +363,31 @@ def remove_account(name: str, *, delete_key: bool = False, keep_routing: bool = 
         steps.append(f"remove ~/.ssh/config block [grove:account={name}]")
         if not dry_run:
             blockedit.backup_once(p.ssh_config, p.backups_dir)
-            blockedit.write_atomic(p.ssh_config, new_text)
+            blockedit.write_atomic(p.ssh_config, new_text, expected=text)
 
     if zone and not keep_routing:
         gitidentity.remove_account_from_zone(zone.scope_dir, name, p, dry_run=dry_run)
         steps.append(f"remove routing for {name} from zone {gitidentity.zone_id_for(zone.scope_dir)}")
 
-    if delete_key and not dry_run:
-        for f in (Path(account.key), Path(account.key + ".pub")):
-            try:
-                f.unlink()
-            except OSError:
-                pass
+    if delete_key:
         steps.append(f"delete key {account.key}")
+        if not dry_run:
+            for f in (Path(account.key), Path(account.key + ".pub")):
+                f.unlink(missing_ok=True)
 
     return {"name": name, "deleted_key": delete_key, "dry_run": dry_run, "steps": steps}
+
+
+def inventory_dict(paths=None, echo=None, *, inventory=None) -> dict:
+    inv = inventory or read_inventory(paths)
+    accounts = []
+    for a in inv.accounts:
+        st = key_status(a, echo)
+        z = inv.zone_of(a)
+        accounts.append({"name": a.name, "host": a.host, "key": a.key,
+                         "key_exists": st.exists, "in_agent": st.in_agent,
+                         "zone": z.scope_dir if z else None, "email": z.email if z else None,
+                         "routing": inv.routing_state(a)})
+    return {"accounts": accounts,
+            "zones": [{"scope_dir": z.scope_dir, "email": z.email,
+                       "identity_path": z.identity_path, "rewrites": z.rewrites} for z in inv.zones]}

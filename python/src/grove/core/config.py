@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import os
 import re
+from copy import deepcopy
+from functools import wraps
+from threading import RLock
 from pathlib import Path
 from typing import Optional
 
@@ -129,6 +132,50 @@ DEFAULT_PROFILE = "default"
 
 CONFIG_FILENAME = "grove.toml"
 GLOBAL_CONFIG = Path.home() / ".config" / "grove" / "config.toml"
+_INITIAL_GLOBAL_CONFIG = GLOBAL_CONFIG
+
+_POLICY_NAMES = (
+    "PROFILE", "RELATIVE_WORKTREES", "PARKING_BRANCH", "DEFAULT_BASE",
+    "TICKET_TYPES", "SPECIAL_WORKTREES", "TEMP_DIR", "RELEASE_FORMAT",
+    "RELEASE_DEFAULT_BASE", "ARTIFACTS_DIR", "INTEGRATION_BRANCH", "SSH_ALIAS",
+    "KNOWN_GIT_HOSTS", "TICKETS", "TICKET_PREFIXES", "TICKET_PATTERN",
+    "TICKET_RE", "TYPE_FOLDERS",
+)
+_DEFAULTS = {name: deepcopy(globals()[name]) for name in _POLICY_NAMES}
+_OPERATION_LOCK = RLock()
+
+
+def reset_policy() -> None:
+    """Restore immutable defaults before resolving a new repository/profile."""
+    globals().update(deepcopy(_DEFAULTS))
+
+
+def global_config_path() -> Path:
+    """Resolve per call; keep explicit GLOBAL_CONFIG overrides compatible."""
+    if GLOBAL_CONFIG != _INITIAL_GLOBAL_CONFIG:
+        return Path(GLOBAL_CONFIG)
+    from . import platform
+    return platform.paths().home / ".config" / "grove" / "config.toml"
+
+
+def isolated_operation(func):
+    """Serialize legacy module policy for the entire CLI/MCP operation.
+
+    Sync MCP operations may be dispatched in different worker threads. Reset
+    before entry and restore even on failure; the reentrant lock covers nested
+    operation adapters without replacing the core's existing config API.
+    """
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        from . import blockedit
+        with _OPERATION_LOCK, blockedit.edit_scope():
+            snapshot = {name: deepcopy(globals()[name]) for name in _POLICY_NAMES}
+            reset_policy()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                globals().update(snapshot)
+    return wrapped
 
 
 # --------------------------------------------------------------------------- #
@@ -211,9 +258,10 @@ def apply_policy(policy: dict) -> None:
 
 def resolve_profile(name: str) -> dict:
     """Returns the policy dict of a profile (global config takes priority over builtin)."""
-    policy = dict(BUILTIN_PROFILES.get(name, {}))
-    if GLOBAL_CONFIG.is_file():
-        data = _read_toml(GLOBAL_CONFIG)
+    policy = deepcopy(BUILTIN_PROFILES.get(name, {}))
+    global_path = global_config_path()
+    if global_path.is_file():
+        data = _read_toml(global_path)
         profiles = data.get("profiles", {})
         if name in profiles:
             policy.update(profiles[name])
@@ -227,6 +275,7 @@ def resolve_profile(name: str) -> dict:
 
 def load(bare: Path) -> None:
     """Loads the repo config (`<bare>/grove.toml`) over the defaults, if it exists."""
+    reset_policy()
     cfg = Path(bare) / CONFIG_FILENAME
     if cfg.is_file():
         data = _read_toml(cfg)

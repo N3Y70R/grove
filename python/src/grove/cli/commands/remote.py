@@ -7,7 +7,7 @@ from pathlib import Path
 from ...core import config as core_config
 from ...core.errors import UsageError
 from ..output import Output
-from .._shared import _common, _enter_repo, _make_runner
+from .._shared import _common, _enter_repo, _make_runner, _base_dir
 
 
 def cmd_reset(args, out: Output) -> int:
@@ -26,7 +26,7 @@ def cmd_reset(args, out: Output) -> int:
         from ...core import remove as core_remove
         wt = core_remove.resolve_target(git, repo, args.target)
     else:
-        cwd = Path.cwd().resolve()
+        cwd = _base_dir(args)
         wt = None
         for w in _lw(git, repo, with_status=True):
             if w.is_bare:
@@ -132,10 +132,10 @@ def cmd_publish(args, out: Output) -> int:
     return 0
 
 
-def _cwd_branch(git, repo):
+def _cwd_branch(git, repo, args):
     """Branch of the worktree containing the current directory, or None."""
     from ...core.model import list_worktrees as _lw
-    cwd = Path.cwd().resolve()
+    cwd = _base_dir(args)
     for w in _lw(git, repo, with_status=False):
         if w.is_bare or not w.branch:
             continue
@@ -201,7 +201,7 @@ def cmd_compare(args, out: Output) -> int:
             out.plain(f"  {r['a']:<{w0}}   ↑{r['ahead']} ↓{r['behind']}  {r['status']}")
         return 0
 
-    cwd_branch = None if args.a else _cwd_branch(git, repo)
+    cwd_branch = None if args.a else _cwd_branch(git, repo, args)
     res = core_compare.compare_one(git, repo, args.a, args.b, cwd_branch=cwd_branch)
     if out.json_mode:
         out.set_result(res)

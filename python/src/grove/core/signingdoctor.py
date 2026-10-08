@@ -222,11 +222,11 @@ def _isolated_env():
 def _test_run(args, directory, env, input=None, *, echo=None):
     signing.command_echo(args, echo)
     # Detach from any controlling terminal: encrypted keys must not prompt in MCP.
-    proc = subprocess.Popen(args, cwd=directory, env=env, text=True,
+    proc = subprocess.Popen(args, cwd=directory, env=env,
                             stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=os.name != "nt")
     try:
-        out, err = proc.communicate(input, timeout=20)
+        out, err = proc.communicate(input.encode("utf-8") if input is not None else None, timeout=20)
     except subprocess.TimeoutExpired:
         if os.name != "nt":
             import signal
@@ -234,8 +234,8 @@ def _test_run(args, directory, env, input=None, *, echo=None):
         else:
             proc.kill()
         out, err = proc.communicate()
-        return 124, out, "Signing test timed out; unlock/load the selected key and retry."
-    return proc.returncode, out, err
+        return 124, out.decode("utf-8", errors="replace"), "Signing test timed out; unlock/load the selected key and retry."
+    return proc.returncode, out.decode("utf-8", errors="replace"), err.decode("utf-8", errors="replace")
 
 
 def _key_command(command):
@@ -339,7 +339,7 @@ def signing_test(directory, cfg, *, echo=None):
         except (AttributeError, ValueError, UnicodeError):
             return {"status": "failed", "message": "The signer did not produce a supported SSH signature.", "cryptographic_verification": "failed", "local_verification": "not_run"}
         trust = root / "allowed-signers"
-        trust.write_text("* " + public + "\n", encoding="utf-8")
+        trust.write_text("* " + public + "\n", encoding="utf-8", newline="\n")
         rc, _, err = test_run(["git", "-c", "gpg.ssh.allowedSignersFile=" + str(trust),
                                "-c", "gpg.ssh.revocationFile=", "verify-commit", commit.strip()], root, env)
         local = "not_configured"
@@ -349,7 +349,7 @@ def signing_test(directory, cfg, *, echo=None):
             local = "passed" if lrc == 0 else "failed"
             if local == "passed":
                 signature = root / "signature"
-                signature.write_text("-----BEGIN SSH SIGNATURE-----\n" + "\n".join(armor.split()) + "\n-----END SSH SIGNATURE-----\n", encoding="utf-8")
+                signature.write_text("-----BEGIN SSH SIGNATURE-----\n" + "\n".join(armor.split()) + "\n-----END SSH SIGNATURE-----\n", encoding="utf-8", newline="\n")
                 payload = []
                 in_signature = False
                 for line in obj.splitlines(keepends=True):

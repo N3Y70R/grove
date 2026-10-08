@@ -98,7 +98,7 @@ def test_legacy_zone_keeps_existing_include_and_filename():
     identity = p.identities_dir / 'work.gitconfig'
     blockedit.write_atomic(identity, gitidentity.render_identity('a@example.com', {'github.com': 'gh'}))
     original = blockedit.upsert_block('', 'zone', 'work',
-        f'[includeIf "gitdir:{platform.normalize_gitdir(scope)}"]\n    path = "{identity}"')
+        f'[includeIf "gitdir:{platform.normalize_gitdir(scope)}"]\n    path = {gitidentity._quote(identity.as_posix())}')
     blockedit.write_atomic(p.gitconfig, original)
     assert gitidentity.upsert_zone(scope, 'a@example.com', {'gitlab.com': 'gl'}, p) == identity
     assert set(blockedit.find_blocks(p.gitconfig.read_text(), 'zone')) == {'work'}
@@ -327,7 +327,7 @@ def test_two_zones_cannot_share_an_identity_file():
     scope = p.home / 'first'
     identity = gitidentity.upsert_zone(scope, 'a@example.com', {'github.com': 'gh'}, p)
     text = blockedit.upsert_block(p.gitconfig.read_text(), 'zone', 'second',
-        f'[includeIf "gitdir:{platform.normalize_gitdir(p.home / "second")}"]\n    path = "{identity}"')
+        f'[includeIf "gitdir:{platform.normalize_gitdir(p.home / "second")}"]\n    path = {gitidentity._quote(identity.as_posix())}')
     p.gitconfig.write_text(text)
     original = identity.read_bytes()
     with pytest.raises(ValidationError, match='Ambiguous'):
@@ -396,7 +396,7 @@ def test_remove_last_empty_zone_cleans_legacy_include():
     target = p.identities_dir / 'legacy.gitconfig'
     blockedit.write_atomic(target, gitidentity.render_identity('a@example.com', {'github.com': 'gh'}))
     blockedit.write_atomic(p.gitconfig, blockedit.upsert_block('', 'zone', 'legacy',
-        f'[includeIf "gitdir:{platform.normalize_gitdir(scope)}"]\n    path = "{target}"'))
+        f'[includeIf "gitdir:{platform.normalize_gitdir(scope)}"]\n    path = {gitidentity._quote(target.as_posix())}'))
     gitidentity.remove_account_from_zone(scope, 'gh', p)
     assert not target.exists()
     assert not blockedit.find_blocks(p.gitconfig.read_text(), 'zone')
@@ -430,7 +430,7 @@ def test_core_dry_run_is_safe_even_with_mismatched_runner(spec_dry, runner_dry):
 def test_relative_identity_include_is_reused():
     p = platform.paths()
     target = p.home / 'identity.gitconfig'
-    target.write_text(gitidentity.render_identity('a@example.com', {'github.com': 'gh'}))
+    target.write_text(gitidentity.render_identity('a@example.com', {'github.com': 'gh'}), encoding='utf-8')
     scope = p.home / 'work'
     p.gitconfig.write_text(blockedit.upsert_block('', 'zone', 'legacy',
         f'[includeIf "gitdir:{platform.normalize_gitdir(scope)}"]\n    path = identity.gitconfig'))
@@ -463,5 +463,5 @@ def test_ssh_key_path_with_spaces_resolves_correctly(tmp_path):
     key = tmp_path / 'key with spaces'
     key.write_text('existing key')
     sshprov.add_account(sshprov.AddSpec('account', 'github.com', key=key, no_identity=True, no_agent=True))
-    assert sshprov.read_inventory().accounts[0].key == str(key)
+    assert Path(sshprov.read_inventory().accounts[0].key) == key
     assert not any(f.check == 'effective-config' for f in sshdoctor.diagnose())

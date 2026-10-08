@@ -124,8 +124,8 @@ def test_test_does_not_change_target_objects_refs_hooks(repo, key):
 def test_test_configured_trust_and_wrong_principal(repo, key, tmp_path):
     _, ctx = repo
     cwd = ctx.root / "main"
-    enable(ctx, key)
     git(cwd, "config", "user.email", "test@example.com")
+    enable(ctx, key)
     trust = tmp_path / "trust"
     trust.write_text("test@example.com " + Path(str(key) + ".pub").read_text())
     git(cwd, "config", "gpg.ssh.allowedSignersFile", str(trust))
@@ -375,8 +375,8 @@ def test_disable_plan_respects_higher_override(repo, key):
 def test_identity_environment_is_used_by_trust_test(repo, key, monkeypatch, tmp_path):
     _, ctx = repo
     cwd = ctx.root / "main"
-    enable(ctx, key)
     git(cwd, "config", "user.email", "configured@example.com")
+    enable(ctx, key)
     monkeypatch.setenv("GIT_COMMITTER_EMAIL", "environment@example.com")
     trust = tmp_path / "trust"
     trust.write_text("environment@example.com " + Path(str(key) + ".pub").read_text())

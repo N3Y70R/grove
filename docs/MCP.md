@@ -336,3 +336,23 @@ The result includes `created: true/false` and `mode` (`created` | `regenerate` |
 - If the repo uses a non-standard base (e.g. `production`), state it on setup or
   choose a matching profile; don't assume `main`.
 - For destructive actions, expect the agent to ask for / pass `confirm=true`.
+
+### Verified repairs and dry-run
+
+> “Show what would be repaired first.” →
+> `grove_doctor(cwd="/path/to/repo/main", fix=true, dry_run=true)`
+> or `grove_ssh_doctor(fix=true, dry_run=true)`.
+> CLI: `gwt doctor --fix --dry-run --json` /
+> `gwt ssh doctor --fix --dry-run --json`.
+
+The result keeps the initial diagnosis and reports `attempted`, `failures`,
+`remaining_issues` / `remaining_findings` and `dry_run`. A preview has zero repairs;
+a real fix counts as `applied` only after a new diagnosis verifies it.
+`grove_ssh_accounts` has the same `key_exists` and nullable `in_agent` fields as
+CLI JSON. `grove_ssh_add.agent_loaded` reports loading success/failure or null when
+not attempted. An encrypted-key operation that needs a terminal should be completed
+there; MCP never prompts or removes a passphrase.
+
+`grove_reset(dry_run=true, cwd="/path/to/repo/main")` previews losses and steps
+without confirmation or a reset. Actual execution still requires `confirm=true`.
+Explicit `cwd` controls the implicit target and each call gets an independent policy.

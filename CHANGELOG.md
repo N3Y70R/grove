@@ -2,6 +2,32 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per implementation with tags `python/vX.Y.Z`, `go/vX.Y.Z`, `rust/vX.Y.Z`.
 
+## python — Unreleased
+
+### Fixed
+
+- Dry-run skips doctor callbacks, keys, agent loading and backups in CLI/JSON/MCP;
+  verbose JSON keeps traces inside `log` and rejects interactive confirmation.
+- Explicit CLI/MCP context determines the implicit worktree. Policy resets and
+  serialized operation scopes prevent leakage between calls.
+- New zone IDs distinguish identical folder names; legacy includes keep their IDs.
+  Selective identity edits preserve signing and other independent settings, including
+  after removing the last account. Reject ambiguous ownership and identity conflicts.
+- Validate malformed markers; use unique temporary files/backups and detect
+  intervening configuration edits. Report failures rather than silently deleting work.
+- Doctors verify repairs and expose attempts, failures and remaining findings.
+  Detect missing identity files and effective SSH rule conflicts. Bound headless
+  OpenSSH processes and distinguish an empty agent from an unavailable one.
+- Share CLI/MCP account serialization, including key and agent state. Both doctors
+  and MCP reset support dry-run. Report failed agent loading during provisioning.
+
+### Changed
+
+- Package metadata uses SPDX and ships the GPL license in wheel/sdist; require
+  setuptools >=77 for the build backend. Runtime remains dependency-free.
+- CI covers shared contracts/skills and selected macOS/Windows foundation tests.
+  Publishing checks release metadata, main ancestry, tests and skill consistency.
+
 ## python — 0.16.0
 
 Fifth review of the Agent Skill (FEEDBACK §24).

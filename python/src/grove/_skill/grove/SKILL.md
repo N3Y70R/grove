@@ -38,10 +38,11 @@ up side by side; act only on the repo the user named.
 | start a release, or bring one that exists on origin | `grove_create(kind="release", version)` | `gwt create release <v>` |
 | bring an existing branch into a folder | `grove_track(branch)` | `gwt track <branch>` |
 | remove finished work | `grove_remove(merged=true, dry_run=true)` first | `gwt remove --merged --dry-run` |
-| fix hygiene problems | `grove_doctor`, then `fix=true` | `gwt doctor --fix` |
+| diagnose / preview hygiene repairs | `grove_doctor(fix=true, dry_run=true)`, then `fix=true` | `gwt doctor --fix --dry-run`, then `--fix` |
 | manage an existing normal clone | `grove_convert(path, dry_run=true)` first | `gwt convert <path>` (alias `adopt`) |
 | clone a new repo | `grove_setup(url, profile?)` | `gwt setup <url>` |
 | merge tickets into the shared integration branch (`integration_branch`) | `grove_publish(targets=[…])` | `gwt publish PROJ-1 PROJ-2` |
+| diagnose SSH accounts / preview repairs | `grove_ssh_doctor(fix=true, dry_run=true)` | `gwt ssh doctor --fix --dry-run` |
 | a push/fetch fails for SSH, or a new GitHub/Bitbucket account | `grove_ssh_check(live=true)`, `grove_ssh_add` | `gwt ssh check`, `gwt ssh add` |
 
 Default to **`grove_start`** for anything like "work on / start / continue
@@ -78,6 +79,15 @@ freshly fetched `origin/<base>`.
 5. Never answer `diverged` with `grove_reset`: it throws your commits away.
 
 ## Gotchas
+
+- Doctor results keep initial findings. Check `remaining_issues` /
+  `remaining_findings` and `failures` after repair; `applied` means verified.
+  `fix=true, dry_run=true` previews without config, key, backup or agent changes.
+- For implicit worktree targets, pass `cwd` for that worktree; the repo container
+  alone cannot identify it. JSON never prompts; `--json --confirm-each` is invalid.
+- SSH zone updates preserve independent Git settings, including signing.
+  Conflicting email/routing needs review; do not recreate a missing identity file
+  with guessed settings. Headless agent loading may require terminal unlock.
 
 - **`grove_reset` / `gwt reset` DISCARDS local commits and changes** (reset
   --hard to origin). `grove_sync` / `gwt sync` is its deprecated alias. To

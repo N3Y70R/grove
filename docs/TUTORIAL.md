@@ -386,7 +386,7 @@ gwt doctor
 
 ### Provision an account end-to-end (`gwt ssh add`)
 
-Before *choosing* an account per repo, you need the account to **exist** on your machine: a key, an `~/.ssh/config` entry, and (ideally) git identity routing so commits are signed with the right email. `gwt ssh add` does all of it in one idempotent step. This is machine-level — you don't need to be inside a repo.
+Before *choosing* an account per repo, you need the account to **exist** on your machine: a key, an `~/.ssh/config` entry, and (ideally) git identity routing so commits record the right author email. This does not configure cryptographic signing. `gwt ssh add` does all of it in one idempotent step. This is machine-level — you don't need to be inside a repo.
 
 The recommended layout puts each account's repos under its own folder, so the **folder decides everything**:
 
@@ -420,7 +420,7 @@ cd ~/dropi/github
 git clone git@github.com:gerenciadropi/backend.git   # rewritten to git@dropi-gh: → Dropi key + Dropi email
 ```
 
-> **Why this is bulletproof.** The `Host` alias carries `IdentitiesOnly yes`; the zone's `insteadOf` rewrites canonical URLs to the alias (so you never type it); and `user.useConfigOnly = true` makes git refuse to invent an identity. Adding a second account on the same host later is just another `gwt ssh add` — nothing to migrate. Works on macOS, Linux and Windows (the Keychain step is macOS-only).
+> **How routing works.** The `Host` alias carries `IdentitiesOnly yes`; the zone's `insteadOf` rewrites canonical URLs to the alias (so you never type it); and `user.useConfigOnly = true` makes git refuse to invent an identity. Another host can share a zone; another account on the same host needs a different zone or explicit per-repo alias selection. Works on macOS, Linux and Windows (the Keychain step is macOS-only).
 
 ### See what you have (`gwt ssh accounts`)
 
@@ -672,3 +672,16 @@ Two things to remember in `--json` mode:
 | Diagnose a remote's SSH | `gwt ssh check [--all] [--live]` |
 
 > Almost all of them accept `--dry-run` to see what they would do, `-v` to show each underlying git command, and `--json` for parseable output with status and reason.
+
+### Review repairs before applying them
+
+```bash
+gwt doctor --fix --dry-run --json
+gwt ssh doctor --fix --dry-run --json
+```
+
+Read the initial findings and proposed actions. A preview changes no files or
+agent state. After applying repairs, use `remaining_issues` / `remaining_findings`
+and `failures` to see what still needs attention; `applied` counts verified repairs.
+Existing signing settings survive SSH account updates and removals. Configuring
+commit signatures remains a separate task.

@@ -590,3 +590,13 @@ output (0.14.1); skill third review — front-loaded triggers, temp/release rows
 catalog-not-permission (0.14.2); `skill install --dry-run` never fails,
 `skill-edited` and checked copies in `doctor` (0.15.0); `gwt skill status`,
 MCP errors with their message (0.16.0).
+
+
+## 25. General correction review (unreleased)
+
+Reliability review of dry-run/JSON, per-operation context/policy, zone ownership,
+identity preservation, verified repair reports, bounded headless SSH processes
+and CLI/MCP parity. Corrections and regression tests are on the working branch;
+release follows merge and green CI. Publishing now validates metadata/ancestry,
+tests and the packaged skill before uploading. Signing and provider integrations
+remain separate follow-up work.

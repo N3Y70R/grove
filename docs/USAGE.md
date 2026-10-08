@@ -34,7 +34,7 @@ General form:
 gwt <command> [arguments] [flags]
 ```
 
-Except for `setup`, all commands must be run **inside a managed repo** (grove looks for `.bare/` upward from the current directory).
+Worktree commands need a managed repo (Grove looks upward for `.bare/`, starting from `-C` when supplied). `setup`, `convert`, `repos`, user-level `skill` operations and machine-level SSH account operations also work outside a repo; `ssh check` / `ssh aliases` need an explicit target there.
 
 ### Global flags
 
@@ -44,7 +44,7 @@ Except for `setup`, all commands must be run **inside a managed repo** (grove lo
 | `--version` | grove version |
 | `-q, --quiet` | Warnings and errors only |
 | `-v, --verbose` | Prints each git command executed, step by step |
-| `--confirm-each` | Step-through: asks for confirmation before each git command (implies `-v`) |
+| `--confirm-each` | Ask before executed mutating Git commands; incompatible with `--json`; dry-run never prompts |
 | `--no-color` | Disables colors |
 | `--json` | JSON output with status, reason, and result data (see below) |
 | `-C <path>` | Runs as if the current directory were `<path>` |
@@ -859,8 +859,42 @@ If you don't define any, the generic pattern that accepts any Jira-style key is 
 
 ## Verbose and step-through
 
-With `-v` grove prints each real git command before executing it (useful for auditing or learning). `--confirm-each` additionally asks for confirmation before each one; reserved for delicate operations.
+With `-v` grove prints each real git command before executing it (useful for auditing or learning). `--confirm-each` additionally asks before executed mutations (except dry-run, and incompatible with JSON); reserved for delicate operations.
 
 ```
 gwt setup git@github.com:acme/myrepo.git -v
 ```
+
+## Reliability of diagnostics and account configuration
+
+`gwt doctor --fix --dry-run --json -v` and
+`gwt ssh doctor --fix --dry-run --json -v` report planned repairs without writing
+configuration, creating backups/keys or loading the agent. Verbose traces stay
+inside `log`; stdout contains one JSON object. JSON never requests terminal input.
+
+Both reports keep initial problems and add `attempted`, `failures`, `dry_run` and
+`remaining_issues` (repository) / `remaining_findings` (SSH). `applied` counts
+repairs verified by a fresh diagnosis. Repository doctor keeps exit 0 when the
+diagnostic completes; SSH doctor exits 1 while problems or repair failures remain.
+
+`-C` chooses the worktree when a target is omitted. Policy is resolved independently
+for each operation, including calls served by a long-running MCP process.
+
+New identity zones have IDs derived from their absolute path, so identical folder
+names do not collide. Existing includes keep their IDs/files. Account operations
+preserve additional Git settings, including signing options. Removing the last
+account retains a file/include with other settings or user comments. Conflicting
+email or host routing is rejected before provisioning; recover damaged legacy
+configuration from a reviewed backup. Multi-file changes can fail partway through:
+inspect `ssh accounts` and `ssh doctor` before retrying.
+
+`GIT_CONFIG_GLOBAL` selects the global file Grove manages. Effective SSH settings
+that disagree with a managed account are reported for manual review. Missing zone
+identity files are reported rather than silently regenerated. Agent state is `null`
+when unknown, and `false` when the key is absent from an available agent.
+`ssh add` returns `agent_loaded` (`true`, `false`, or `null` if not attempted).
+
+Headless JSON/MCP cannot generate an encrypted key interactively; use the terminal
+for that step or explicitly choose `--no-passphrase`. Existing encrypted keys can
+be reused. If loading needs unlock, load the key in a terminal and diagnose again.
+An author email is not a commit signature; Grove does not configure signing yet.

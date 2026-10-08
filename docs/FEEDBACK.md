@@ -592,18 +592,16 @@ catalog-not-permission (0.14.2); `skill install --dry-run` never fails,
 MCP errors with their message (0.16.0).
 
 
-## 25. General correction review (unreleased)
+## 25. General correction review (released in Python 0.17.0)
 
 Reliability review of dry-run/JSON, per-operation context/policy, zone ownership,
 identity preservation, verified repair reports, bounded headless SSH processes
-and CLI/MCP parity. Corrections and regression tests are on the working branch;
-release follows merge and green CI. Publishing now validates metadata/ancestry,
-tests and the packaged skill before uploading. Signing and provider integrations
-remain separate follow-up work.
+and CLI/MCP parity. Corrections and regression tests were published in Python 0.17.0. Publishing now validates metadata/ancestry,
+tests and the packaged skill before uploading. SSH signing was included in 0.17.0; provider integrations remain separate.
 
 ## SSH signing and general correction release — Python 0.17.0
 
-**Status:** implemented locally; remote CI/integration/publication pending.
+**Status:** published on PyPI and GitHub; integrated in main at e10ad09.
 
 **Finding.** Signing setup and troubleshooting needed effective Git context,
 independent personal/work identity zones, dry-run and diagnostics without a
@@ -618,3 +616,11 @@ key via existing SSH provisioning; the user registers it with their platform.
 Publish remains tag-driven through PyPI Trusted Publishing after CI/main ancestry
 and release metadata validation. No provider registration/history rewrite is
 performed automatically.
+
+## Skill and first-use guidance — Python 0.17.1
+
+Skill installation/status, actionable MCP errors and signing registration
+constraints are now visible in the main skill. Existing guides distinguish
+CLI + skill from optional MCP and separate file installation, client skill
+loading and server connection. The aggregated onboarding assistant remains
+planned for 0.18.0; client configurations will not be edited automatically.

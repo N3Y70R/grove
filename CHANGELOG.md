@@ -4,6 +4,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ## python — Unreleased
 
+## python — 0.17.1
+
+### Changed
+
+- Agent Skill exposes installation and status operations, reads Grove errors
+  before retries, and distinguishes SSH authentication from signing registration.
+- Existing installation guides explain CLI or optional MCP use, full skill
+  installation and separate connection/version versus skill-loading checks.
+
 ## python — 0.17.0
 
 ### Added

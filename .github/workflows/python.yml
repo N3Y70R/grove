@@ -4,11 +4,23 @@ on:
   push:
     paths:
       - "python/**"
+      - "skills/grove/**"
+      - "spec/**"
+      - "docs/**"
       - ".github/workflows/python.yml"
+      - ".github/workflows/release.yml"
+      - "scripts/**"
+      - "CHANGELOG.md"
   pull_request:
     paths:
       - "python/**"
+      - "skills/grove/**"
+      - "spec/**"
+      - "docs/**"
       - ".github/workflows/python.yml"
+      - ".github/workflows/release.yml"
+      - "scripts/**"
+      - "CHANGELOG.md"
 
 jobs:
   test:
@@ -25,7 +37,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install (with test + mcp extras)
-        run: pip install "./python[test,mcp]"
+        run: pip install "./python[test,mcp]" PyYAML
 
       - name: Validate the Agent Skill (agentskills.io spec)
         run: |
@@ -57,3 +69,18 @@ jobs:
           cd repo
           gwt list --json
           gwt create PROJ-1 feature "ci smoke" --json
+
+  platform-foundation:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install "./python[test,mcp]" PyYAML
+      - name: Test platform paths, config edits and dry-run contracts
+        run: pytest python/tests/test_platform.py python/tests/test_blockedit.py python/tests/test_general_corrections.py -q -rs

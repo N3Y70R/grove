@@ -16,10 +16,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Validate release tag and main ancestry
+        env:
+          GROVE_RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python scripts/check-python-release.py "$GROVE_RELEASE_TAG"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Install test dependencies
+        run: python -m pip install "./python[test,mcp]" "skills-ref>=0.1.1" PyYAML
+
+      - name: Verify tests and packaged skill before publishing
+        run: |
+          pytest python -q -rs
+          agentskills validate skills/grove
+          diff -r skills/grove python/src/grove/_skill/grove
+          gwt --version
+          gwt --help
 
       - name: Build sdist + wheel
         run: |

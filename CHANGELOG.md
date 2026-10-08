@@ -4,6 +4,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ## python — Unreleased
 
+## python — 0.17.0
+
 ### Added
 
 - SSH commit signing: `gwt signing enable|disable|doctor` and three typed MCP

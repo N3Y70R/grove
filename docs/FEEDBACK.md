@@ -600,3 +600,21 @@ and CLI/MCP parity. Corrections and regression tests are on the working branch;
 release follows merge and green CI. Publishing now validates metadata/ancestry,
 tests and the packaged skill before uploading. Signing and provider integrations
 remain separate follow-up work.
+
+## SSH signing and general correction release — Python 0.17.0
+
+**Status:** implemented locally; remote CI/integration/publication pending.
+
+**Finding.** Signing setup and troubleshooting needed effective Git context,
+independent personal/work identity zones, dry-run and diagnostics without a
+provider client. General configuration/doctor inconsistencies needed resolving
+before those operations could share a reliable foundation.
+
+**Resolution.** `signing enable|disable|doctor`, three typed MCP tools and skill
+instructions now share local plans/diagnosis. Real disposable signature tests,
+explicit key selection, protected selective edits and verified repair accounting
+build on the configuration/dry-run corrections. First-time setup prints a public
+key via existing SSH provisioning; the user registers it with their platform.
+Publish remains tag-driven through PyPI Trusted Publishing after CI/main ancestry
+and release metadata validation. No provider registration/history rewrite is
+performed automatically.

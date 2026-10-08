@@ -313,3 +313,13 @@ match `gwt --version`. This verifies connection and server version; it does not
 prove the client loaded the skill. Check skill discovery/loading separately
 using the client's facilities. SSH accounts and commit signing are optional,
 separate configurations; their absence does not prevent basic Grove use.
+
+### Assisted first-use checks (Python 0.18.0)
+
+Use `gwt onboard` to inspect, then `gwt onboard --install-skill --dry-run` to
+preview and `gwt onboard --install-skill` to apply. For MCP, add
+`--channel mcp --client CLIENT` and select the skill target for that client
+(e.g. `--target claude`). The assistant prints manual registration instructions
+without editing client configuration. It reports missing prerequisites, protects
+skill edits and keeps client verification separate. See [USAGE.md](USAGE.md#gwt-onboard)
+for custom/project destinations and optional diagnostics.

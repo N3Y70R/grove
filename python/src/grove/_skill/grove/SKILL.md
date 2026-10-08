@@ -33,6 +33,7 @@ up side by side; act only on the repo the user named.
 
 | The user wants to… | MCP tool | CLI |
 |---|---|---|
+| inspect first-use readiness / install the skill explicitly | `grove_onboard(channel="cli"|"mcp", install_skill=false)` | `gwt onboard [--channel cli|mcp] [--install-skill] [--dry-run]` |
 | install / refresh the skill for a client | `grove_skill_install(target="agents"|"claude"|"project", dry_run=true)` | `gwt skill install [--claude | --project | --path DIR] --dry-run` |
 | check installed user-level skill copies | `grove_skill_status` | `gwt skill status` |
 | start / resume work on a ticket | `grove_start(type, name, ticket, base?)` | `gwt start PROJ-1 feature "login"` |
@@ -88,6 +89,11 @@ freshly fetched `origin/<base>`.
 5. Never answer `diverged` with `grove_reset`: it throws your commits away.
 
 ## Gotchas
+
+- Onboarding inspects by default; request skill installation explicitly and
+  preview it first. It never edits client configuration or forces skill edits.
+  MCP readiness is pending until an agent-side version query; skill loading is
+  checked separately. SSH/signing checks are optional and never repair or sign.
 
 - Signing: preview configuration changes and select an account/key explicitly.
   Users register the public key for signing with their platform; registering it

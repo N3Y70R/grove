@@ -943,3 +943,35 @@ key as a signing key with your Git hosting platform. Server policy errors may
 also concern older unsigned commits. Doctor never repairs them by rewriting
 history. Exit codes: 0 without blocking findings, 1 pending blocking findings,
 2 operational failure, 3 invalid usage/context.
+
+## `gwt onboard`
+
+Aggregate first-use inspection; no repo required unless a project skill or
+signing check is requested. Python implementation, available from 0.18.0.
+
+```sh
+gwt onboard                           # CLI + default user skill
+gwt onboard --install-skill --dry-run  # preview, no writes/network
+gwt onboard --install-skill            # install full skill, preserve edits
+gwt onboard --channel mcp --client claude-code --target claude
+gwt onboard --target project -C /path/repo/main --install-skill
+gwt onboard --path /custom/skills --json
+gwt onboard --check-update             # optional bounded PyPI request
+gwt onboard --ssh --signing -C /path/repo/main
+```
+
+`--channel cli|mcp` defaults to CLI; MCP dependencies are optional in CLI mode.
+`--client` selects instructions (agents, codex, claude-code, claude-desktop,
+cursor); unknown names are reported. Detection of an executable does not prove
+client integration. `--target agents|claude|project` defaults to agents;
+`--path` overrides it. Installation uses the existing installer without force.
+Dry-run skips writes and update network access. SSH/signing are opt-in passive
+diagnostics; no repairs, key loading or signing tests. Client configuration is
+never edited. Update availability is informational; network errors are inconclusive.
+
+Exit 0 means inspection completed, not that every component is ready. JSON
+`result.verdict` is `ready_cli`, `pending_client`, `action_required` or `problem`.
+`checks` gives each component's status/message; `next_steps` gives manual
+instructions; `installation` is present only if requested. MCP readiness always
+requires an agent-side query and a separate skill-loading check. Invalid options
+and execution failures use the normal error envelope. See specification §16.

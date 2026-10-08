@@ -31,7 +31,8 @@ grove ships an [Agent Skill](https://agentskills.io) — [`skills/grove/`](skill
 
 MCP is optional: an agent with terminal access can follow the skill using `gwt`.
 The skill supplies instructions, not an execution channel. Installing the package
-and installing the skill are separate steps; see [first-use checks](docs/INSTALL.md#first-use-with-an-agent).
+and installing the skill are separate steps. `gwt onboard` inspects readiness;
+`gwt onboard --install-skill` installs the skill while preserving edits; see [first-use checks](docs/INSTALL.md#first-use-with-an-agent).
 
 ## Repository structure
 

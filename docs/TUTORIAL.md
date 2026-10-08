@@ -6,7 +6,8 @@ If you haven't installed it yet, go first to [INSTALL.md](INSTALL.md). For the d
 
 An agent with terminal access can also follow these flows using `gwt` and the
 Agent Skill; MCP is optional. Complete the [first-use checks](INSTALL.md#first-use-with-an-agent)
-for your chosen execution channel.
+for your chosen execution channel. `gwt onboard` can inspect readiness and
+`gwt onboard --install-skill --dry-run` previews the skill installation.
 
 > **Prefer to drive grove through MCP?** These
 > same flows, expressed as natural-language prompts mapped to grove's MCP tools,

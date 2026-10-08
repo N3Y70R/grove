@@ -38,7 +38,7 @@ facades and docs stay in sync**:
    - every parameter has a **`Field(description=…)`**;
    - constrained choices use an **enum** (`Literal[...]`);
    - the tool has **`ToolAnnotations`** (read-only / destructive / idempotent,
-     `open_world_hint=False`);
+     `open_world_hint=False` for offline tools; explicit network options require true);
    - it returns a **`TypedDict` from `grove/mcp/schemas.py`** describing every
      field (`Annotated[..., Field(description=…)]`, `NotRequired` for keys that
      may be absent; for a tool with several modes, one schema whose

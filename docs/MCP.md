@@ -145,6 +145,7 @@ in which mode it appears.
 Worktree & config: `grove_setup`, `grove_list`, `grove_create`, `grove_track`,
 `grove_remove`, `grove_reset` (deprecated alias `grove_sync`), `grove_publish`, `grove_doctor`, `grove_compare`,
 `grove_config`, `grove_ssh_check`, `grove_start`, `grove_fetch`, `grove_convert`,
+`grove_onboard` (aggregate first-use checks and explicit skill installation),
 `grove_skill_install`, `grove_skill_status` (installed skill copies vs the
 running grove; no repo needed), and `grove_repos` (read-only: finds the managed repos
 under your identity zones, the `repos_roots` of `~/.config/grove/config.toml`
@@ -387,3 +388,16 @@ limited to 16 KiB and never executed. Doctor cannot certify provider registratio
 help the user register the public signing key themselves, and distinguish local
 trust from remote recognition. Never upload a private key or rewrite history to
 repair a server policy error automatically.
+
+### First-use readiness
+
+Chat: “Check Grove's readiness for this client; preview installing its skill.”
+CLI: `gwt onboard --channel mcp --client cursor --install-skill --dry-run`.
+Tool: `grove_onboard(channel="mcp", client="cursor", install_skill=true, dry_run=true)`.
+
+Then install without dry-run when requested. This tool preserves skill edits,
+never writes client configurations and reports `pending_client` when local MCP
+prerequisites pass. Ask the agent to call `grove_skill_status`, compare its
+version, and check skill loading separately. `check_update=true` is an optional
+PyPI request; all other defaults remain offline. Diagnostics are passive and
+opt-in with `ssh=true` / `signing=true` (signing needs a worktree cwd).

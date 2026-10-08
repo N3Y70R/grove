@@ -1066,3 +1066,50 @@ Implementation notes:
 ### 14.9 MCP exposure
 
 Adds `grove_ssh_add`, `grove_ssh_accounts`, `grove_ssh_doctor`, `grove_ssh_remove` to the tool set (§13.2), same rules: typed inputs, structured output, confirmation by parameter. The canonical **enrichment** example: an agent calls `grove_ssh_add` and then uses its **GitHub/Bitbucket connector to upload the printed public key** — grove provisions locally, the agent does the network step. The provisioning tools do not upload keys or query provider APIs.
+
+## 15. SSH commit signing
+
+Python exposes `gwt signing enable|disable|doctor` and the corresponding
+`grove_signing_enable`, `grove_signing_disable`, `grove_signing_doctor` MCP tools.
+Other implementations must follow this contract when implementing signing.
+
+- `enable` requires exactly one existing account alias or readable SSH key path,
+  and `scope=repo|zone`. Repo writes shared `.bare/config`; zone writes an
+  existing, unambiguous identity include for a repository inside that zone.
+  Zone selection requires its directory unless an account supplies it.
+- A dedicated `grove:signing=ssh` block owns only `gpg.format=ssh`,
+  `user.signingkey` and `commit.gpgsign=true`. It includes a content checksum;
+  edited/unknown blocks are conflicts. Unmanaged settings/includes remain intact.
+  Higher scopes/competing include sources are rejected instead of reporting
+  ineffective activation. Paths are resolved against the explicit context.
+- `disable` removes only the validated block. Inherited signing may still be
+  enabled: the result must report the effective state. No whole-machine scope,
+  account registry, implicit key generation or rewrite of existing commits.
+- `doctor` reads effective Git configuration with origins/scopes from `cwd`/`-C`.
+  It checks SSH key mechanisms (private, public, inline and dynamic), tools,
+  agent availability where relevant, local trust and revocation paths. Other
+  signing formats remain unchanged and the SSH test is not applicable to them.
+- Passive diagnosis never executes a dynamic key command. Explicit `test=true`
+  runs the configured selector/signer and signs a disposable Git commit, outside
+  the target object database/refs/hooks. Processes are bounded/non-interactive;
+  unlocking remains a terminal action. Verification with temporary trust tests
+  cryptography separately from verification with configured trust and the
+  effective committer principal. It never claims provider recognition.
+- `fix=true` can restrict selected private-key permissions on POSIX and attempt an encrypted-key agent load without interaction;
+  it never selects a key, enables signing, changes identity or regenerates keys.
+  Applied counts require a subsequent inspection to resolve the finding.
+- `dry_run=true` permits inspection/plan only: no target/config/backups, repairs,
+  agent loads or signing tests. A requested test returns `skipped`.
+- Supplied errors are UTF-8 data, limited to 16 KiB: CLI `--error-file`, MCP
+  `error_text`. Redact credentials/private-key material; never execute the text.
+  A verified-signature server rejection is evidence of a requirement, not proof
+  that a specific registration/key is missing. Unknown errors stay unclassified.
+
+Configuration results contain scope/file, changed/managed/enabled, dry_run,
+per-setting previous/proposed values, configuration sources, effective values
+and an outcome message. Doctor results contain context, configuration, checks,
+findings, test, repairs, remaining_findings, dry_run, provider_verification and ok.
+Severity (`error|warning`) is independent of fixable. Test statuses are
+`not_run|skipped|passed|failed|needs_unlock|unsupported`. CLI doctor returns 1
+for pending blocking findings, 0 otherwise; operational failures use 2 and usage
+errors 3. CLI/MCP serialize the same result, including JSON+verbose operation.

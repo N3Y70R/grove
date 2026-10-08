@@ -4,6 +4,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/), versioned per i
 
 ## python — Unreleased
 
+## python — 0.18.0
+
+### Added
+
+- `gwt onboard` and typed `grove_onboard`: aggregate first-use readiness for
+  CLI or optional MCP, with explicit full skill installation preserving edits.
+- Independent component checks and manual client instructions; connection and
+  skill loading remain separately verified by the agent. No client config edits.
+- Optional passive SSH/signing diagnosis and bounded PyPI version check;
+  dry-run skips installation writes and update requests. Custom/project skill
+  destinations use the explicit context. Unknown clients are reported.
+
 ## python — 0.17.1
 
 ### Changed

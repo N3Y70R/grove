@@ -622,5 +622,13 @@ performed automatically.
 Skill installation/status, actionable MCP errors and signing registration
 constraints are now visible in the main skill. Existing guides distinguish
 CLI + skill from optional MCP and separate file installation, client skill
-loading and server connection. The aggregated onboarding assistant remains
-planned for 0.18.0; client configurations will not be edited automatically.
+loading and server connection. The aggregated onboarding assistant is implemented for 0.18.0; client
+configurations are not edited automatically.
+
+## Onboarding readiness — Python 0.18.0
+
+Aggregates existing skill installation/status and optional SSH/signing doctors
+through shared core, CLI and typed MCP. Preserves edits, supports explicit
+project/custom destinations, separates optional MCP prerequisites from CLI,
+and reports pending agent-side connection/skill-loading verification. Explicit
+PyPI checks are bounded/inconclusive on failure; no auto-updates or client edits.

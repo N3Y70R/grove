@@ -17,7 +17,7 @@ pytest.importorskip("mcp")
 
 from grove.mcp import server  # noqa: E402
 
-TYPED = {"grove_setup", "grove_convert", "grove_list", "grove_create", "grove_track",
+TYPED = {"grove_onboard", "grove_setup", "grove_convert", "grove_list", "grove_create", "grove_track",
          "grove_start", "grove_fetch", "grove_remove", "grove_reset", "grove_sync",
          "grove_doctor", "grove_compare", "grove_config", "grove_publish",
          "grove_ssh_check", "grove_ssh_aliases", "grove_ssh_add", "grove_ssh_accounts",
@@ -159,3 +159,10 @@ def test_repos_honours_its_schema(repo, tmp_path):
 def test_skill_status_honours_its_schema():
     res = call("grove_skill_status")
     assert res["skills"] == [] and res["hint"]
+
+
+def test_onboard_honours_schema(tmp_path):
+    result = call("grove_onboard", path=str(tmp_path / "skills"), install_skill=True, dry_run=True)
+    assert result["verdict"] == "action_required"
+    assert result["installation"]["dry_run"] is True
+    assert not (tmp_path / "skills").exists()

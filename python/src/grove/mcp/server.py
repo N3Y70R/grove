@@ -5,7 +5,7 @@ This is a thin facade over ``grove.core`` (see spec §13). It mirrors the
 ``--json``), and destructive actions gated by a ``confirm`` boolean — no
 interactive prompts.
 
-It does not go out to the network and has no ticket-platform clients: ticket
+It has no ticket-platform clients; onboarding can explicitly check PyPI. Ticket
 keys/slugs arrive by parameter. Enrichment (e.g. fetching an issue title) is
 the agent's job, composing its own connectors with these tools.
 
@@ -40,7 +40,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
 
 from . import _ops
 from .schemas import (
-    CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
+    OnboardResult, CompareResult, ConfigResult, ConvertResult, CreateResult, DoctorResult, FetchResult,
     ListResult, PublishResult, RemoveResult, ResetResult, SetupResult, SshAccountsResult,
     ReposResult, SkillInstallResult, SkillStatusResult, SshAddResult, SshAliasesResult, SshCheckResult, SshDoctorResult,
     SshRemoveResult, SigningResult, SigningDoctorResult,
@@ -100,11 +100,11 @@ Cwd = Annotated[Optional[str], Field(
 # schema lists every field (type + description). Never a bare `dict`: the SDK
 # would then send text only, without `structured_content`.
 
-# Annotation presets (open_world_hint=False: grove is offline, pure-git).
-def _ann(title, *, read_only=False, destructive=False, idempotent=False):
+# Offline by default; onboarding advertises its explicit PyPI option.
+def _ann(title, *, read_only=False, destructive=False, idempotent=False, open_world=False):
     return ToolAnnotations(title=title, read_only_hint=read_only,
                            destructive_hint=destructive, idempotent_hint=idempotent,
-                           open_world_hint=False)
+                           open_world_hint=open_world)
 
 
 @mcp.tool(annotations=_ann("Set up a managed repo"))
@@ -601,3 +601,27 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+@mcp.tool(annotations=_ann("Guide Grove first-use readiness", idempotent=True, open_world=True))
+def grove_onboard(
+    channel: Annotated[Literal["cli", "mcp"], Field(description="Execution channel to check; CLI does not require MCP.")] = "cli",
+    client: Annotated[str, Field(description="Instruction target: agents, codex, claude-code, claude-desktop, cursor; unknown clients are reported.")] = "agents",
+    target: Annotated[Literal["agents", "claude", "project"], Field(description="Skill destination convention; project requires a worktree.")] = "agents",
+    path: Annotated[Optional[str], Field(description="Custom skill root; overrides target, installs into path/grove.")] = None,
+    install_skill: Annotated[bool, Field(description="Explicitly install/refresh via the existing installer; preserve edited copies.")] = False,
+    dry_run: Annotated[bool, Field(description="Preview without installation writes or update network access.")] = False,
+    check_update: Annotated[bool, Field(description="Opt-in bounded PyPI version request; never upgrades packages.")] = False,
+    ssh: Annotated[bool, Field(description="Optional passive SSH diagnosis; no key/identity repairs.")] = False,
+    signing: Annotated[bool, Field(description="Optional passive signing diagnosis in cwd; no signing test or repairs.")] = False,
+    cwd: Cwd = None,
+) -> OnboardResult:
+    """Aggregate existing readiness checks and optionally install the full skill.
+    Does not edit client configuration. MCP readiness remains pending until the
+    agent verifies server version; client skill loading is a separate check.
+
+    CLI: `gwt onboard [--channel cli|mcp] [--install-skill] [--dry-run]`
+    """
+    return _ops.op_onboard(channel=channel, client=client, target=target, path=path,
+        install_skill=install_skill, dry_run=dry_run, check_update=check_update,
+        ssh=ssh, signing=signing, cwd=cwd)

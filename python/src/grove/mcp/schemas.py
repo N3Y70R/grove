@@ -457,3 +457,19 @@ class SigningDoctorResult(TypedDict):
     dry_run: Annotated[bool, D("No writes, repairs or signing tests executed when true.")]
     provider_verification: Annotated[Literal["not_checked"], D("Provider recognition is never asserted by local diagnosis.")]
     ok: Annotated[bool, D("True when no blocking findings remain; warnings may still exist.")]
+
+
+class OnboardCheck(TypedDict):
+    name: Annotated[str, D("Component checked in the running environment.")]
+    status: Annotated[Literal["passed", "error", "action_required", "not_verified", "skipped", "available", "inconclusive"], D("Component evidence; not_verified does not claim client availability.")]
+    message: Annotated[str, D("Evidence or required action; no repairs are performed.")]
+
+
+class OnboardResult(TypedDict):
+    version: Annotated[str, D("Version of the executing Grove process.")]
+    channel: Annotated[Literal["cli", "mcp"], D("Selected execution channel; MCP is optional.")]
+    verdict: Annotated[Literal["ready_cli", "pending_client", "action_required", "problem"], D("Aggregate readiness; MCP connection requires an agent-side check.")]
+    dry_run: Annotated[bool, D("Preview only: no installation writes or update network request.")]
+    checks: Annotated[List[OnboardCheck], D("Independent component checks including optional diagnostics when requested.")]
+    next_steps: Annotated[List[str], D("Manual installation/client verification instructions, never executed.")]
+    installation: NotRequired[Annotated[SkillInstallResult, D("Existing installer result when skill installation was requested.")]]

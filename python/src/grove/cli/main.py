@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from ..core.errors import WtError, UsageError
 from ..core import config as core_config
-from .commands import maintenance, remote, repo, repos, skill, ssh, signing, worktrees
+from .commands import maintenance, onboarding, remote, repo, repos, skill, ssh, signing, worktrees
 from .output import Output
 
 
@@ -41,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     ssh.register_ssh(sub)
     signing.register_signing(sub)
     skill.register_skill(sub)
+    onboarding.register_onboard(sub)
     repos.register_repos(sub)
 
     return p

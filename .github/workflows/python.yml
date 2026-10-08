@@ -83,4 +83,4 @@ jobs:
       - name: Install test dependencies
         run: pip install "./python[test,mcp]" PyYAML
       - name: Test platform paths, config edits and dry-run contracts
-        run: pytest python/tests/test_platform.py python/tests/test_blockedit.py python/tests/test_general_corrections.py python/tests/test_signing.py -q -rs
+        run: pytest python/tests/test_platform.py python/tests/test_blockedit.py python/tests/test_general_corrections.py python/tests/test_signing.py python/tests/test_onboarding.py -q -rs

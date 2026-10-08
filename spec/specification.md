@@ -1113,3 +1113,43 @@ Severity (`error|warning`) is independent of fixable. Test statuses are
 `not_run|skipped|passed|failed|needs_unlock|unsupported`. CLI doctor returns 1
 for pending blocking findings, 0 otherwise; operational failures use 2 and usage
 errors 3. CLI/MCP serialize the same result, including JSON+verbose operation.
+
+## 16. Onboarding readiness (Python 0.18.0)
+
+`gwt onboard` aggregates existing installation and diagnostic operations. Default
+channel is `cli`, default skill target is `agents`. `--channel cli|mcp`,
+`--client NAME`, `--target agents|claude|project`, `--path DIR`,
+`--install-skill`, `--dry-run`, `--check-update`, `--ssh`, `--signing`, `-C`
+and `--json` are supported. `path` overrides target. Clients supported for
+instructions: agents (generic), codex, claude-code, claude-desktop, cursor.
+Unknown clients are reported as unsupported, not rejected by argument parsing.
+No client configuration files are edited; client installation/discovery and
+skill loading are not inferred from a directory or executable alone.
+
+Default inspection needs no repository. Git and the selected complete skill
+are required. MCP dependencies/server import are checked in the running Python
+environment only in MCP mode. Install uses the existing skill installer without
+force, preserving edited/unverified files; dry-run reports plans only. Existing
+skill status plus installer preview identify version, integrity and missing
+bundled files at the selected destination (including custom/project targets).
+SSH and signing diagnosis are opt-in, read-only, non-interactive; signing needs
+a managed worktree context and never executes a signing test. They are not
+prerequisites for basic onboarding. No key, identity, agent or signing repairs.
+
+Optional update check requests only https://pypi.org/pypi/grove-wt/json with a
+bounded timeout/response. Only stable X.Y.Z versions are compared; network or
+invalid data reports an inconclusive result, not that the installation is newest.
+Dry-run suppresses update network access. No package upgrades are performed.
+
+CLI and `grove_onboard` share a result containing version, channel, verdict,
+dry_run, component checks (name/status/message), next_steps and optional skill
+installation result. Verdict: ready_cli, pending_client, action_required,
+problem. Required component errors produce problem, missing/edited skill or
+unsupported client produce action_required; requested optional diagnostic
+findings require action but are explicitly labelled optional. An otherwise
+ready MCP setup is pending_client, never fully verified from terminal. Agent
+instructions ask for grove_skill_status matching the running version and a
+separate skill-loading check. Exit 0 means inspection completed (consult the
+verdict); usage/runtime failures follow existing error envelopes/codes. The MCP
+facade is conservatively annotated as potentially writing and open-world because
+installation/update are explicit options. Invalid options must not cause writes.
